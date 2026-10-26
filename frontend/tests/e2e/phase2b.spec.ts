@@ -121,7 +121,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await expect(providerPage.getByRole("heading", { name: "Invitations" })).toBeVisible();
   await expect(providerPage.getByText("E2E frozen uptime agreement")).toHaveCount(0);
   await providerPage.getByRole("button", { name: "Accept" }).click();
-  await expect(providerPage.getByText("E2E frozen uptime agreement")).toBeVisible();
+  await expect(providerPage.getByRole("heading", { name: "E2E frozen uptime agreement" })).toBeVisible();
   await expect(providerPage.getByText("Review the complete frozen SLA terms")).toHaveCount(0);
   await providerPage.getByRole("link", { name: "E2E frozen uptime agreement" }).click();
   await expect(providerPage.getByRole("heading", { name: "Agreement workflow" })).toBeVisible();
@@ -206,7 +206,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/agreements/${agreement.id}`);
-    await expect(page.getByText("E2E frozen uptime agreement")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "E2E frozen uptime agreement" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Live workspace navigation" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `horizontal overflow at ${width}px`).toBe(true);
   }
