@@ -175,9 +175,9 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
   }
 
   async function retryAnchor() {
-    await retryAgreementAnchor(organizationId, agreement.id);
+    const result = await retryAgreementAnchor(organizationId, agreement.id);
     await getAgreementAnchor(organizationId, agreement.id).then(setAnchor);
-    setNotice("Anchor transaction queued for retry.");
+    setNotice(result.blockchainStatus === "SUBMISSION_UNCERTAIN" ? "The existing transaction will be checked again." : "Anchor transaction queued for retry.");
   }
 
   async function verifyOnChain() {
@@ -255,6 +255,7 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
     {(agreement.status === "ANCHOR_PENDING" || agreement.status === "ANCHOR_CONFIRMED" || agreement.status === "ANCHOR_FAILED") && <div className="mt-5 border-t border-border pt-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Avalanche registration</h3><Status tone={anchor?.blockchainStatus === "CONFIRMED" ? "green" : anchor?.blockchainStatus === "FAILED" ? "red" : "amber"}>{anchor?.blockchainStatus ?? agreement.blockchainStatus}</Status></div>
       <p className="mt-1 text-sm text-muted">The record is confirmed only after the relayer reads the matching registry entry back from chain {chainId ?? "configured network"}.</p>
+      {(anchor?.blockchainStatus ?? agreement.blockchainStatus) === "SUBMISSION_UNCERTAIN" && <p className="mt-2 text-sm text-warning">Submission outcome is unknown. The backend checks the same signed transaction before sending it again.</p>}
       {anchor?.anchor?.transactionHash && <p className="mt-2 break-all font-mono text-xs text-muted">Transaction: {anchor.anchor.transactionHash}</p>}
       {anchor?.anchor?.lastError && <p role="alert" className="mt-2 text-sm text-danger">Anchor error: {anchor.anchor.lastError}</p>}
       <button type="button" disabled={pending} onClick={() => void run(verifyOnChain)} className="mt-3 rounded-lg border border-border px-3 py-2 text-sm font-semibold disabled:opacity-60">Verify registry record</button>

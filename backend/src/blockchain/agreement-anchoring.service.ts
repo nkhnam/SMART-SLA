@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { createWalletClient, defineChain, http, keccak256, stringToHex, type Address, type Hash } from "viem";
+import { defineChain, encodeFunctionData, getAddress, keccak256, parseTransaction, recoverTransactionAddress, stringToHex, type Address, type Hash, type TransactionSerialized } from "viem";
 import { recoverTypedDataAddress } from "viem";
 import { AgreementSignatureParty, AgreementStatus, AnchorTransactionStatus, MembershipRole } from "../generated/prisma/client.js";
 import { PrismaService } from "../database/prisma.service.js";
@@ -8,6 +8,7 @@ import type { OrganizationAuthContext } from "../agreements/agreement.types.js";
 import { agreementApprovalTypedData, canonicalizeAgreementSnapshot, type AgreementSnapshotInput } from "./agreement-hash.service.js";
 import { agreementRegistryAbi } from "./agreement-registry.abi.js";
 import { BlockchainNetworkService } from "./blockchain-network.service.js";
+import { resolveAnchorRecovery } from "./anchor-recovery.js";
 
 const leaseMs = 60_000;
 const pollMs = 15_000;
@@ -53,6 +54,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         } catch (error) {
           this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}).`);
           await this.releaseAfterFailure(claimed.id, claimed.leaseOwner, error);
+          break;
         }
       }
     } catch (error) {
@@ -96,12 +98,25 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         select: { id: true }
       });
       if (!snapshot) throw new ConflictException("The agreement has no frozen signing snapshot.");
+      const existingIntent = await transaction.anchorIntent.findUnique({
+        where: { snapshotId: snapshot.id },
+        select: { id: true, status: true, relayerNonce: true, signedTransaction: true, lastError: true }
+      });
+      const canRetryPreparedTransaction = existingIntent?.status === AnchorTransactionStatus.FAILED
+        && existingIntent.lastError === "rpc_rejected"
+        && existingIntent.relayerNonce !== null
+        && existingIntent.signedTransaction !== null;
+      const canRetryUnpreparedIntent = existingIntent?.status === AnchorTransactionStatus.FAILED
+        && existingIntent.relayerNonce === null
+        && existingIntent.signedTransaction === null;
+      if (!existingIntent || (!canRetryPreparedTransaction && !canRetryUnpreparedIntent)) {
+        throw new ConflictException("Only a failed anchor attempt that can safely reuse its existing operation can be retried.");
+      }
+      const retryStatus = canRetryPreparedTransaction ? AnchorTransactionStatus.SUBMISSION_UNCERTAIN : AnchorTransactionStatus.QUEUED;
       const changed = await transaction.anchorIntent.updateMany({
-        where: { snapshotId: snapshot.id, status: AnchorTransactionStatus.FAILED },
+        where: { id: existingIntent.id, status: AnchorTransactionStatus.FAILED },
         data: {
-          status: AnchorTransactionStatus.QUEUED,
-          transactionHash: null,
-          replacementHash: null,
+          status: retryStatus,
           submittedAt: null,
           lastError: null,
           leaseOwner: null,
@@ -109,7 +124,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         }
       });
       if (changed.count !== 1) throw new ConflictException("Only a failed anchor attempt can be retried.");
-      await transaction.agreement.update({ where: { id: agreementId }, data: { status: AgreementStatus.ANCHOR_PENDING, blockchainStatus: AnchorTransactionStatus.QUEUED } });
+      await transaction.agreement.update({ where: { id: agreementId }, data: { status: AgreementStatus.ANCHOR_PENDING, blockchainStatus: retryStatus } });
       await transaction.auditEvent.create({
         data: {
           actorUserId: context.user.id,
@@ -120,7 +135,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
           metadata: { version: agreement.version }
         }
       });
-      return { agreementId, version: agreement.version, blockchainStatus: AnchorTransactionStatus.QUEUED };
+      return { agreementId, version: agreement.version, blockchainStatus: retryStatus };
     });
   }
 
@@ -141,7 +156,8 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       if (snapshot.anchorIntent) await this.setReconciliationRequired(snapshot.anchorIntent.id, agreementId, "snapshot_integrity_mismatch");
       throw new ServiceUnavailableException("The stored signing snapshot failed integrity verification.");
     }
-    const { client, registryAddress } = await this.blockchain.getSigningContext();
+    const { client, chainId, registryAddress } = await this.blockchain.getSigningContext();
+    await this.assertRegistryDomain(client, chainId, registryAddress);
     const record = await client.readContract({ address: registryAddress, abi: agreementRegistryAbi, functionName: "getAgreement", args: [snapshot.agreementKey as `0x${string}`] });
     if (record.registeredAt === 0n) return { agreementId, version: agreement.version, verified: false, reason: "not_registered" };
     const verified = this.registryRecordMatches(record, snapshot, canonical.snapshot.buyerOrganizationId, canonical.snapshot.supplierOrganizationId);
@@ -167,7 +183,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     return this.prisma.$transaction(async (transaction) => {
       const rows = await transaction.$queryRaw<Array<{ id: string }>>`
         SELECT "id" FROM "AnchorIntent"
-        WHERE "status" IN ('QUEUED'::"AnchorTransactionStatus", 'SUBMITTED'::"AnchorTransactionStatus", 'REPLACED'::"AnchorTransactionStatus")
+        WHERE "status" IN ('QUEUED'::"AnchorTransactionStatus", 'SUBMISSION_UNCERTAIN'::"AnchorTransactionStatus", 'SUBMITTED'::"AnchorTransactionStatus", 'REPLACED'::"AnchorTransactionStatus")
           AND ("leaseUntil" IS NULL OR "leaseUntil" < NOW())
         ORDER BY "createdAt" ASC
         FOR UPDATE SKIP LOCKED
@@ -194,6 +210,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     });
     if (!intent) return;
     const { client, chainId, registryAddress, rpcUrl } = await this.blockchain.getSigningContext();
+    await this.assertRegistryDomain(client, chainId, registryAddress);
     const snapshot = intent.snapshot;
     const canonical = canonicalizeAgreementSnapshot(parseSnapshot(snapshot.canonicalPayload));
     if (canonical.hash !== snapshot.snapshotHash || canonical.key !== snapshot.agreementKey) {
@@ -216,11 +233,88 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       return;
     }
 
-    if (intent.transactionHash) {
-      const receipt = await this.waitForTrackedTransaction(intent.id, leaseOwner, client, intent.transactionHash as Hash);
-      if (receipt.status !== "success") throw new Error("transaction_reverted");
-      await this.assertRegistryRecord(client, registryAddress, snapshot);
-      await this.markConfirmed(intent.id, snapshot.agreementId, leaseOwner, receipt.transactionHash);
+    if (intent.transactionHash && intent.signedTransaction && intent.relayerNonce !== null) {
+      let persistedTransaction;
+      let persistedFrom: Address;
+      try {
+        persistedTransaction = parseTransaction(intent.signedTransaction as TransactionSerialized);
+        persistedFrom = await recoverTransactionAddress({ serializedTransaction: intent.signedTransaction as TransactionSerialized });
+      } catch {
+        await this.setReconciliationRequired(intent.id, snapshot.agreementId, "persisted_transaction_decode_failed");
+        return;
+      }
+      if (
+        keccak256(intent.signedTransaction as `0x${string}`).toLowerCase() !== intent.transactionHash.toLowerCase()
+        || intent.transactionChainId !== chainId
+        || !intent.relayerAddress
+        || getAddress(intent.relayerAddress) !== getAddress(persistedFrom)
+        || persistedTransaction.chainId !== chainId
+        || persistedTransaction.nonce !== Number(intent.relayerNonce)
+        || !persistedTransaction.to
+        || getAddress(persistedTransaction.to) !== getAddress(registryAddress)
+      ) {
+        await this.setReconciliationRequired(intent.id, snapshot.agreementId, "persisted_transaction_integrity_mismatch");
+        return;
+      }
+      const transactionHash = (intent.replacementHash ?? intent.transactionHash) as Hash;
+      let receipt;
+      try {
+        receipt = await client.getTransactionReceipt({ hash: transactionHash });
+      } catch (error) {
+        if (!(error instanceof Error) || error.name !== "TransactionReceiptNotFoundError") throw error;
+      }
+      if (receipt?.status === "reverted") {
+        await this.markFailed(intent.id, snapshot.agreementId, leaseOwner, "transaction_reverted");
+        return;
+      }
+      if (receipt?.status === "success") {
+        await this.assertRegistryRecord(client, registryAddress, snapshot);
+        await this.markConfirmed(intent.id, snapshot.agreementId, leaseOwner, receipt.transactionHash);
+        return;
+      }
+      const pendingTransaction = await client.getTransaction({ hash: transactionHash }).catch((error: unknown) => {
+        if (error instanceof Error && error.name === "TransactionNotFoundError") return null;
+        throw error;
+      });
+      if (pendingTransaction) {
+        if (
+          getAddress(pendingTransaction.from) !== getAddress(intent.relayerAddress)
+          || pendingTransaction.nonce !== Number(intent.relayerNonce)
+          || !pendingTransaction.to
+          || getAddress(pendingTransaction.to) !== getAddress(registryAddress)
+          || pendingTransaction.input.toLowerCase() !== (persistedTransaction.data ?? "0x").toLowerCase()
+        ) {
+          await this.setReconciliationRequired(intent.id, snapshot.agreementId, "replacement_transaction_integrity_mismatch");
+          return;
+        }
+        await this.prisma.anchorIntent.updateMany({
+          where: { id: intent.id, leaseOwner },
+          data: { status: intent.replacementHash ? AnchorTransactionStatus.REPLACED : AnchorTransactionStatus.SUBMITTED, leaseOwner: null, leaseUntil: null }
+        });
+        return;
+      }
+      const pendingNonce = await client.getTransactionCount({ address: intent.relayerAddress as Address, blockTag: "pending" });
+      const recovery = resolveAnchorRecovery({
+        registry: "missing",
+        receipt: "missing",
+        transaction: "missing",
+        pendingNonce: BigInt(pendingNonce),
+        relayerNonce: intent.relayerNonce
+      });
+      if (recovery === "MANUAL_RECONCILIATION") {
+        await this.setReconciliationRequired(intent.id, snapshot.agreementId, "relayer_nonce_consumed_without_matching_registry_record");
+        return;
+      }
+      if (recovery !== "REBROADCAST_SAME_TRANSACTION") return;
+      const broadcastHash = await client.sendRawTransaction({ serializedTransaction: intent.signedTransaction as `0x${string}` });
+      if (broadcastHash.toLowerCase() !== intent.transactionHash.toLowerCase()) {
+        await this.setReconciliationRequired(intent.id, snapshot.agreementId, "rpc_transaction_hash_mismatch");
+        return;
+      }
+      await this.prisma.anchorIntent.updateMany({
+        where: { id: intent.id, leaseOwner },
+        data: { status: AnchorTransactionStatus.SUBMITTED, submittedAt: new Date(), lastError: null, leaseOwner: null, leaseUntil: null }
+      });
       return;
     }
 
@@ -235,7 +329,6 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       nativeCurrency: { name: "AVAX", symbol: "AVAX", decimals: 18 },
       rpcUrls: { default: { http: [rpcUrl] } }
     });
-    const wallet = createWalletClient({ account, chain, transport: http(rpcUrl) });
     const typedData = agreementApprovalTypedData(
       canonical,
       chainId,
@@ -258,50 +351,66 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       return;
     }
 
-    const transactionHash = await this.prisma.$transaction(async (transaction) => {
+    const prepared = await this.prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw`SELECT pg_advisory_xact_lock(8273641)`;
-      const nonce = await client.getTransactionCount({ address: account.address, blockTag: "pending" });
-      const hash = await wallet.writeContract({
-        address: registryAddress,
-        abi: agreementRegistryAbi,
-        functionName: "registerAgreement",
-        args: [typedData.message, buyerSignature.signature as `0x${string}`, supplierSignature.signature as `0x${string}`],
-        nonce
+      const current = await transaction.anchorIntent.findFirst({ where: { id: intent.id, leaseOwner }, select: { transactionHash: true, signedTransaction: true } });
+      if (!current) throw new ConflictException("The anchor intent lease expired before transaction preparation.");
+      if (current.transactionHash && current.signedTransaction) return current;
+      const pendingNonce = await client.getTransactionCount({ address: account.address, blockTag: "pending" });
+      const lastAllocated = await transaction.anchorIntent.findFirst({
+        where: { transactionChainId: chainId, relayerAddress: account.address, relayerNonce: { not: null } },
+        orderBy: { relayerNonce: "desc" },
+        select: { relayerNonce: true }
       });
+      const nextPersistedNonce = (lastAllocated?.relayerNonce ?? -1n) + 1n;
+      const nonce = Math.max(pendingNonce, Number(nextPersistedNonce));
+      if (!Number.isSafeInteger(nonce)) throw new Error("relayer_nonce_out_of_range");
+      const args = [typedData.message, buyerSignature.signature as `0x${string}`, supplierSignature.signature as `0x${string}`] as const;
+      const gas = await client.estimateContractGas({ account, address: registryAddress, abi: agreementRegistryAbi, functionName: "registerAgreement", args });
+      const gasPrice = await client.getGasPrice();
+      const signedTransaction = await account.signTransaction({
+        chain,
+        chainId,
+        to: registryAddress,
+        data: encodeFunctionData({ abi: agreementRegistryAbi, functionName: "registerAgreement", args }),
+        nonce,
+        gas: gas * 120n / 100n,
+        gasPrice
+      });
+      const hash = keccak256(signedTransaction);
       const updated = await transaction.anchorIntent.updateMany({
-        where: { id: intent.id, leaseOwner },
-        data: { status: AnchorTransactionStatus.SUBMITTED, transactionHash: hash, submittedAt: new Date(), lastError: null }
+        where: { id: intent.id, leaseOwner, transactionHash: null, signedTransaction: null },
+        data: {
+          status: AnchorTransactionStatus.SUBMISSION_UNCERTAIN,
+          relayerNonce: BigInt(nonce),
+          transactionChainId: chainId,
+          relayerAddress: account.address,
+          signedTransaction,
+          transactionHash: hash,
+          submittedAt: new Date(),
+          lastError: null
+        }
       });
       if (updated.count !== 1) throw new ConflictException("The anchor intent lease expired before the transaction hash was stored.");
       await transaction.agreement.update({
         where: { id: snapshot.agreementId },
-        data: { blockchainStatus: AnchorTransactionStatus.SUBMITTED }
+        data: { blockchainStatus: AnchorTransactionStatus.SUBMISSION_UNCERTAIN }
       });
-      return hash;
+      return { transactionHash: hash, signedTransaction };
     }, { maxWait: 10_000, timeout: 60_000 });
-    const receipt = await this.waitForTrackedTransaction(intent.id, leaseOwner, client, transactionHash);
-    if (receipt.status !== "success") throw new Error("transaction_reverted");
-    await this.assertRegistryRecord(client, registryAddress, snapshot);
-    await this.markConfirmed(intent.id, snapshot.agreementId, leaseOwner, receipt.transactionHash);
-  }
-
-  private async waitForTrackedTransaction(
-    intentId: string,
-    leaseOwner: string,
-    client: Awaited<ReturnType<BlockchainNetworkService["getSigningContext"]>>["client"],
-    hash: Hash
-  ) {
-    let replacementHash: Hash | undefined;
-    const receipt = await client.waitForTransactionReceipt({
-      hash,
-      confirmations: this.blockchain.getConfirmationCount(),
-      onReplaced: ({ transaction }) => { replacementHash = transaction.hash; }
+    if (!prepared.transactionHash || !prepared.signedTransaction) throw new ConflictException("The prepared transaction is incomplete.");
+    const broadcastHash = await client.sendRawTransaction({ serializedTransaction: prepared.signedTransaction as `0x${string}` });
+    if (broadcastHash.toLowerCase() !== prepared.transactionHash.toLowerCase()) {
+      await this.setReconciliationRequired(intent.id, snapshot.agreementId, "rpc_transaction_hash_mismatch");
+      return;
+    }
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.anchorIntent.updateMany({
+        where: { id: intent.id, leaseOwner, transactionHash: prepared.transactionHash },
+        data: { status: AnchorTransactionStatus.SUBMITTED, lastError: null }
+      });
+      await transaction.agreement.update({ where: { id: snapshot.agreementId }, data: { blockchainStatus: AnchorTransactionStatus.SUBMITTED } });
     });
-    if (replacementHash) await this.prisma.anchorIntent.updateMany({
-      where: { id: intentId, leaseOwner },
-      data: { status: AnchorTransactionStatus.REPLACED, replacementHash }
-    });
-    return receipt;
   }
 
   private async assertRegistryRecord(client: Awaited<ReturnType<BlockchainNetworkService["getSigningContext"]>>["client"], registryAddress: Address, snapshot: { agreementKey: string; snapshotHash: string; canonicalPayload: string; version: number; validUntil: Date }) {
@@ -310,6 +419,22 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     if (!this.registryRecordMatches(record, snapshot, canonical.snapshot.buyerOrganizationId, canonical.snapshot.supplierOrganizationId)) {
       throw new Error("registry_readback_mismatch");
     }
+  }
+
+  private async assertRegistryDomain(client: Awaited<ReturnType<BlockchainNetworkService["getSigningContext"]>>["client"], chainId: number, registryAddress: Address): Promise<void> {
+    const bytecode = await client.getCode({ address: registryAddress });
+    if (!bytecode || bytecode === "0x") throw new Error("registry_contract_missing");
+    const [, domainName, domainVersion, domainChainId, verifyingContract] = await client.readContract({
+      address: registryAddress,
+      abi: agreementRegistryAbi,
+      functionName: "eip712Domain"
+    });
+    if (
+      domainName !== "SLA-DEX Agreement Registry"
+      || domainVersion !== "1"
+      || domainChainId !== BigInt(chainId)
+      || getAddress(verifyingContract) !== getAddress(registryAddress)
+    ) throw new Error("registry_domain_mismatch");
   }
 
   private registryRecordMatches(
@@ -347,6 +472,20 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     });
   }
 
+  private async markFailed(intentId: string, agreementId: string, leaseOwner: string, reason: string): Promise<void> {
+    await this.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.anchorIntent.updateMany({
+        where: { id: intentId, leaseOwner },
+        data: { status: AnchorTransactionStatus.FAILED, lastError: reason, leaseOwner: null, leaseUntil: null }
+      });
+      if (updated.count !== 1) return;
+      await transaction.agreement.update({
+        where: { id: agreementId },
+        data: { status: AgreementStatus.ANCHOR_FAILED, blockchainStatus: AnchorTransactionStatus.FAILED }
+      });
+    });
+  }
+
   private async setReconciliationRequired(intentId: string, agreementId: string, reason: string): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
       await transaction.anchorIntent.update({
@@ -364,17 +503,15 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       if (intent) await this.setReconciliationRequired(intentId, intent.snapshot.agreementId, reason);
       return;
     }
-    const retryable = reason === "rpc_unavailable" || reason === "timeout";
+    const retryable = reason === "rpc_unavailable" || reason === "timeout" || reason === "wrong_chain_id";
     const current = await this.prisma.anchorIntent.findUnique({
       where: { id: intentId },
-      select: { transactionHash: true, replacementHash: true, snapshot: { select: { agreementId: true } } }
+      select: { transactionHash: true, replacementHash: true, signedTransaction: true, snapshot: { select: { agreementId: true } } }
     });
     if (!current) return;
-    const status = retryable
-      ? current.transactionHash
-        ? current.replacementHash ? AnchorTransactionStatus.REPLACED : AnchorTransactionStatus.SUBMITTED
-        : AnchorTransactionStatus.QUEUED
-      : AnchorTransactionStatus.FAILED;
+    const status = current.signedTransaction
+      ? reason === "rpc_rejected" ? AnchorTransactionStatus.FAILED : AnchorTransactionStatus.SUBMISSION_UNCERTAIN
+      : retryable ? AnchorTransactionStatus.QUEUED : AnchorTransactionStatus.FAILED;
     await this.prisma.anchorIntent.updateMany({
       where: { id: intentId, leaseOwner },
       data: {
@@ -386,7 +523,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     });
     await this.prisma.agreement.updateMany({
       where: { id: current.snapshot.agreementId },
-      data: { blockchainStatus: status, ...(!retryable ? { status: AgreementStatus.ANCHOR_FAILED } : {}) }
+      data: { blockchainStatus: status, ...(status === AnchorTransactionStatus.FAILED ? { status: AgreementStatus.ANCHOR_FAILED } : {}) }
     });
   }
 
@@ -402,8 +539,10 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
   private errorClass(error: unknown): string {
     const name = error instanceof Error ? error.name : "";
     const message = error instanceof Error ? error.message.toLowerCase() : "";
+    if (/invalid sender|insufficient funds|intrinsic gas too low|invalid transaction|invalid signature/.test(message)) return "rpc_rejected";
     if (/timeout|timed out/.test(name.toLowerCase() + message)) return "timeout";
     if (/http|rpc|network|socket|fetch/.test(name.toLowerCase() + message)) return "rpc_unavailable";
+    if (/unexpected chain id|wrong chain id/.test(message)) return "wrong_chain_id";
     if (message.includes("transaction_reverted")) return "transaction_reverted";
     if (message.includes("registry_readback_mismatch")) return "registry_readback_mismatch";
     return "anchor_processing_failed";

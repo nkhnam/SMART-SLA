@@ -41,6 +41,7 @@ enum SignatureCollectionStatus {
 enum AnchorTransactionStatus {
   NOT_QUEUED
   QUEUED
+  SUBMISSION_UNCERTAIN
   SUBMITTED
   CONFIRMED
   FAILED
@@ -306,6 +307,9 @@ model AnchorIntent {
   status          AnchorTransactionStatus @default(QUEUED)
   attemptCount    Int                     @default(0)
   relayerNonce    BigInt?
+  transactionChainId Int?
+  relayerAddress  String?                 @db.VarChar(42)
+  signedTransaction String?               @db.Text
   transactionHash String?                 @unique @db.VarChar(66)
   replacementHash String?                 @db.VarChar(66)
   lastError       String?                 @db.VarChar(2000)
@@ -318,6 +322,7 @@ model AnchorIntent {
   snapshot        SigningSnapshot         @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
 
   @@index([status, leaseUntil, createdAt])
+  @@unique([transactionChainId, relayerAddress, relayerNonce])
 }
 
 model AuditEvent {

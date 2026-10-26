@@ -90,6 +90,68 @@ describe("AgreementRegistry", async () => {
     await assert.rejects(registry.write.registerAgreement([approval, ...signatures]));
   });
 
+  it("rejects an invalid Buyer signature independently", async () => {
+    const approval = approvalFor(`0x${"14".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    await assert.rejects(registry.write.registerAgreement([
+      approval,
+      await sign(approval, unrelated),
+      await sign(approval, supplier)
+    ]));
+  });
+
+  it("rejects an invalid Supplier signature independently", async () => {
+    const approval = approvalFor(`0x${"1a".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    await assert.rejects(registry.write.registerAgreement([
+      approval,
+      await sign(approval, buyer),
+      await sign(approval, unrelated)
+    ]));
+  });
+
+  it("rejects a signature when the expected signer address changes", async () => {
+    const approval = approvalFor(`0x${"15".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    const changedSigner = { ...approval, buyerSigner: unrelated.account.address };
+    await assert.rejects(registry.write.registerAgreement([
+      changedSigner,
+      await sign(approval, buyer),
+      await sign(approval, supplier)
+    ]));
+  });
+
+  it("binds both signatures to the exact agreement hash and version", async () => {
+    const approval = approvalFor(`0x${"16".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    const buyerSignature = await sign(approval, buyer);
+    const supplierSignature = await sign(approval, supplier);
+    await assert.rejects(registry.write.registerAgreement([
+      { ...approval, agreementHash: `0x${"bc".repeat(32)}` }, buyerSignature, supplierSignature
+    ]));
+    await assert.rejects(registry.write.registerAgreement([
+      { ...approval, version: 2n }, buyerSignature, supplierSignature
+    ]));
+  });
+
+  it("rejects signatures replayed against a different agreement key", async () => {
+    const approval = approvalFor(`0x${"17".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    const signatures = [await sign(approval, buyer), await sign(approval, supplier)] as const;
+    await assert.rejects(registry.write.registerAgreement([
+      { ...approval, agreementKey: `0x${"18".repeat(32)}` }, ...signatures
+    ]));
+  });
+
+  it("does not enforce organization authorization for the addresses named by the signatures", async () => {
+    const approval = {
+      ...approvalFor(`0x${"19".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600)),
+      buyerSigner: unrelated.account.address
+    };
+    const hash = await registry.write.registerAgreement([
+      approval,
+      await sign(approval, unrelated),
+      await sign(approval, supplier)
+    ]);
+    assert.equal((await publicClient.waitForTransactionReceipt({ hash })).status, "success");
+    assert.equal((await registry.read.getAgreement([approval.agreementKey])).agreementHash, approval.agreementHash);
+  });
+
   it("binds approvals to the chain ID and rejects empty agreement hashes", async () => {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
     const approval = approvalFor(`0x${"13".repeat(32)}`, deadline);

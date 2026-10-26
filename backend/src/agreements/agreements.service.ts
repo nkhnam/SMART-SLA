@@ -233,6 +233,7 @@ export class AgreementsService {
         include: { anchorIntent: { select: { status: true } } }
       });
       const unresolvedAnchorStatuses = new Set<AnchorTransactionStatus>([
+        AnchorTransactionStatus.SUBMISSION_UNCERTAIN,
         AnchorTransactionStatus.SUBMITTED,
         AnchorTransactionStatus.REPLACED,
         AnchorTransactionStatus.RECONCILIATION_REQUIRED

@@ -19,7 +19,7 @@ export type AgreementTerms = {
 
 export type AgreementStatus = "DRAFT" | "AWAITING_COUNTERPARTY" | "AWAITING_SIGNATURES" | "ANCHOR_PENDING" | "ANCHOR_CONFIRMED" | "ANCHOR_FAILED" | "REJECTED" | "CANCELLED";
 export type SignatureStatus = "NOT_STARTED" | "PENDING" | "PARTIAL" | "COMPLETE" | "INVALIDATED";
-export type AnchorStatus = "NOT_QUEUED" | "QUEUED" | "SUBMITTED" | "CONFIRMED" | "FAILED" | "REPLACED" | "RECONCILIATION_REQUIRED";
+export type AnchorStatus = "NOT_QUEUED" | "QUEUED" | "SUBMISSION_UNCERTAIN" | "SUBMITTED" | "CONFIRMED" | "FAILED" | "REPLACED" | "RECONCILIATION_REQUIRED";
 
 export type TypedDataPayload = {
   domain: { name: string; version: string; chainId: number; verifyingContract: string };

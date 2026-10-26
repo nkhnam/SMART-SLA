@@ -50,6 +50,7 @@ jobs:
           npm run typecheck
           npm run test:unit
           npm run test:integration
+          npm run test:migration-upgrade
           npm audit --audit-level=high
       - name: Install frontend dependencies
         working-directory: frontend
