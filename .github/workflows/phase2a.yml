@@ -1,0 +1,64 @@
+name: Phase 2A
+
+on:
+  push:
+    branches: [feat/unihack-phase2-backend]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: sladex_test
+          POSTGRES_USER: sladex_test
+          POSTGRES_PASSWORD: local-test-only
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U sladex_test -d sladex_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Validate backend
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+          TEST_DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+          CORS_ORIGINS: http://localhost:3000
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:unit
+          npm run build
+          npm run test:integration
+          npm audit --audit-level=high
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Validate frontend
+        working-directory: frontend
+        run: |
+          npm run test:api
+          npm run lint
+          npx tsc --noEmit
+          npm run build
+          npm run test:production-smoke
+          npm audit --audit-level=high
