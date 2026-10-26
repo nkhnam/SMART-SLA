@@ -1,6 +1,6 @@
 # SLA-DEX Phase 2B Avalanche Signing Design
 
-> updated 2026-10-26 · c9622cf
+> updated 2026-10-26 · ce30fce
 
 ## Intent
 
@@ -51,7 +51,7 @@ Blockchain transaction status: `NOT_QUEUED`, `QUEUED`, `SUBMITTED`, `CONFIRMED`,
 
 An invitation transition is transactional and version-scoped. Acceptance locks a candidate version. Preparation creates one immutable snapshot with the participant IDs, selected wallets, canonical payload/hash, EIP-712 domain and validity deadline. Signatures are unique per snapshot and party, checked against the authorized signer and snapshot. Once both are valid, a unique durable registration intent is created in the same database transaction and the agreement moves to `ANCHOR_PENDING`. A database worker leases queued intents and serializes submissions for the single relayer account. Before retrying, it reads the registry; an existing matching record is reconciled as success, while a mismatched record is a security failure. Receipt success alone is insufficient: the backend independently reads and compares the registered agreement key, version, hash and signers before setting `ANCHOR_CONFIRMED`.
 
-An amendment creates the next immutable AgreementVersion, invalidates signatures for the previous unanchored snapshot, withdraws its pending invitation state and restarts participation/signing. An already anchored snapshot is never mutated; an amendment is a new version key and new on-chain registration. State changes use conditional updates and database transactions. Audit events record invitations, decisions, wallet linking, snapshots, signatures, cancellation, relayer attempts and reconciliation.
+An amendment creates the next immutable AgreementVersion, invalidates signatures for the previous unanchored snapshot, withdraws its pending invitation state and restarts participation/signing. An already anchored snapshot is never mutated; an amendment is a new version key and new on-chain registration. State changes use conditional updates and database transactions. A receipt timeout retains the submitted hash so the worker resumes receipt tracking instead of submitting a duplicate; viem replacement detection stores the replacement hash and the replacement receipt still must pass the same registry read-back. Audit events record invitations, decisions, wallet linking, snapshots, signatures, cancellation, relayer attempts and reconciliation.
 
 ## Canonical snapshot and hash
 
@@ -75,7 +75,7 @@ Threats include a MEMBER attempting approval, an unrelated org probing private t
 
 ## Quality and release
 
-Contract unit tests, backend unit/integration tests, migration-on-fresh-PostgreSQL validation, frontend wallet/API behavior tests, TypeScript/lint/build/audit gates and the existing Phase 2A workflow are required. CI starts a deterministic local EVM and never uses Fuji credentials. Fuji deployment, source verification and funded transaction are separate, explicitly approved work; until completed the truthful status is `LOCAL IMPLEMENTATION PASS — FUJI DEPLOYMENT PENDING`.
+Contract unit tests, backend unit/integration tests, migration-on-fresh-PostgreSQL validation, frontend wallet/API behavior tests, TypeScript/lint/build/audit gates and the existing Phase 2A workflow are required. CI starts a deterministic local EVM and never uses Fuji credentials. Only after all local gates pass, Fuji deployment, source verification and funded transaction remain separate, explicitly approved work and the truthful status is `LOCAL IMPLEMENTATION PASS — FUJI DEPLOYMENT PENDING`. If a local gate cannot run, report local validation as incomplete instead.
 
 ## Decision record
 

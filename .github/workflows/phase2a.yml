@@ -2,7 +2,7 @@ name: Phase 2A
 
 on:
   push:
-    branches: [feat/unihack-phase2-backend]
+    branches: [feat/unihack-phase2-backend, feat/unihack-phase2b-avalanche]
   pull_request:
 
 jobs:
@@ -33,6 +33,7 @@ jobs:
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
+            contracts/package-lock.json
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
@@ -62,3 +63,25 @@ jobs:
           npm run build
           npm run test:production-smoke
           npm audit --audit-level=high
+  contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - name: Install contract dependencies
+        working-directory: contracts
+        run: npm ci
+      - name: Compile and test on the local EVM
+        working-directory: contracts
+        run: |
+          npm run compile
+          npm test
+      - name: Audit contract dependencies
+        working-directory: contracts
+        run: npm audit --audit-level=high

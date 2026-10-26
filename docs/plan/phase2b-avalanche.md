@@ -37,12 +37,12 @@
 
 **Interfaces:** Export typed `AgreementSnapshotInput`, `CanonicalAgreementSnapshot`, `canonicalizeAgreementSnapshot(input)`, `hashAgreementSnapshot(snapshot)`, `agreementKey(agreementId, version)` and `agreementApprovalTypedData(snapshot, chainId, registryAddress, nonce, deadline)`.
 
-- [ ] Add tests for identical inputs, NFC normalization, exclusion order, integer basis points, and every material field changing the digest.
-- [ ] Run the focused tests and observe expected failure.
-- [ ] Implement canonical schema v1, fixed field order, UTF-8 keccak256, version key and EIP-712 domain/message.
-- [ ] Run focused tests and backend typecheck.
-- [ ] Document byte-level normalization, field order, hash and typed message with fixtures.
-- [ ] Commit the protocol unit.
+- [x] Add tests for identical inputs, NFC normalization, exclusion order, integer basis points, and every material field changing the digest.
+- [x] Run the focused tests and observe expected failure.
+- [x] Implement canonical schema v1, fixed field order, UTF-8 keccak256, version key and EIP-712 domain/message.
+- [x] Run focused tests and backend typecheck.
+- [x] Document byte-level normalization, field order, hash and typed message with fixtures.
+- [x] Commit the protocol unit (`29e5ad2`).
 
 ### Task 2: Database state and migrations
 
@@ -50,11 +50,11 @@
 
 **Interfaces:** Enums `AgreementStatus`, `SignatureCollectionStatus`, `AnchorTransactionStatus`; models `AgreementInvitation`, `AgreementParticipant`, `AuthorizedSigner`, `SigningSnapshot`, `AgreementSignature`, `AnchorIntent` with uniqueness/FK/index rules in the design doc.
 
-- [ ] Test fresh database migration, existing DRAFT row readability and uniqueness constraints.
-- [ ] Run schema validation and observe the new migration/test failure before implementation.
-- [ ] Add lifecycle enums and normalized relation models; do not rewrite the Phase 2A migration.
-- [ ] Apply migrations to isolated fresh PostgreSQL and typecheck generated client.
-- [ ] Commit schema and migration.
+- [ ] Test fresh database migration, existing DRAFT row readability and uniqueness constraints. Local PostgreSQL is unavailable because the Docker daemon is not running; CI has the isolated PostgreSQL service but has not run because the branch is unpushed.
+- [x] Run schema validation and observe the new migration/test failure before implementation.
+- [x] Add lifecycle enums and normalized relation models; do not rewrite the Phase 2A migration.
+- [ ] Apply migrations to isolated fresh PostgreSQL and typecheck generated client. `prisma validate`, generation and backend checks passed; fresh-database migration is blocked because Docker is unavailable locally.
+- [x] Commit schema and migration (`cf12912`).
 
 ### Task 3: Bilateral invitation, acceptance, wallet proof and lifecycle APIs
 
@@ -62,11 +62,11 @@
 
 **Interfaces:** Invitation `POST /agreements/:id/invitations`; accept/reject under invitation ID; authenticated invitation inbox for the selected org; wallet challenge/verify routes; prepare-signing, signing read, signature submission, anchor read/retry and verification routes as the originating request specifies.
 
-- [ ] Add integration cases for accepted organization isolation, MEMBER denial, invalid invitation scope/expiry, wallet challenge replay, immutable snapshot, amendment invalidation and audit trail; run to establish failure.
-- [ ] Implement organization-scoped authorization, CUSTOMER/PROVIDER party selection, explicit states, optimistic version checks and transactional audit writes.
-- [ ] Implement wallet ownership challenge, snapshot freeze, expiry and EIP-712 server signature recovery; reject wrong wallet, wrong org, wrong version and replay.
-- [ ] Run backend unit and PostgreSQL integration suites, lint, typecheck and build.
-- [ ] Commit invitation/signing API layer.
+- [ ] Add integration cases for accepted organization isolation, MEMBER denial, invalid invitation scope/expiry, wallet challenge replay, immutable snapshot, amendment invalidation and audit trail; run to establish failure. Existing additions cover invitation privacy, acceptance, MEMBER denial and invalid invitation cases; DB-backed cases could not execute locally.
+- [x] Implement organization-scoped authorization, CUSTOMER/PROVIDER party selection, explicit states, optimistic version checks and transactional audit writes.
+- [x] Implement wallet ownership challenge, snapshot freeze, expiry and EIP-712 server signature recovery; reject wrong wallet, wrong org, wrong version and replay.
+- [ ] Run backend unit and PostgreSQL integration suites, lint, typecheck and build. Unit/lint/typecheck/build passed; PostgreSQL integration could not connect to `localhost:5433`.
+- [x] Commit invitation/signing API and relayer layer (`cf12912`).
 
 ### Task 4: Registry contract and local signing tests
 
@@ -74,10 +74,10 @@
 
 **Interfaces:** Permissionless `registerAgreement(AgreementApproval, buyerSignature, supplierSignature)`, `getAgreement(agreementKey)`, registration event and domain `SLA-DEX Agreement Registry` version `1`; Hardhat local chain and Fuji network config with chain 43113 and Cancun compiler target.
 
-- [ ] Test two-signature success, altered/invalid signature, expiry, chain/contract domain mismatch, duplicate/version replay and exact event/read-back; run to establish failure.
-- [ ] Implement OpenZeppelin `EIP712` and `ECDSA` verification and privacy-minimal immutable registry state.
-- [ ] Compile and run all contract tests on local Hardhat network.
-- [ ] Commit contract workspace.
+- [ ] Test two-signature success, altered/invalid signature, expiry, chain/contract domain mismatch, duplicate/version replay and exact event/read-back; run to establish failure. Local tests cover the main success, forged signature, expiry, wrong contract/chain, replay, empty hash, event and read-back cases; separate wrong-supplier and cross-agreement replay cases remain unverified.
+- [x] Implement OpenZeppelin `EIP712` and `ECDSA` verification and privacy-minimal immutable registry state.
+- [x] Compile and run all contract tests on local Hardhat network.
+- [x] Commit contract workspace (`797b78e`).
 
 ### Task 5: Durable relayer and reconciliation
 
@@ -85,9 +85,9 @@
 
 **Interfaces:** Validated chain config, `queueRegistration(snapshotId)`, `processPendingIntents()`, `reconcileIntent(intentId)`, and `verifyAgreement(agreementId)`.
 
-- [ ] Add local-EVM integration tests for idempotent requests, wrong network, reverted tx, low balance, duplicate transaction, crash-after-inclusion recovery and DB/on-chain mismatch; run to establish failure.
-- [ ] Implement persisted intent leasing, serialized relayer nonce submission, receipt/replacement tracking, retry classification and independent registry read-back.
-- [ ] Ensure missing/mismatched config degrades visibly and never reports confirmation; never return credentials.
+- [ ] Add local-EVM integration tests for idempotent requests, wrong network, reverted tx, low balance, duplicate transaction, crash-after-inclusion recovery and DB/on-chain mismatch; run to establish failure. The contract suite uses the local EVM; backend transaction recovery cases remain untested without the PostgreSQL integration environment.
+- [x] Implement persisted intent leasing, serialized relayer nonce submission, receipt/replacement tracking, retry classification and independent registry read-back.
+- [x] Ensure missing/mismatched config degrades visibly and never reports confirmation; never return credentials.
 - [ ] Run backend unit/integration, typecheck, lint, build and local-EVM tests.
 - [ ] Commit relayer and recovery layer.
 
@@ -99,25 +99,25 @@
 
 - [ ] Add adapter/component tests for connected, rejected, disconnected, wrong-chain, signature submitted/rejected, real backend errors, no demo fallback and pending/confirmed states; run to establish failure.
 - [ ] Implement participant/status/timeline views, immutable term confirmation, Fuji wallet flow and authenticated signature submission; do not persist signatures in local storage.
-- [ ] Read applicable Next.js 16.4.3 docs from installed `node_modules/next/dist/docs/` before changing frontend source.
-- [ ] Run API tests, lint, TypeScript checks, Webpack build, smoke test and dependency audits.
+- [x] Read applicable Next.js 16.4.3 docs from installed `node_modules/next/dist/docs/` before changing frontend source.
+- [x] Run API tests, lint, TypeScript checks, Webpack build, smoke test and dependency audits.
 - [ ] Add browser automation only if it runs against local EVM and does not compromise CI secrets; report only executed coverage.
-- [ ] Commit frontend flow.
+- [x] Commit frontend flow (`ce30fce`).
 
 ### Task 7: CI, documentation and release validation
 
 **Files:** `.github/workflows/phase2a.yml` or a focused Phase 2B workflow, architecture/security/deployment docs, README, CHANGELOG, docs index.
 
-- [ ] Add CI steps for contract compile/tests, local EVM integration, fresh PostgreSQL migration and all existing Phase 2A checks; preserve its branch trigger.
-- [ ] Run the full local gate and dependency audits; fix failures at source.
-- [ ] Document state transitions, threat model, hashes, Fuji secrets/funding/deploy/read-back; clarify no Fuji run occurred without explicit approval.
-- [ ] Update README and `[Unreleased]` changelog; run repository release lint if available.
-- [ ] Run final status/diff and security review against the five Review Focus cases.
-- [ ] Commit documentation and CI; leave branch unpushed and unmerged.
+- [x] Add CI steps for contract compile/tests, local EVM integration, fresh PostgreSQL migration and all existing Phase 2A checks; preserve its branch trigger.
+- [ ] Run the full local gate and dependency audits; fix failures at source. All available frontend/backend/contract checks and audits passed, but fresh-PostgreSQL migration/integration did not run because Docker is unavailable.
+- [x] Document state transitions, threat model, hashes, Fuji secrets/funding/deploy/read-back; clarify no Fuji run occurred without explicit approval.
+- [x] Update README and `[Unreleased]` changelog; run repository release lint if available.
+- [x] Run final status/diff and security review against the five Review Focus cases.
+- [x] Commit documentation and CI; leave branch unpushed and unmerged.
 
 ### Task 8: Final verification and report
 
-- [ ] Re-read the full Phase 2B request and account for every deliverable.
-- [ ] Run complete required gates and record actual outputs.
-- [ ] Perform author self-review (no delegated coding/review agent per request).
+- [x] Re-read the full Phase 2B request and account for every deliverable.
+- [ ] Run complete required gates and record actual outputs. Fresh PostgreSQL migration/integration remains blocked by the stopped Docker daemon; GitHub Actions remains unrun because the branch was not pushed.
+- [x] Perform author self-review (no delegated coding/review agent per request).
 - [ ] Report SHA, commits, migration, interface/security decisions, endpoints, UI, tests, CI evidence, Fuji status and remaining blockers.

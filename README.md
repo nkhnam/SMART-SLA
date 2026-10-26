@@ -1,6 +1,6 @@
 # SLA-DEX
 
-SLA-DEX pairs the Phase 1 fixture-backed demo with an opt-in Phase 2A live workspace for authenticated, organization-scoped agreement drafts. The live API persists drafts in PostgreSQL; signing, monitoring, disputes, verification, and blockchain transactions remain future work.
+SLA-DEX pairs the Phase 1 fixture-backed demo with an opt-in live workspace. Phase 2A persists authenticated, organization-scoped agreement drafts in PostgreSQL. Phase 2B adds organization invitations, bilateral EIP-712 signing of immutable agreement versions, and a relayed Avalanche Fuji registry workflow. Monitoring, disputes, evidence, escrow and settlement remain out of scope.
 
 ## Run the live workspace locally
 
@@ -38,6 +38,12 @@ npm run test:integration
 ```
 
 See [docs/arch/phase2a-backend.md](docs/arch/phase2a-backend.md) for API, data, security, and future-chain boundaries.
+
+## Phase 2B signing and registry
+
+The Live Workspace uses the authenticated backend for invitation, wallet authorization, frozen snapshot review, signatures, anchoring and independent registry verification. Contract compilation and signing tests run on a local EVM; they do not need Fuji funds. See [the Phase 2B architecture](docs/arch/phase2b-avalanche.md), [signing threat model](docs/security/signing-threat-model.md), and [Fuji deployment guide](docs/deployment/fuji.md). Fuji deployment has not been performed and is not automatic in CI.
+
+The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend.
 
 ## Validation
 
