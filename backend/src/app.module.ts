@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { APP_FILTER, APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, Reflector } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AgreementsModule } from "./agreements/agreements.module.js";
 import { ApiExceptionFilter } from "./common/api-exception.filter.js";
@@ -21,6 +21,7 @@ import { OrganizationsModule } from "./organizations/organizations.module.js";
     AgreementsModule
   ],
   providers: [
+    Reflector,
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard }
