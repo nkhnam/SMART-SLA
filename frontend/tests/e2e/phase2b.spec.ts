@@ -174,8 +174,14 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 1, method: "evm_setAutomine", params: [false] } });
   await providerPage.getByRole("button", { name: "Sign with connected wallet" }).click();
   await expect(providerPage.getByRole("status")).toContainText("Signature submitted");
+  await expect.poll(async () => {
+    const response = await page.request.get(`http://127.0.0.1:4000/api/v1/agreements/${agreement.id}/anchor`, { headers: { "x-organization-id": customer.organizationId } });
+    if (!response.ok()) return `HTTP ${response.status()}: ${await response.text()}`;
+    const anchor = await response.json() as { blockchainStatus: string };
+    return anchor.blockchainStatus;
+  }, { timeout: 35_000 }).toBe("SUBMITTED");
   await page.reload();
-  await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible({ timeout: 35_000 });
+  await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 2, method: "evm_mine", params: [] } });
   await expect(page.getByText("CONFIRMED", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 3, method: "evm_setAutomine", params: [true] } });
