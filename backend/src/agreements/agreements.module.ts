@@ -10,7 +10,7 @@ import { AgreementsService } from "./agreements.service.js";
 
 @Module({
   imports: [BlockchainModule],
-  controllers: [AgreementsController, AgreementWorkflowController],
+  controllers: [AgreementWorkflowController, AgreementsController],
   providers: [AgreementsService, AgreementParticipationService, AgreementSigningService, SessionGuard, OrganizationContextGuard]
 })
 export class AgreementsModule {}

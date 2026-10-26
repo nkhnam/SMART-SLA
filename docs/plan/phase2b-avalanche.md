@@ -50,10 +50,10 @@
 
 **Interfaces:** Enums `AgreementStatus`, `SignatureCollectionStatus`, `AnchorTransactionStatus`; models `AgreementInvitation`, `AgreementParticipant`, `AuthorizedSigner`, `SigningSnapshot`, `AgreementSignature`, `AnchorIntent` with uniqueness/FK/index rules in the design doc.
 
-- [ ] Test fresh database migration, existing DRAFT row readability and uniqueness constraints. Local PostgreSQL is unavailable because the Docker daemon is not running; CI has the isolated PostgreSQL service but has not run because the branch is unpushed.
+- [ ] Test fresh database migration, existing DRAFT row readability and uniqueness constraints. Both migrations apply cleanly to a newly created PostgreSQL 17 test database, and draft/version integration cases pass; preserving a pre-existing Phase 2A draft across migration and the new signing-model uniqueness constraints still lack a dedicated migration test.
 - [x] Run schema validation and observe the new migration/test failure before implementation.
 - [x] Add lifecycle enums and normalized relation models; do not rewrite the Phase 2A migration.
-- [ ] Apply migrations to isolated fresh PostgreSQL and typecheck generated client. `prisma validate`, generation and backend checks passed; fresh-database migration is blocked because Docker is unavailable locally.
+- [x] Apply migrations to isolated fresh PostgreSQL and typecheck generated client. `prisma validate`, fresh PostgreSQL 17 migration and backend checks passed.
 - [x] Commit schema and migration (`cf12912`).
 
 ### Task 3: Bilateral invitation, acceptance, wallet proof and lifecycle APIs
@@ -62,10 +62,10 @@
 
 **Interfaces:** Invitation `POST /agreements/:id/invitations`; accept/reject under invitation ID; authenticated invitation inbox for the selected org; wallet challenge/verify routes; prepare-signing, signing read, signature submission, anchor read/retry and verification routes as the originating request specifies.
 
-- [ ] Add integration cases for accepted organization isolation, MEMBER denial, invalid invitation scope/expiry, wallet challenge replay, immutable snapshot, amendment invalidation and audit trail; run to establish failure. Existing additions cover invitation privacy, acceptance, MEMBER denial and invalid invitation cases; DB-backed cases could not execute locally.
+- [ ] Add integration cases for accepted organization isolation, MEMBER denial, invalid invitation scope/expiry, wallet challenge replay, immutable snapshot, amendment invalidation and audit trail; run to establish failure. The passing DB suite covers invitation privacy/acceptance, MEMBER denial, invalid type/expiry and invitation audit; wallet challenge replay, snapshot immutability and signature invalidation still lack DB-backed cases.
 - [x] Implement organization-scoped authorization, CUSTOMER/PROVIDER party selection, explicit states, optimistic version checks and transactional audit writes.
 - [x] Implement wallet ownership challenge, snapshot freeze, expiry and EIP-712 server signature recovery; reject wrong wallet, wrong org, wrong version and replay.
-- [ ] Run backend unit and PostgreSQL integration suites, lint, typecheck and build. Unit/lint/typecheck/build passed; PostgreSQL integration could not connect to `localhost:5433`.
+- [x] Run backend unit and PostgreSQL integration suites, lint, typecheck and build. 14 unit tests and 5 PostgreSQL integration cases passed.
 - [x] Commit invitation/signing API and relayer layer (`cf12912`).
 
 ### Task 4: Registry contract and local signing tests
@@ -118,6 +118,6 @@
 ### Task 8: Final verification and report
 
 - [x] Re-read the full Phase 2B request and account for every deliverable.
-- [ ] Run complete required gates and record actual outputs. Fresh PostgreSQL migration/integration remains blocked by the stopped Docker daemon; GitHub Actions remains unrun because the branch was not pushed.
+- [ ] Run complete required gates and record actual outputs. Fresh PostgreSQL migration, current integration suite and local builds pass; dedicated backend relayer recovery tests, pre-existing-draft migration coverage and GitHub Actions execution remain outstanding.
 - [x] Perform author self-review (no delegated coding/review agent per request).
 - [ ] Report SHA, commits, migration, interface/security decisions, endpoints, UI, tests, CI evidence, Fuji status and remaining blockers.

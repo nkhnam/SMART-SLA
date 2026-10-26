@@ -347,6 +347,13 @@ test("counterparty invitations hide terms until acceptance and enforce organizat
   assert.equal(invitationResponse.status, 201);
   const invitation = await invitationResponse.json() as { id: string; agreementId: string; status: string };
   assert.equal(invitation.status, "PENDING");
+  const unrelated = await prisma.organization.create({
+    data: {
+      name: `${prefix}-unrelated`,
+      organizationType: "CUSTOMER",
+      memberships: { create: { userId: ownerUserId, role: MembershipRole.OWNER } }
+    }
+  });
 
   const inboxResponse = await request("/agreements/invitations", {
     headers: { cookie: providerCookie, "x-organization-id": providerOrganizationId }
@@ -408,9 +415,8 @@ test("counterparty invitations hide terms until acceptance and enforce organizat
     headers: { ...mutationHeaders, cookie: providerCookie, "x-organization-id": providerOrganizationId }
   });
   assert.equal(replayedDecision.status, 409);
-  const unrelated = await register(registration("unrelated"));
   const isolated = await request(`/agreements/${draft.id}`, {
-    headers: { cookie: unrelated.cookie!, "x-organization-id": unrelated.payload.organization!.id }
+    headers: { cookie: ownerCookie, "x-organization-id": unrelated.id }
   });
   assert.equal(isolated.status, 404);
 
@@ -424,7 +430,13 @@ test("counterparty invitations hide terms until acceptance and enforce organizat
 
 test("same-type invitations are rejected and expired invitations cannot be accepted", async () => {
   const provider = await register(registration("expiry-provider", "PROVIDER"));
-  const sameType = await register(registration("same-type"));
+  const sameType = await prisma.organization.create({
+    data: {
+      name: `${prefix}-same-type`,
+      organizationType: "CUSTOMER",
+      memberships: { create: { userId: ownerUserId, role: MembershipRole.OWNER } }
+    }
+  });
   const created = await request("/agreements", {
     method: "POST",
     headers: { ...mutationHeaders, cookie: ownerCookie, "x-organization-id": ownerOrganizationId },
@@ -435,7 +447,7 @@ test("same-type invitations are rejected and expired invitations cannot be accep
   const invalidType = await request(`/agreements/${agreement.id}/invitations`, {
     method: "POST",
     headers: { ...mutationHeaders, cookie: ownerCookie, "x-organization-id": ownerOrganizationId },
-    body: JSON.stringify({ organizationId: sameType.payload.organization!.id })
+    body: JSON.stringify({ organizationId: sameType.id })
   });
   assert.equal(invalidType.status, 400);
 
