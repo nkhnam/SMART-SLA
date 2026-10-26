@@ -19,7 +19,7 @@
 - Contract registration requires both expected EOA signatures; ERC-1271 is unsupported and documented.
 - Store no SLA text or personal information on-chain; confirm only after independent state read-back.
 - Do not implement monitoring, oracle, dispute, escrow, settlement, token or marketplace behavior.
-- No deploy, push, merge or tag; only coherent local commits on the requested feature branch.
+- No Fuji deploy, merge or tag. Phase 2B.1 explicitly authorizes pushing the existing feature branch after committing reviewed changes.
 
 ## Review Focus
 
@@ -121,3 +121,18 @@
 - [ ] Run complete required gates and record actual outputs. Fresh PostgreSQL migration, current integration suite and local builds pass; dedicated backend relayer recovery tests, pre-existing-draft migration coverage and GitHub Actions execution remain outstanding.
 - [x] Perform author self-review (no delegated coding/review agent per request).
 - [ ] Report SHA, commits, migration, interface/security decisions, endpoints, UI, tests, CI evidence, Fuji status and remaining blockers.
+
+## Phase 2B.1 reliability hardening status
+
+- [x] Persist the signed transaction, derived hash, chain ID, relayer and allocated nonce before RPC broadcast; serialize nonce allocation and rebroadcast only the same signed bytes while the nonce remains unused.
+- [x] Verify registry bytecode and EIP-712 domain, validate persisted transaction integrity and read the registry before recovery actions.
+- [x] Add the forward migration `20261026120000_reliable_anchor_submission`; no earlier migration was changed.
+- [x] Add a deterministic RPC-rejection service test, seven recovery-decision unit cases, expanded contract security tests and a repeatable PostgreSQL upgrade/constraint script.
+- [x] Add `SUBMISSION_UNCERTAIN` to the API/UI status contract and display its recovery meaning.
+- [x] Add the migration-upgrade command to the Phase 2A workflow; CI uses local PostgreSQL and local EVM without Fuji credentials.
+- [ ] Run the migration-upgrade script and full PostgreSQL integration suite. The local PostgreSQL service was unreachable from this environment.
+- [ ] Complete the full 12-case relayer fault-injection matrix with database and chain assertions. Current coverage is seven pure recovery-decision tests plus one mocked service-level RPC-rejection test; it does not satisfy that matrix.
+- [ ] Run all three dependency audits. NPM could not reach `registry.npmjs.org`, so vulnerability status is not verified.
+- [ ] Run frontend production build and browser scenarios. The build hit `EPERM` creating `.next` route output; no browser scenario was run.
+- [ ] Push the feature branch and inspect the actual GitHub Actions run. GitHub DNS was unavailable at the last push attempt; do not report CI success until the hosted run is observed.
+- [ ] Reconcile any remaining checks before calling Phase 2B complete. Fuji deployment remains explicitly pending and was not attempted.

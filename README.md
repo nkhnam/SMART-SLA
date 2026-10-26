@@ -45,6 +45,8 @@ The Live Workspace uses the authenticated backend for invitation, wallet authori
 
 The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend.
 
+`AnchorIntent` stores the signed transaction, transaction hash, chain, relayer and nonce before broadcast. Recovery checks registry state and receipt first, rebroadcasts only those same bytes while the nonce is unused, and stops for manual reconciliation if another transaction consumed the nonce. To test a Phase 2A draft upgrade plus Phase 2B constraints, set `TEST_DATABASE_URL` to an isolated database name ending in `_test`, then run `npm run test:migration-upgrade` from `backend/`; the test creates and drops a temporary sibling database.
+
 ## Validation
 
 The standard production build uses Next.js's supported Webpack builder. On this checkout, Turbopack repeatedly exits while starting a CSS/PostCSS worker for `app/globals.css`; the worker exits with code 0 before connecting and emits no output. The failure reproduces both inside and outside the sandbox, while the Webpack build succeeds. Its root cause remains unresolved, so `npm run build:turbopack` is retained as a diagnostic command rather than the production build.

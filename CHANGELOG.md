@@ -10,6 +10,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
 - Use the supported Webpack builder for production builds and add a production HTTP smoke check; document the unresolved Turbopack worker failure and browser-test limitation.
 - Generate Prisma Client before CI typechecks and exercise CSRF rejection, database constraints, agreement pagination, and date filters in integration coverage.
 - Preserve all Phase 1 demo routes and fixture behavior while linking them to the opt-in live workspace.

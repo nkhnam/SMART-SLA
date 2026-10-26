@@ -1,6 +1,6 @@
 # SLA-DEX Phase 2B Avalanche Signing Design
 
-> updated 2026-10-26 · ce30fce
+> updated 2026-10-26 · dcfe188
 
 ## Intent
 
@@ -47,11 +47,25 @@ Business agreement status: `DRAFT`, `AWAITING_COUNTERPARTY`, `AWAITING_SIGNATURE
 
 Signature collection status: `NOT_STARTED`, `PENDING`, `PARTIAL`, `COMPLETE`, `INVALIDATED`.
 
-Blockchain transaction status: `NOT_QUEUED`, `QUEUED`, `SUBMITTED`, `CONFIRMED`, `FAILED`, `REPLACED`, `RECONCILIATION_REQUIRED`.
+Blockchain transaction status: `NOT_QUEUED`, `QUEUED`, `SUBMISSION_UNCERTAIN`, `SUBMITTED`, `CONFIRMED`, `FAILED`, `REPLACED`, `RECONCILIATION_REQUIRED`.
 
-An invitation transition is transactional and version-scoped. Acceptance locks a candidate version. Preparation creates one immutable snapshot with the participant IDs, selected wallets, canonical payload/hash, EIP-712 domain and validity deadline. Signatures are unique per snapshot and party, checked against the authorized signer and snapshot. Once both are valid, a unique durable registration intent is created in the same database transaction and the agreement moves to `ANCHOR_PENDING`. A database worker leases queued intents and serializes submissions for the single relayer account. Before retrying, it reads the registry; an existing matching record is reconciled as success, while a mismatched record is a security failure. Receipt success alone is insufficient: the backend independently reads and compares the registered agreement key, version, hash and signers before setting `ANCHOR_CONFIRMED`.
+An invitation transition is transactional and version-scoped. Acceptance locks a candidate version. Preparation creates one immutable snapshot with the participant IDs, selected wallets, canonical payload/hash, EIP-712 domain and validity deadline. Signatures are unique per snapshot and party, checked against the authorized signer and snapshot. Once both are valid, a unique durable registration intent is created in the same database transaction and the agreement moves to `ANCHOR_PENDING`. A database worker leases queued intents and serializes nonce allocation for the single relayer account. It verifies registry bytecode and the contract's EIP-712 name, version, chain ID and verifying address before submission. The worker signs locally, then commits the transaction chain ID, relayer address, nonce, raw signed transaction and derived hash before broadcasting those exact bytes.
 
-An amendment creates the next immutable AgreementVersion, invalidates signatures for the previous unanchored snapshot, withdraws its pending invitation state and restarts participation/signing. An already anchored snapshot is never mutated; an amendment is a new version key and new on-chain registration. State changes use conditional updates and database transactions. A receipt timeout retains the submitted hash so the worker resumes receipt tracking instead of submitting a duplicate; viem replacement detection stores the replacement hash and the replacement receipt still must pass the same registry read-back. Audit events record invitations, decisions, wallet linking, snapshots, signatures, cancellation, relayer attempts and reconciliation.
+### Transaction recovery
+
+| State | Evidence | Worker action |
+|---|---|---|
+| Not submitted (`QUEUED`) | No signed transaction or nonce is stored | Read registry and verify contract domain; prepare and persist one signed transaction before broadcast |
+| Submission uncertain (`SUBMISSION_UNCERTAIN`) | Signed bytes and their hash are durable, but RPC acknowledgement may be missing | Read registry, then check receipt and transaction by the stored hash; never allocate a new nonce |
+| Pending (`SUBMITTED` / `REPLACED`) | Matching transaction is visible or its receipt is not yet available | Keep the same operation leased for later receipt checks; if a replacement hash is known, validate its sender, nonce, destination and calldata |
+| Confirmed (`CONFIRMED`) | Successful receipt or exact matching registry read-back | Confirm only after independently matching key, version, snapshot hash, organizations and expiry |
+| Failed (`FAILED`) | A reverted receipt or a definitive RPC rejection | A reverted or nonce-consuming transaction is not resent; an RPC-rejected operation may be retried only with the same stored transaction |
+| Already registered | Registry has the expected record before a retry | Reconcile to confirmed without submitting another registration |
+| Manual intervention (`RECONCILIATION_REQUIRED`) | Registry conflicts, persisted transaction integrity fails, RPC uses a different domain, or the relayer nonce is consumed without the expected record | Stop automatic writes and retain the reason for operator investigation |
+
+RPC timeouts are treated as uncertain, not as proof of rejection. If the original transaction is missing but its nonce remains unused, the worker rebroadcasts the same signed bytes and requires the RPC-returned hash to equal the stored hash. If the nonce has advanced and the expected registry entry is absent, it stops for reconciliation instead of guessing which replacement consumed the nonce. Database uniqueness covers one intent per snapshot, one transaction hash, and one `(chain ID, relayer, nonce)` allocation. API retry reuses a stored transaction only after a definite RPC rejection; reverted and ambiguous operations cannot receive a new nonce through that endpoint. Receipt success alone is insufficient: the backend independently reads and compares the registered agreement key, version, hash, organizations and expiry before setting `ANCHOR_CONFIRMED`.
+
+An amendment creates the next immutable AgreementVersion, invalidates signatures for the previous unanchored snapshot, withdraws its pending invitation state and restarts participation/signing. An already anchored snapshot is never mutated; an amendment is a new version key and new on-chain registration. State changes use conditional updates and database transactions. A receipt timeout retains the submitted hash and signed bytes for the next worker cycle. The worker does not infer a replacement transaction from a missing hash: an advanced relayer nonce without the expected registry record becomes `RECONCILIATION_REQUIRED`. Audit events record invitations, decisions, wallet linking, snapshots, signatures, cancellation, relayer attempts and reconciliation.
 
 ## Canonical snapshot and hash
 
@@ -63,7 +77,7 @@ The snapshot binds schema version, agreement UUID/reference, version, buyer/supp
 
 `AgreementRegistry` has no owner-only registration path. Its public registration function rejects zero/equal signers, expired authorization, duplicate version key and either invalid ECDSA signature. It stores only the key, version, snapshot hash, two signer addresses and registration timestamp; it emits the same indexed identity plus digest. OpenZeppelin EIP712 and ECDSA utilities provide domain hashing/recovery, with low-s checks. EOA signatures are supported; ERC-1271 is explicitly unsupported.
 
-The backend reads its RPC, chain ID, registry address, relayer private key and confirmation policy from validated environment configuration. It fails closed on missing/mismatched chain configuration. Secrets never leave the backend or appear in API responses. A persistent transaction intent is the source for retry; duplicate HTTP requests return existing state rather than creating another registry entry. No API can mark an agreement confirmed without RPC read-back.
+The backend reads its RPC, chain ID, registry address, relayer private key and confirmation policy from validated environment configuration. It fails closed on missing/mismatched chain configuration. Secrets never leave the backend or appear in API responses. A persistent transaction intent is the source for retry; duplicate HTTP requests return existing state rather than creating another registry entry. The contract verifies the EOA addresses and signatures named in the approval; it cannot verify the SLA-DEX organization-to-signer authorization, which is enforced exclusively by the backend before the snapshot is signed. No API can mark an agreement confirmed without RPC read-back.
 
 ## Frontend workflow
 
@@ -75,7 +89,7 @@ Threats include a MEMBER attempting approval, an unrelated org probing private t
 
 ## Quality and release
 
-Contract unit tests, backend unit/integration tests, migration-on-fresh-PostgreSQL validation, frontend wallet/API behavior tests, TypeScript/lint/build/audit gates and the existing Phase 2A workflow are required. CI starts a deterministic local EVM and never uses Fuji credentials. Only after all local gates pass, Fuji deployment, source verification and funded transaction remain separate, explicitly approved work and the truthful status is `LOCAL IMPLEMENTATION PASS — FUJI DEPLOYMENT PENDING`. If a local gate cannot run, report local validation as incomplete instead.
+Contract unit tests, backend unit/integration tests, PostgreSQL migration-upgrade validation, frontend wallet/API behavior tests, TypeScript/lint/build/audit gates and the existing workflow are required. CI uses isolated PostgreSQL and a local EVM and never uses Fuji credentials. The added migration `20261026120000_reliable_anchor_submission` is forward-only; it adds transaction recovery fields and the uncertain status without rewriting earlier migrations. The repeatable upgrade check is `cd backend && npm run test:migration-upgrade`; it requires `TEST_DATABASE_URL` to identify an isolated database ending in `_test` and permission to create/drop a temporary sibling database. Only after all local gates pass, Fuji deployment, source verification and funded transaction remain separate, explicitly approved work. If a gate cannot run, report local validation as incomplete.
 
 ## Decision record
 

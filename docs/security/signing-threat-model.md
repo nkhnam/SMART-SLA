@@ -1,6 +1,6 @@
 # Phase 2B signing threat model
 
-> updated 2026-10-26 · ce30fce
+> updated 2026-10-26 · dcfe188
 
 ## Security boundary
 
@@ -30,11 +30,11 @@ Assumptions: TLS protects deployed API sessions; the database and its credential
 | Client supplies a trusted-looking organization ID or party name | Resolve organization in database and bind the invitation to the current agreement/version; party roles come from organization records | Organization registration does not prove external legal identity |
 | Wallet address substitution | Short-lived one-use wallet-link challenge binds organization, user and address; frozen snapshot binds selected authorized addresses | A user can approve a malicious wallet prompt if their wallet UI is compromised or misleading |
 | Terms change after one signature | Persisted immutable snapshot; amendment creates a new version and invalidates old unanchored signatures | Already signed content cannot be recalled from a user's memory or external records |
-| Forged or wrong-wallet signature | Recover signer server-side and compare with the frozen party wallet; contract independently verifies both EOAs | ERC-1271 contract wallets are unsupported |
+| Forged or wrong-wallet signature | Recover signer server-side and compare with the frozen party wallet; contract independently verifies both EOA signatures | ERC-1271 contract wallets are unsupported; the contract only checks addresses named in the approval and does not know which organizations approved them |
 | Replay across agreement/version, chain or registry | Version-specific agreement key, nonce/deadline and EIP-712 domain binds chain ID and verifying contract | A separately deployed contract with the same code has its own domain and state |
-| Duplicate request or relayer restart | Unique durable intent, DB lease, serialized relayer submission and registry read-before-retry | Relayer can delay or censor transactions; it cannot bypass signatures |
+| Duplicate request or relayer restart | Unique durable intent, DB lease, persisted signed bytes/hash/chain/relayer/nonce before broadcast, same-transaction rebroadcast and registry read-before-retry | Relayer can delay or censor transactions; an advanced nonce without matching registry state requires operator investigation |
 | RPC outage, wrong network or low relayer balance | Chain ID validation, explicit pending/failed/reconciliation state, retry from durable intent | Availability depends on RPC and relayer funding |
-| Transaction replacement, revert or DB failure after inclusion | Persist submitted hash before waiting; retry reads registry and checks exact key/version/hash/signers before reconciliation | A mismatched on-chain record is surfaced for investigation, not overwritten |
+| Transaction replacement, revert or DB failure after inclusion | Persist signed transaction before broadcast; verify receipts and exact registry read-back; validate a known replacement against sender, nonce, destination and calldata | An unknown replacement that consumed the nonce without the expected record is stopped for manual reconciliation; it is never retried under a new nonce |
 | Confidential terms leak through blockchain | Registry stores only digest, version key, signer addresses and timestamps | Hashes and participant addresses are public and may be correlated with external information |
 
 ## Signing lifecycle
@@ -46,6 +46,8 @@ Assumptions: TLS protects deployed API sessions; the database and its credential
 5. The API verifies each signature against its frozen signer and records it once. A completed pair creates a durable anchor intent transactionally.
 6. The relayer submits both signatures. The agreement becomes confirmed only after a successful receipt and independent registry read-back match.
 7. Amendments use a new immutable AgreementVersion and restart invitation/signing. An anchored snapshot is never edited in place.
+
+The contract enforces cryptographic EOA approval for the two addresses in the typed message, version/hash/deadline binding, chain and verifying-contract domain separation, and one-time registration per agreement key. SLA-DEX alone enforces that those addresses were authorized by the participating organizations. The registry does not implement ERC-1271 and cannot establish legal identity, employment authority or legal-signature compliance.
 
 ## Operational controls
 
