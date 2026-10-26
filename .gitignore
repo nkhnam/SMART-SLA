@@ -1,0 +1,19 @@
+.vercel
+.env*
+!.env.example
+
+# Dependencies and generated output
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local runtime and editor files
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+*.zip
