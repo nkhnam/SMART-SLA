@@ -126,14 +126,18 @@
 
 - [x] Persist the signed transaction, derived hash, chain ID, relayer and allocated nonce before RPC broadcast; serialize nonce allocation and rebroadcast only the same signed bytes while the nonce remains unused.
 - [x] Verify registry bytecode and EIP-712 domain, validate persisted transaction integrity and read the registry before recovery actions.
+- [x] Add bounded discovery of a mined replacement by relayer and nonce; keep an unknown pending replacement uncertain and send an unidentified consumed nonce to manual reconciliation.
 - [x] Add the forward migration `20261026120000_reliable_anchor_submission`; no earlier migration was changed.
 - [x] Add a deterministic RPC-rejection service test, seven recovery-decision unit cases, expanded contract security tests and a repeatable PostgreSQL upgrade/constraint script.
+- [x] Add a PostgreSQL/local-EVM R01–R12 orchestration suite and a Playwright live-workspace flow for GitHub-hosted Chromium.
+- [x] Keep the browser command reproducible: in `frontend`, install `@playwright/test@1.64.0` and `viem@2.57.11`, install Chromium with `npx playwright install chromium`, then run `npm run test:e2e` while the backend and local EVM from the workflow are available.
+- [x] Add CI setup for the local EVM, registry deployment, required relayer matrix, browser report and failure artifacts while retaining the existing validation and contract jobs.
 - [x] Add `SUBMISSION_UNCERTAIN` to the API/UI status contract and display its recovery meaning.
 - [x] Add the migration-upgrade command to the Phase 2A workflow; CI uses local PostgreSQL and local EVM without Fuji credentials.
-- [ ] Run the migration-upgrade script and full PostgreSQL integration suite. The local PostgreSQL service was unreachable from this environment.
-- [ ] Complete the full 12-case relayer fault-injection matrix with database and chain assertions. Current coverage is seven pure recovery-decision tests plus one mocked service-level RPC-rejection test; it does not satisfy that matrix.
-- [ ] Run all three dependency audits. NPM could not reach `registry.npmjs.org`, so vulnerability status is not verified.
-- [ ] Run frontend production build and browser scenarios. The build hit `EPERM` creating `.next` route output; no browser scenario was run.
+- [ ] Run the migration-upgrade script, full PostgreSQL integration suite and R01–R12 local-EVM matrix. The local Docker engine is unavailable, so the new database-backed cases remain unverified until hosted CI runs.
+- [ ] Run the Playwright flow at 375px, 768px and 1440px in hosted CI. Browser tests are not run locally.
+- [ ] Run all three dependency audits. NPM could not reach `registry.npmjs.org`, so vulnerability status is not verified locally.
+- [ ] Run the complete hosted workflow and inspect its conclusion before signoff.
 - [x] Push the feature branch without rewriting history; the remote now contains `c9c2025`.
-- [ ] Inspect the hosted GitHub Actions run. The connected commit-status endpoint currently returns no checks; the workflow-run connector only exposes pull-request runs, and the private repository's Actions page requires sign-in in the browser. Do not report CI success until the actual run is observed.
+- [ ] Inspect the hosted GitHub Actions run for this change. Do not report CI success until its actual conclusion is observed.
 - [ ] Reconcile any remaining checks before calling Phase 2B complete. Fuji deployment remains explicitly pending and was not attempted.
