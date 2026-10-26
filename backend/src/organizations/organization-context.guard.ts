@@ -20,13 +20,14 @@ export class OrganizationContextGuard implements CanActivate {
 
     const membership = await this.prisma.membership.findUnique({
       where: { userId_organizationId: { userId: auth.user.id, organizationId } },
-      include: { organization: { select: { id: true, name: true } } }
+      include: { organization: { select: { id: true, name: true, organizationType: true } } }
     });
     if (!membership) throw new NotFoundException("Organization not found.");
 
     auth.organization = {
       id: membership.organization.id,
       name: membership.organization.name,
+      organizationType: membership.organization.organizationType,
       role: membership.role
     };
     return true;

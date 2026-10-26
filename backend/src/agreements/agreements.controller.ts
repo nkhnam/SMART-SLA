@@ -10,6 +10,7 @@ import {
   UpdateAgreementDto
 } from "./agreement.dto.js";
 import { AgreementsService } from "./agreements.service.js";
+import { CancelAgreementDto } from "./agreement-cancel.dto.js";
 
 @ApiTags("agreements")
 @ApiCookieAuth()
@@ -62,5 +63,25 @@ export class AgreementsController {
     @Body() input: UpdateAgreementDto
   ) {
     return this.agreements.update(context, id, input);
+  }
+
+  @Post(":id/amend")
+  @ApiOperation({ summary: "Create a new immutable agreement version and restart approval" })
+  amend(
+    @OrganizationAuth() context: OrganizationAuthContext,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() input: UpdateAgreementDto
+  ) {
+    return this.agreements.amend(context, id, input);
+  }
+
+  @Post(":id/cancel")
+  @ApiOperation({ summary: "Cancel an agreement before blockchain registration is pending or confirmed" })
+  cancel(
+    @OrganizationAuth() context: OrganizationAuthContext,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() input: CancelAgreementDto
+  ) {
+    return this.agreements.cancel(context, id, input.expectedVersion);
   }
 }

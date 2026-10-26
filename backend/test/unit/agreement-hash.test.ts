@@ -105,3 +105,13 @@ test("canonical snapshot hash changes when a material term changes", async () =>
     assert.notEqual(protocol.canonicalizeAgreementSnapshot(mutation).hash, first.hash);
   }
 });
+
+test("persisted decimal uptime converts to integer basis points without rounding", async () => {
+  const protocol = await import("../../src/blockchain/agreement-hash.service.js").catch(() => undefined);
+  assert.ok(protocol, "agreement hash service must be available");
+
+  assert.equal(protocol.basisPointsFromPercent("99.95"), 9995);
+  assert.equal(protocol.basisPointsFromPercent("100.00"), 10000);
+  assert.throws(() => protocol.basisPointsFromPercent("99.951"), /at most two decimal places/);
+  assert.throws(() => protocol.basisPointsFromPercent("100.01"), /between 0 and 100 percent/);
+});

@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { AgreementStatus, MembershipRole, Prisma } from "../generated/prisma/client.js";
+import { AgreementStatus, AnchorTransactionStatus, InvitationStatus, MembershipRole, Prisma, SignatureCollectionStatus } from "../generated/prisma/client.js";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service.js";
 import type { AgreementListQueryDto, CreateAgreementDto, UpdateAgreementDto } from "./agreement.dto.js";
 import type { OrganizationAuthContext } from "./agreement.types.js";
+import { canAmendAgreement, canCancelAgreement } from "./agreement-lifecycle.js";
 
 const latestVersion = { orderBy: { version: "desc" }, take: 1 } satisfies Prisma.Agreement$versionsArgs;
 
@@ -15,7 +16,10 @@ function agreementView(agreement: Prisma.AgreementGetPayload<{ include: { versio
   return {
     id: record.id,
     reference: record.reference,
+    ownerOrganizationId: record.ownerOrganizationId,
     status: record.status,
+    signatureStatus: record.signatureStatus,
+    blockchainStatus: record.blockchainStatus,
     version: record.version,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -66,8 +70,10 @@ export class AgreementsService {
       throw new BadRequestException("createdAfter must be earlier than or equal to createdBefore.");
     }
     const where = {
-      ownerOrganizationId: context.organization.id,
-      status: AgreementStatus.DRAFT,
+      OR: [
+        { ownerOrganizationId: context.organization.id },
+        { participants: { some: { organizationId: context.organization.id } } }
+      ],
       ...(createdAt ? { createdAt } : {})
     };
     const orderBy = query.sort === "createdAt"
@@ -126,11 +132,30 @@ export class AgreementsService {
 
   async get(context: OrganizationAuthContext, id: string) {
     const agreement = await this.prisma.agreement.findFirst({
-      where: { id, ownerOrganizationId: context.organization.id },
-      include: { versions: latestVersion }
+      where: {
+        id,
+        OR: [
+          { ownerOrganizationId: context.organization.id },
+          { participants: { some: { organizationId: context.organization.id } } }
+        ]
+      },
+      include: {
+        versions: latestVersion,
+        participants: {
+          include: { organization: { select: { id: true, name: true, organizationType: true } } },
+          orderBy: { acceptedAt: "asc" }
+        }
+      }
     });
     if (!agreement) throw new NotFoundException("Agreement not found.");
-    return agreementView(agreement);
+    const parties = agreement.participants.filter((participant) => participant.agreementVersion === agreement.version);
+    return {
+      ...agreementView(agreement),
+      ownerOrganizationId: agreement.ownerOrganizationId,
+      signatureStatus: agreement.signatureStatus,
+      blockchainStatus: agreement.blockchainStatus,
+      parties: parties.map(({ organization, role, acceptedAt }) => ({ organization, role, acceptedAt }))
+    };
   }
 
   async update(context: OrganizationAuthContext, id: string, input: UpdateAgreementDto) {
@@ -189,15 +214,143 @@ export class AgreementsService {
     });
   }
 
+  async amend(context: OrganizationAuthContext, id: string, input: UpdateAgreementDto) {
+    assertCanWrite(context);
+    return this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.agreement.findFirst({
+        where: { id, ownerOrganizationId: context.organization.id },
+        select: { id: true, version: true, status: true }
+      });
+      if (!current) throw new NotFoundException("Agreement not found.");
+      if (current.status === AgreementStatus.DRAFT) throw new ConflictException("Use draft editing while the agreement is still a draft.");
+      if (!canAmendAgreement(current.status)) throw new ConflictException("This agreement cannot be amended while blockchain registration is unresolved.");
+      if (current.version !== input.expectedVersion) {
+        throw new ConflictException("This agreement changed since you opened it. Reload the latest version before amending.");
+      }
+
+      const snapshot = await transaction.signingSnapshot.findUnique({
+        where: { agreementId_version: { agreementId: id, version: current.version } },
+        include: { anchorIntent: { select: { status: true } } }
+      });
+      const unresolvedAnchorStatuses = new Set<AnchorTransactionStatus>([
+        AnchorTransactionStatus.SUBMITTED,
+        AnchorTransactionStatus.REPLACED,
+        AnchorTransactionStatus.RECONCILIATION_REQUIRED
+      ]);
+      if (snapshot?.anchorIntent && unresolvedAnchorStatuses.has(snapshot.anchorIntent.status)) {
+        throw new ConflictException("The previous registration still needs reconciliation; it cannot be amended yet.");
+      }
+
+      const nextVersion = current.version + 1;
+      const updated = await transaction.agreement.updateMany({
+        where: { id, ownerOrganizationId: context.organization.id, version: current.version, status: current.status },
+        data: {
+          version: { increment: 1 },
+          status: AgreementStatus.DRAFT,
+          signatureStatus: SignatureCollectionStatus.NOT_STARTED,
+          blockchainStatus: AnchorTransactionStatus.NOT_QUEUED
+        }
+      });
+      if (updated.count !== 1) throw new ConflictException("This agreement changed while it was being amended.");
+
+      await transaction.agreementVersion.create({
+        data: {
+          agreementId: id,
+          ...versionData(input),
+          version: nextVersion,
+          actorUserId: context.user.id
+        }
+      });
+      await transaction.agreementInvitation.updateMany({
+        where: { agreementId: id, agreementVersion: current.version, status: InvitationStatus.PENDING },
+        data: { status: InvitationStatus.WITHDRAWN }
+      });
+      await transaction.agreementParticipant.deleteMany({
+        where: { agreementId: id, agreementVersion: current.version }
+      });
+      if (snapshot && current.status !== AgreementStatus.ANCHOR_CONFIRMED) {
+        await transaction.signingSnapshot.update({
+          where: { id: snapshot.id },
+          data: { signatureStatus: SignatureCollectionStatus.INVALIDATED, invalidatedAt: new Date() }
+        });
+      }
+      await transaction.auditEvent.create({
+        data: {
+          actorUserId: context.user.id,
+          organizationId: context.organization.id,
+          resourceType: "agreement",
+          resourceId: id,
+          action: "agreement.amended",
+          metadata: { previousVersion: current.version, version: nextVersion, previousStatus: current.status }
+        }
+      });
+
+      return transaction.agreement.findFirstOrThrow({
+        where: { id, ownerOrganizationId: context.organization.id },
+        include: { versions: latestVersion }
+      }).then(agreementView);
+    });
+  }
+
+  async cancel(context: OrganizationAuthContext, id: string, expectedVersion: number) {
+    assertCanWrite(context);
+    return this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.agreement.findFirst({
+        where: { id, ownerOrganizationId: context.organization.id },
+        select: { id: true, version: true, status: true }
+      });
+      if (!current) throw new NotFoundException("Agreement not found.");
+      if (current.version !== expectedVersion) throw new ConflictException("This agreement changed. Reload it before cancelling.");
+      if (!canCancelAgreement(current.status)) throw new ConflictException("A pending or confirmed blockchain registration cannot be cancelled.");
+
+      const changed = await transaction.agreement.updateMany({
+        where: { id, ownerOrganizationId: context.organization.id, version: expectedVersion, status: current.status },
+        data: { status: AgreementStatus.CANCELLED, signatureStatus: SignatureCollectionStatus.INVALIDATED }
+      });
+      if (changed.count !== 1) throw new ConflictException("This agreement changed while it was being cancelled.");
+      await transaction.agreementInvitation.updateMany({
+        where: { agreementId: id, agreementVersion: expectedVersion, status: InvitationStatus.PENDING },
+        data: { status: InvitationStatus.WITHDRAWN }
+      });
+      await transaction.signingSnapshot.updateMany({
+        where: { agreementId: id, version: expectedVersion, invalidatedAt: null },
+        data: { signatureStatus: SignatureCollectionStatus.INVALIDATED, invalidatedAt: new Date() }
+      });
+      await transaction.auditEvent.create({
+        data: {
+          actorUserId: context.user.id,
+          organizationId: context.organization.id,
+          resourceType: "agreement",
+          resourceId: id,
+          action: "agreement.cancelled",
+          metadata: { version: expectedVersion, previousStatus: current.status }
+        }
+      });
+      return transaction.agreement.findFirstOrThrow({
+        where: { id, ownerOrganizationId: context.organization.id },
+        include: { versions: latestVersion }
+      }).then(agreementView);
+    });
+  }
+
   async listVersions(context: OrganizationAuthContext, id: string) {
     const agreement = await this.prisma.agreement.findFirst({
-      where: { id, ownerOrganizationId: context.organization.id },
-      select: { id: true }
+      where: {
+        id,
+        OR: [
+          { ownerOrganizationId: context.organization.id },
+          { participants: { some: { organizationId: context.organization.id } } }
+        ]
+      },
+      select: { id: true, version: true, ownerOrganizationId: true }
     });
     if (!agreement) throw new NotFoundException("Agreement not found.");
 
     const versions = await this.prisma.agreementVersion.findMany({
-      where: { agreementId: agreement.id },
+      where: {
+        agreementId: agreement.id,
+        ...(agreement.ownerOrganizationId === context.organization.id ? {} : { version: agreement.version })
+      },
       include: { actor: { select: { id: true, displayName: true } } },
       orderBy: { version: "desc" }
     });

@@ -1,4 +1,4 @@
-import type { MembershipRole } from "../generated/prisma/client.js";
+import type { MembershipRole, OrganizationType } from "../generated/prisma/client.js";
 import type { Request } from "express";
 
 export type AuthenticatedUser = {
@@ -15,6 +15,7 @@ export type AuthenticatedRequest = Request & {
     organization?: {
       id: string;
       name: string;
+      organizationType: OrganizationType;
       role: MembershipRole;
     };
   };

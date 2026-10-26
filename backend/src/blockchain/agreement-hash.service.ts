@@ -31,6 +31,18 @@ export const AGREEMENT_EIP712_DOMAIN_VERSION = "1";
 
 const utf8Encoder = new TextEncoder();
 
+export function basisPointsFromPercent(value: string): number {
+  const match = /^(\d{1,3})(?:\.(\d{1,2}))?$/.exec(value.trim());
+  if (!match) throw new TypeError("uptime percentage must use at most two decimal places");
+  const whole = Number(match[1]);
+  const fraction = Number((match[2] ?? "").padEnd(2, "0"));
+  const basisPoints = whole * 100 + fraction;
+  if (basisPoints < 1 || basisPoints > 10_000) {
+    throw new TypeError("uptime percentage must be between 0 and 100 percent");
+  }
+  return basisPoints;
+}
+
 function normalizedText(value: string, field: string): string {
   if (typeof value !== "string") throw new TypeError(`${field} must be a string`);
   const normalized = value.normalize("NFC").trim();
@@ -107,6 +119,10 @@ export function hashAgreementSnapshot(snapshot: AgreementSnapshotInput): `0x${st
   return canonicalizeAgreementSnapshot(snapshot).hash;
 }
 
+export function serializeTypedData<T>(typedData: T): unknown {
+  return JSON.parse(JSON.stringify(typedData, (_key, value: unknown) => typeof value === "bigint" ? value.toString() : value)) as unknown;
+}
+
 export function agreementKey(agreementId: string, version: number): `0x${string}` {
   const canonicalId = normalizedUuid(agreementId, "agreementId");
   const canonicalVersion = positiveSafeInteger(version, "version");
@@ -158,8 +174,8 @@ export function agreementApprovalTypedData(
       version: BigInt(snapshot.version),
       buyerOrganization: keccak256(stringToHex(snapshot.buyerOrganizationId)),
       supplierOrganization: keccak256(stringToHex(snapshot.supplierOrganizationId)),
-      buyerSigner: snapshot.buyerSigner,
-      supplierSigner: snapshot.supplierSigner,
+      buyerSigner: getAddress(snapshot.buyerSigner),
+      supplierSigner: getAddress(snapshot.supplierSigner),
       nonce,
       deadline: BigInt(validDeadline)
     }

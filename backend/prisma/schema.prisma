@@ -21,31 +21,85 @@ enum MembershipRole {
 
 enum AgreementStatus {
   DRAFT
+  AWAITING_COUNTERPARTY
+  AWAITING_SIGNATURES
+  ANCHOR_PENDING
+  ANCHOR_CONFIRMED
+  ANCHOR_FAILED
+  REJECTED
+  CANCELLED
+}
+
+enum SignatureCollectionStatus {
+  NOT_STARTED
+  PENDING
+  PARTIAL
+  COMPLETE
+  INVALIDATED
+}
+
+enum AnchorTransactionStatus {
+  NOT_QUEUED
+  QUEUED
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  REPLACED
+  RECONCILIATION_REQUIRED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum AgreementPartyRole {
+  BUYER
+  SUPPLIER
+}
+
+enum AgreementSignatureParty {
+  BUYER
+  SUPPLIER
 }
 
 model User {
-  id           String       @id @default(uuid()) @db.Uuid
-  email        String       @unique @db.VarChar(320)
-  passwordHash String       @db.VarChar(255)
-  displayName  String       @db.VarChar(120)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  memberships  Membership[]
-  sessions     Session[]
-  agreements   Agreement[]  @relation("AgreementCreator")
-  versions     AgreementVersion[]
-  auditEvents  AuditEvent[]
+  id                 String                @id @default(uuid()) @db.Uuid
+  email              String                @unique @db.VarChar(320)
+  passwordHash       String                @db.VarChar(255)
+  displayName        String                @db.VarChar(120)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  memberships        Membership[]
+  sessions           Session[]
+  agreements         Agreement[]           @relation("AgreementCreator")
+  versions           AgreementVersion[]
+  auditEvents        AuditEvent[]
+  invitationsSent    AgreementInvitation[] @relation("InvitationSentBy")
+  invitationsDecided AgreementInvitation[] @relation("InvitationDecidedBy")
+  authorizedSigners  AuthorizedSigner[]
+  signerChallenges   SignerChallenge[]
 }
 
 model Organization {
-  id           String           @id @default(uuid()) @db.Uuid
-  name         String           @db.VarChar(160)
-  organizationType OrganizationType
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  memberships  Membership[]
-  agreements   Agreement[]
-  auditEvents  AuditEvent[]
+  id                  String                 @id @default(uuid()) @db.Uuid
+  name                String                 @db.VarChar(160)
+  organizationType    OrganizationType
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  memberships         Membership[]
+  agreements          Agreement[]
+  auditEvents         AuditEvent[]
+  invitationsSent     AgreementInvitation[]  @relation("InvitationInviterOrganization")
+  invitationsReceived AgreementInvitation[]  @relation("InvitationInvitedOrganization")
+  participants        AgreementParticipant[]
+  authorizedSigners   AuthorizedSigner[]
+  signerChallenges    SignerChallenge[]
+  buyerSnapshots      SigningSnapshot[]      @relation("SigningSnapshotBuyerOrganization")
+  supplierSnapshots   SigningSnapshot[]      @relation("SigningSnapshotSupplierOrganization")
 
   @@index([createdAt])
 }
@@ -78,42 +132,192 @@ model Session {
 }
 
 model Agreement {
-  id                  String             @id @default(uuid()) @db.Uuid
-  reference           String             @unique @db.VarChar(32)
-  ownerOrganizationId String             @db.Uuid
-  createdByUserId     String             @db.Uuid
-  status              AgreementStatus    @default(DRAFT)
-  version             Int                @default(1)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  ownerOrganization   Organization       @relation(fields: [ownerOrganizationId], references: [id], onDelete: Restrict)
-  createdBy           User               @relation("AgreementCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  id                  String                    @id @default(uuid()) @db.Uuid
+  reference           String                    @unique @db.VarChar(32)
+  ownerOrganizationId String                    @db.Uuid
+  createdByUserId     String                    @db.Uuid
+  status              AgreementStatus           @default(DRAFT)
+  signatureStatus     SignatureCollectionStatus @default(NOT_STARTED)
+  blockchainStatus    AnchorTransactionStatus   @default(NOT_QUEUED)
+  version             Int                       @default(1)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  ownerOrganization   Organization              @relation(fields: [ownerOrganizationId], references: [id], onDelete: Restrict)
+  createdBy           User                      @relation("AgreementCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   versions            AgreementVersion[]
+  invitations         AgreementInvitation[]
+  participants        AgreementParticipant[]
+  signingSnapshots    SigningSnapshot[]
 
   @@index([ownerOrganizationId, status, updatedAt])
   @@index([ownerOrganizationId, createdAt])
 }
 
 model AgreementVersion {
-  id                      String    @id @default(uuid()) @db.Uuid
-  agreementId             String    @db.Uuid
+  id                      String            @id @default(uuid()) @db.Uuid
+  agreementId             String            @db.Uuid
   version                 Int
-  actorUserId             String    @db.Uuid
-  name                    String    @db.VarChar(160)
-  serviceDescription      String    @db.VarChar(4000)
-  counterpartyDisplayName String    @db.VarChar(160)
-  uptimeTargetPercent     Decimal   @db.Decimal(5, 2)
+  actorUserId             String            @db.Uuid
+  name                    String            @db.VarChar(160)
+  serviceDescription      String            @db.VarChar(4000)
+  counterpartyDisplayName String            @db.VarChar(160)
+  uptimeTargetPercent     Decimal           @db.Decimal(5, 2)
   responseTimeTargetMs    Int
   measurementWindowHours  Int
-  exclusions              String[]  @default([])
-  notes                   String?   @db.VarChar(2000)
-  createdAt               DateTime  @default(now())
-  agreement               Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
-  actor                   User      @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  exclusions              String[]          @default([])
+  notes                   String?           @db.VarChar(2000)
+  createdAt               DateTime          @default(now())
+  agreement               Agreement         @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  actor                   User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  snapshots               SigningSnapshot[]
 
   @@unique([agreementId, version])
   @@index([agreementId, version(sort: Desc)])
   @@index([actorUserId, createdAt])
+}
+
+model AgreementInvitation {
+  id                    String           @id @default(uuid()) @db.Uuid
+  agreementId           String           @db.Uuid
+  agreementVersion      Int
+  inviterOrganizationId String           @db.Uuid
+  invitedOrganizationId String           @db.Uuid
+  invitedByUserId       String           @db.Uuid
+  decidedByUserId       String?          @db.Uuid
+  status                InvitationStatus @default(PENDING)
+  expiresAt             DateTime
+  acceptedAt            DateTime?
+  createdAt             DateTime         @default(now())
+  agreement             Agreement        @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  inviterOrganization   Organization     @relation("InvitationInviterOrganization", fields: [inviterOrganizationId], references: [id], onDelete: Restrict)
+  invitedOrganization   Organization     @relation("InvitationInvitedOrganization", fields: [invitedOrganizationId], references: [id], onDelete: Restrict)
+  invitedBy             User             @relation("InvitationSentBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  decidedBy             User?            @relation("InvitationDecidedBy", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, agreementVersion])
+  @@index([invitedOrganizationId, status, expiresAt])
+  @@index([inviterOrganizationId, createdAt])
+}
+
+model AgreementParticipant {
+  id                 String             @id @default(uuid()) @db.Uuid
+  agreementId        String             @db.Uuid
+  agreementVersion   Int
+  organizationId     String             @db.Uuid
+  role               AgreementPartyRole
+  authorizedSignerId String?            @db.Uuid
+  acceptedAt         DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+  agreement          Agreement          @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  authorizedSigner   AuthorizedSigner?  @relation(fields: [authorizedSignerId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, agreementVersion, organizationId])
+  @@unique([agreementId, agreementVersion, role])
+  @@index([organizationId, acceptedAt])
+}
+
+model AuthorizedSigner {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  organizationId       String                 @db.Uuid
+  userId               String                 @db.Uuid
+  address              String                 @db.VarChar(42)
+  verifiedAt           DateTime               @default(now())
+  revokedAt            DateTime?
+  createdAt            DateTime               @default(now())
+  organization         Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signatures           AgreementSignature[]
+  selectedParticipants AgreementParticipant[]
+  buyerSnapshots       SigningSnapshot[]      @relation("SigningSnapshotBuyerSigner")
+  supplierSnapshots    SigningSnapshot[]      @relation("SigningSnapshotSupplierSigner")
+
+  @@unique([organizationId, address])
+  @@index([organizationId, revokedAt])
+}
+
+model SignerChallenge {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  address        String       @db.VarChar(42)
+  nonce          String       @unique @db.Char(64)
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, expiresAt])
+}
+
+model SigningSnapshot {
+  id                         String                    @id @default(uuid()) @db.Uuid
+  agreementId                String                    @db.Uuid
+  version                    Int
+  buyerOrganizationId        String                    @db.Uuid
+  supplierOrganizationId     String                    @db.Uuid
+  buyerSigner                String                    @db.VarChar(42)
+  supplierSigner             String                    @db.VarChar(42)
+  buyerAuthorizedSignerId    String                    @db.Uuid
+  supplierAuthorizedSignerId String                    @db.Uuid
+  canonicalPayload           String                    @db.Text
+  snapshotHash               String                    @db.Char(66)
+  agreementKey               String                    @unique @db.Char(66)
+  nonce                      BigInt                    @default(0)
+  validUntil                 DateTime
+  signatureStatus            SignatureCollectionStatus @default(PENDING)
+  invalidatedAt              DateTime?
+  createdAt                  DateTime                  @default(now())
+  agreement                  Agreement                 @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  versionRecord              AgreementVersion          @relation(fields: [agreementId, version], references: [agreementId, version], onDelete: Restrict)
+  buyerOrganization          Organization              @relation("SigningSnapshotBuyerOrganization", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  supplierOrganization       Organization              @relation("SigningSnapshotSupplierOrganization", fields: [supplierOrganizationId], references: [id], onDelete: Restrict)
+  buyerAuthorizedSigner      AuthorizedSigner          @relation("SigningSnapshotBuyerSigner", fields: [buyerAuthorizedSignerId], references: [id], onDelete: Restrict)
+  supplierAuthorizedSigner   AuthorizedSigner          @relation("SigningSnapshotSupplierSigner", fields: [supplierAuthorizedSignerId], references: [id], onDelete: Restrict)
+  signatures                 AgreementSignature[]
+  anchorIntent               AnchorIntent?
+
+  @@unique([agreementId, version])
+  @@index([buyerOrganizationId, createdAt])
+  @@index([supplierOrganizationId, createdAt])
+}
+
+model AgreementSignature {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  snapshotId         String                  @db.Uuid
+  party              AgreementSignatureParty
+  authorizedSignerId String                  @db.Uuid
+  signerAddress      String                  @db.VarChar(42)
+  signature          String                  @db.VarChar(132)
+  digest             String                  @db.Char(66)
+  submittedAt        DateTime                @default(now())
+  snapshot           SigningSnapshot         @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  authorizedSigner   AuthorizedSigner        @relation(fields: [authorizedSignerId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, party])
+  @@index([authorizedSignerId, submittedAt])
+}
+
+model AnchorIntent {
+  id              String                  @id @default(uuid()) @db.Uuid
+  snapshotId      String                  @unique @db.Uuid
+  idempotencyKey  String                  @unique @db.VarChar(64)
+  status          AnchorTransactionStatus @default(QUEUED)
+  attemptCount    Int                     @default(0)
+  relayerNonce    BigInt?
+  transactionHash String?                 @unique @db.VarChar(66)
+  replacementHash String?                 @db.VarChar(66)
+  lastError       String?                 @db.VarChar(2000)
+  leaseOwner      String?                 @db.VarChar(120)
+  leaseUntil      DateTime?
+  submittedAt     DateTime?
+  confirmedAt     DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  snapshot        SigningSnapshot         @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@index([status, leaseUntil, createdAt])
 }
 
 model AuditEvent {
