@@ -177,7 +177,12 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await expect.poll(async () => {
     const response = await page.request.get(`http://127.0.0.1:4000/api/v1/agreements/${agreement.id}/anchor`, { headers: { "x-organization-id": customer.organizationId } });
     if (!response.ok()) return `HTTP ${response.status()}: ${await response.text()}`;
-    const anchor = await response.json() as { blockchainStatus: string };
+    const anchor = await response.json() as { blockchainStatus: string; anchor: { lastError: string | null; transactionHash: string | null } | null };
+    if (anchor.blockchainStatus === "FAILED" && anchor.anchor?.transactionHash) {
+      const traceResponse = await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 3, method: "debug_traceTransaction", params: [anchor.anchor.transactionHash] } });
+      const trace = await traceResponse.json() as { result?: { returnValue?: string }; error?: { message: string } };
+      return `FAILED:${anchor.anchor.lastError}:${trace.result?.returnValue ?? trace.error?.message ?? "trace unavailable"}`;
+    }
     return anchor.blockchainStatus;
   }, { timeout: 35_000 }).toBe("SUBMITTED");
   await page.reload();
