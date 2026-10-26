@@ -17,20 +17,74 @@ export type AgreementTerms = {
   notes: string | null;
 };
 
+export type AgreementStatus = "DRAFT" | "AWAITING_COUNTERPARTY" | "AWAITING_SIGNATURES" | "ANCHOR_PENDING" | "ANCHOR_CONFIRMED" | "ANCHOR_FAILED" | "REJECTED" | "CANCELLED";
+export type SignatureStatus = "NOT_STARTED" | "PENDING" | "PARTIAL" | "COMPLETE" | "INVALIDATED";
+export type AnchorStatus = "NOT_QUEUED" | "QUEUED" | "SUBMITTED" | "CONFIRMED" | "FAILED" | "REPLACED" | "RECONCILIATION_REQUIRED";
+
+export type TypedDataPayload = {
+  domain: { name: string; version: string; chainId: number; verifyingContract: string };
+  primaryType: string;
+  types: Record<string, Array<{ name: string; type: string }>>;
+  message: Record<string, string | number | boolean | null>;
+};
+
 export type LiveAgreement = {
   id: string;
   reference: string;
-  status: "DRAFT";
+  status: AgreementStatus;
+  signatureStatus: SignatureStatus;
+  blockchainStatus: AnchorStatus;
   version: number;
   createdAt: string;
   updatedAt: string;
+  ownerOrganizationId?: string;
   name: string;
   serviceDescription: string;
   counterpartyDisplayName: string;
   terms: AgreementTerms;
+  parties?: Array<{ organization: Pick<LiveOrganization, "id" | "name" | "organizationType">; role: "BUYER" | "SUPPLIER"; acceptedAt: string }>;
 };
 
-export type AgreementVersion = Omit<LiveAgreement, "id" | "reference" | "status" | "updatedAt"> & {
+export type AuthorizedSigner = { id: string; address: string; verifiedAt: string; user: { id: string; displayName: string } };
+export type AgreementInvitation = {
+  id: string;
+  agreementId: string;
+  agreementVersion: number;
+  status: "PENDING";
+  expiresAt: string;
+  createdAt: string;
+  agreement: { id: string; reference: string; version: number; status: AgreementStatus; currentVersion: number };
+  inviterOrganization: Pick<LiveOrganization, "id" | "name" | "organizationType">;
+};
+export type SigningSnapshotView = {
+  id: string;
+  version: number;
+  snapshot: Record<string, unknown>;
+  canonicalJson: string;
+  hash: string;
+  agreementKey: string;
+  signatureStatus: SignatureStatus;
+  validUntil: string;
+  typedData: TypedDataPayload;
+  signatures: Array<{ party: "BUYER" | "SUPPLIER"; signerAddress: string; submittedAt: string }>;
+};
+export type AgreementSigningView = {
+  agreementId: string;
+  version: number;
+  agreementStatus: AgreementStatus;
+  signatureStatus: SignatureStatus;
+  snapshot: SigningSnapshotView | null;
+};
+export type AgreementAnchorView = {
+  agreementId: string;
+  version: number;
+  agreementStatus: AgreementStatus;
+  signatureStatus: SignatureStatus;
+  blockchainStatus: AnchorStatus;
+  anchor: null | { status: AnchorStatus; attemptCount: number; transactionHash: string | null; replacementHash: string | null; lastError: string | null; submittedAt: string | null; confirmedAt: string | null };
+};
+
+export type AgreementVersion = Omit<LiveAgreement, "id" | "reference" | "status" | "updatedAt" | "signatureStatus" | "blockchainStatus" | "parties"> & {
   actor: { id: string; displayName: string };
 };
 
@@ -171,4 +225,64 @@ export function updateAgreement(
 
 export function listAgreementVersions(organizationId: string, id: string): Promise<AgreementVersion[]> {
   return requestApi(`/agreements/${encodeURIComponent(id)}/versions`, { organizationId });
+}
+
+export function amendAgreement(organizationId: string, id: string, expectedVersion: number, input: AgreementInput): Promise<LiveAgreement> {
+  return requestApi(`/agreements/${encodeURIComponent(id)}/amend`, { method: "POST", organizationId, body: { ...input, expectedVersion } });
+}
+
+export function cancelAgreement(organizationId: string, id: string, expectedVersion: number): Promise<LiveAgreement> {
+  return requestApi(`/agreements/${encodeURIComponent(id)}/cancel`, { method: "POST", organizationId, body: { expectedVersion } });
+}
+
+export function listAgreementInvitations(organizationId: string): Promise<AgreementInvitation[]> {
+  return requestApi("/agreements/invitations", { organizationId });
+}
+
+export function createAgreementInvitation(organizationId: string, agreementId: string, counterpartyOrganizationId: string) {
+  return requestApi<{ id: string; status: string; expiresAt: string }>(`/agreements/${encodeURIComponent(agreementId)}/invitations`, { method: "POST", organizationId, body: { organizationId: counterpartyOrganizationId } });
+}
+
+export function decideAgreementInvitation(organizationId: string, agreementId: string, invitationId: string, decision: "accept" | "reject") {
+  return requestApi<{ id: string; status: string; version: number }>(`/agreements/${encodeURIComponent(agreementId)}/invitations/${encodeURIComponent(invitationId)}/${decision}`, { method: "POST", organizationId });
+}
+
+export function listAuthorizedSigners(organizationId: string): Promise<AuthorizedSigner[]> {
+  return requestApi("/organizations/signers", { organizationId });
+}
+
+export function createSignerChallenge(organizationId: string, address: string) {
+  return requestApi<{ challengeId: string; address: string; expiresAt: string; typedData: TypedDataPayload }>("/organizations/signers/challenge", { method: "POST", organizationId, body: { address } });
+}
+
+export function verifySignerChallenge(organizationId: string, challengeId: string, signature: `0x${string}`) {
+  return requestApi<AuthorizedSigner>("/organizations/signers/verify", { method: "POST", organizationId, body: { challengeId, signature } });
+}
+
+export function selectAgreementSigner(organizationId: string, agreementId: string, authorizedSignerId: string) {
+  return requestApi<{ agreementId: string; version: number; selected: true }>(`/agreements/${encodeURIComponent(agreementId)}/signers`, { method: "POST", organizationId, body: { authorizedSignerId } });
+}
+
+export function prepareAgreementSigning(organizationId: string, agreementId: string): Promise<SigningSnapshotView> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/signing/prepare`, { method: "POST", organizationId });
+}
+
+export function getAgreementSigning(organizationId: string, agreementId: string): Promise<AgreementSigningView> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/signing`, { organizationId });
+}
+
+export function submitAgreementSignature(organizationId: string, agreementId: string, signature: `0x${string}`) {
+  return requestApi<{ agreementId: string; version: number; party: "BUYER" | "SUPPLIER"; signerAddress: string; signatureStatus: SignatureStatus }>(`/agreements/${encodeURIComponent(agreementId)}/signatures`, { method: "POST", organizationId, body: { signature } });
+}
+
+export function getAgreementAnchor(organizationId: string, agreementId: string): Promise<AgreementAnchorView> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/anchor`, { organizationId });
+}
+
+export function retryAgreementAnchor(organizationId: string, agreementId: string) {
+  return requestApi<{ agreementId: string; version: number; blockchainStatus: AnchorStatus }>(`/agreements/${encodeURIComponent(agreementId)}/anchor/retry`, { method: "POST", organizationId });
+}
+
+export function verifyAgreementOnChain(organizationId: string, agreementId: string) {
+  return requestApi<{ agreementId: string; version: number; verified: boolean; reason?: string; transactionHash?: string | null }>(`/agreements/${encodeURIComponent(agreementId)}/verification`, { organizationId });
 }
