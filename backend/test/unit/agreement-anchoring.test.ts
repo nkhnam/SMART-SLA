@@ -70,6 +70,7 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
     }
   };
   let sendAttempts = 0;
+  const warningMessages: string[] = [];
   const registered = false;
   const prisma = {
     $transaction: async (callback: (transaction: Record<string, unknown>) => Promise<unknown>) => callback({
@@ -113,7 +114,7 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
       assert.equal(intent.status, "SUBMISSION_UNCERTAIN");
       assert.equal(intent.signedTransaction, serializedTransaction);
       assert.equal(registered, false);
-      throw new Error("invalid sender");
+      throw new Error("invalid sender", { cause: new TypeError("wallet internals") });
     }
   };
   const blockchain = {
@@ -123,6 +124,7 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
     getConfirmationCount: () => 1
   };
   const service = new AgreementAnchoringService(prisma as never, blockchain as never);
+  Object.assign(service, { logger: { warn: (message: string) => warningMessages.push(message), error: () => undefined } });
   await service.processPendingIntents();
 
   assert.equal(sendAttempts, 1);
@@ -134,4 +136,6 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
   assert.equal(BigInt(parseTransaction(intent.signedTransaction as `0x${string}`).chainId ?? 0), BigInt(chainId));
   assert.equal(intent.lastError, "rpc_rejected");
   assert.equal(registered, false);
+  assert.match(warningMessages[0] ?? "", /errorTypes=Error->TypeError/);
+  assert.doesNotMatch(warningMessages[0] ?? "", /invalid sender|wallet internals/);
 });

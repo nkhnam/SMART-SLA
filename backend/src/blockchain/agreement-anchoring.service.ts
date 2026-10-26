@@ -55,13 +55,13 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         try {
           await this.processIntent(claimed.id, claimed.leaseOwner);
         } catch (error) {
-          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}).`);
+          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}).`);
           await this.releaseAfterFailure(claimed.id, claimed.leaseOwner, error);
           break;
         }
       }
     } catch (error) {
-      this.logger.error(`Agreement anchor polling failed (${this.errorClass(error)}).`);
+      this.logger.error(`Agreement anchor polling failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}).`);
     } finally {
       this.running = false;
     }
@@ -587,5 +587,21 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     if (message.includes("transaction_reverted")) return "transaction_reverted";
     if (message.includes("registry_readback_mismatch")) return "registry_readback_mismatch";
     return "anchor_processing_failed";
+  }
+
+  private errorTypeChain(error: unknown): string {
+    const types: string[] = [];
+    const seen = new Set<unknown>();
+    let current: unknown = error;
+    while (current && types.length < 4 && !seen.has(current)) {
+      seen.add(current);
+      if (!(current instanceof Error)) {
+        types.push(typeof current);
+        break;
+      }
+      types.push(/^[A-Za-z][A-Za-z0-9_.]{0,63}$/.test(current.name) ? current.name : "Error");
+      current = current.cause;
+    }
+    return types.join("->") || "unknown";
   }
 }
