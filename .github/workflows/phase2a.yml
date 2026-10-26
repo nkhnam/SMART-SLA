@@ -45,9 +45,9 @@ jobs:
           CORS_ORIGINS: http://localhost:3000
         run: |
           npm run lint
+          npm run build
           npm run typecheck
           npm run test:unit
-          npm run build
           npm run test:integration
           npm audit --audit-level=high
       - name: Install frontend dependencies

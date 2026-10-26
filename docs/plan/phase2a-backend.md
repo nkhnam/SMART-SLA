@@ -11,6 +11,7 @@
 ## Execution decisions
 
 - Keep the Phase 1 branch, `main`, and archive branch unchanged; implement on `feat/unihack-phase2-backend` from baseline `454847c38994e5ba9d5d8da8f4009b51d356d3fc`.
+- Push a clearly labeled WIP checkpoint to the Phase 2A branch so hosted PostgreSQL CI can validate the work; phase completion still waits for all required checks to pass.
 - Keep existing demo routes and their 12-route production smoke contract. Real data appears only after an explicit Live Workspace selection; Demo Mode remains fixture-only.
 - Select an authorized organization per API request and verify current membership server-side. Never accept an owner organization, user ID, or role from agreement mutation bodies.
 - Store only DRAFT agreements. Record every revision as a new immutable `AgreementVersion`; use the current version as the optimistic concurrency token.
@@ -44,4 +45,4 @@ Add focused unit and PostgreSQL integration tests for authentication, validation
 
 ### 7. Validation and delivery
 
-Run backend clean install, lint, TypeScript checks, unit and integration tests, production build, and dependency audit; run frontend `npm ci`, lint, TypeScript checks, production build, 12-route production smoke, and dependency audit; run `git diff --check`. Do not claim browser E2E validation. Commit coherent completed changes without credit trailers. Push only `feat/unihack-phase2-backend` if all required validation succeeds.
+Run backend clean install, lint, TypeScript checks, unit and integration tests, production build, and dependency audit; run frontend `npm ci`, lint, TypeScript checks, production build, 12-route production smoke, and dependency audit; run `git diff --check`. Do not claim browser E2E validation. Commit coherent completed changes without credit trailers. Keep follow-up fixes on `feat/unihack-phase2-backend`; do not declare completion until all required validation and hosted CI pass.

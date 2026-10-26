@@ -88,6 +88,13 @@ after(async () => {
 });
 
 test("registration, login, duplicate handling, session reads, logout, and unauthenticated access", async () => {
+  const csrfRejected = await request("/auth/register", {
+    method: "POST",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify(registration("csrf-rejected"))
+  });
+  assert.equal(csrfRejected.status, 403);
+
   const created = await register(registration("owner"));
   assert.equal(created.response.status, 201);
   assert.ok(created.cookie);
@@ -102,6 +109,17 @@ test("registration, login, duplicate handling, session reads, logout, and unauth
 
   const duplicate = await register({ ...registration("owner"), email: registration("owner").email.toUpperCase() });
   assert.equal(duplicate.response.status, 409);
+  assert.equal(await prisma.organization.count({ where: { name: "Integration Org owner" } }), 1);
+  await assert.rejects(prisma.user.create({
+    data: {
+      email: registration("owner").email,
+      passwordHash: "test-only-hash",
+      displayName: "Unique constraint probe"
+    }
+  }), (error: { code?: string }) => error.code === "P2002");
+  await assert.rejects(prisma.membership.create({
+    data: { userId: ownerUserId, organizationId: randomUUID(), role: MembershipRole.MEMBER }
+  }), (error: { code?: string }) => error.code === "P2003");
 
   const invalidLogin = await request("/auth/login", {
     method: "POST",
@@ -177,6 +195,7 @@ test("validation rejects forged roles, malformed terms, and unrecognized organiz
     headers: { cookie: ownerCookie, "x-organization-id": randomUUID() }
   });
   assert.equal(forgedContext.status, 404);
+
 });
 
 test("drafts persist, revisions are immutable, stale edits conflict, and organizations stay isolated", async () => {
@@ -190,6 +209,12 @@ test("drafts persist, revisions are immutable, stale edits conflict, and organiz
   agreementId = agreement.id;
   assert.equal(agreement.version, 1);
   assert.equal(agreement.terms.uptimeTargetPercent, 99.95);
+  const forgedUpdateStatus = await request(`/agreements/${agreementId}`, {
+    method: "PATCH",
+    headers: { ...mutationHeaders, cookie: ownerCookie, "x-organization-id": ownerOrganizationId },
+    body: JSON.stringify({ ...agreementInput, expectedVersion: 1, status: "SIGNED" })
+  });
+  assert.equal(forgedUpdateStatus.status, 400);
 
   const secondUser = await register(registration("second"));
   assert.equal(secondUser.response.status, 201);
@@ -270,4 +295,30 @@ test("drafts persist, revisions are immutable, stale edits conflict, and organiz
   const list = await listResponse.json() as { data: Array<{ id: string }>; total: number };
   assert.equal(list.total, 1);
   assert.equal(list.data[0]?.id, agreementId);
+
+  const secondDraftResponse = await request("/agreements", {
+    method: "POST",
+    headers: { ...mutationHeaders, cookie: ownerCookie, "x-organization-id": ownerOrganizationId },
+    body: JSON.stringify({ ...agreementInput, name: "Second managed service" })
+  });
+  assert.equal(secondDraftResponse.status, 201);
+
+  const pageOne = await request("/agreements?page=1&pageSize=1&sort=createdAt&order=asc", {
+    headers: { cookie: ownerCookie, "x-organization-id": ownerOrganizationId }
+  });
+  const pageTwo = await request("/agreements?page=2&pageSize=1&sort=createdAt&order=asc", {
+    headers: { cookie: ownerCookie, "x-organization-id": ownerOrganizationId }
+  });
+  assert.equal((await pageOne.json() as { total: number }).total, 2);
+  assert.equal((await pageTwo.json() as { data: unknown[] }).data.length, 1);
+
+  const future = new Date(Date.now() + 60_000).toISOString();
+  const filtered = await request(`/agreements?createdAfter=${encodeURIComponent(future)}`, {
+    headers: { cookie: ownerCookie, "x-organization-id": ownerOrganizationId }
+  });
+  assert.equal((await filtered.json() as { total: number }).total, 0);
+  const invalidRange = await request(`/agreements?createdAfter=${encodeURIComponent(future)}&createdBefore=2020-01-01T00%3A00%3A00.000Z`, {
+    headers: { cookie: ownerCookie, "x-organization-id": ownerOrganizationId }
+  });
+  assert.equal(invalidRange.status, 400);
 });

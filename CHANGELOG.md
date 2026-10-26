@@ -9,6 +9,7 @@
 
 ### Changed
 - Use the supported Webpack builder for production builds and add a production HTTP smoke check; document the unresolved Turbopack worker failure and browser-test limitation.
+- Generate Prisma Client before CI typechecks and exercise CSRF rejection, database constraints, agreement pagination, and date filters in integration coverage.
 - Preserve all Phase 1 demo routes and fixture behavior while linking them to the opt-in live workspace.
 
 ### Removed
