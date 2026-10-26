@@ -133,10 +133,10 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
 
   await page.evaluate(() => (window as unknown as { __configureTestWallet: (options: { rejectSwitch?: boolean }) => void }).__configureTestWallet({ rejectSwitch: true }));
   await page.getByRole("button", { name: "Connect and verify wallet" }).click();
-  await expect(page.getByRole("alert")).toContainText("Switch your wallet to chain 31337");
+  await expect(page.locator('p[role="alert"]')).toContainText("Switch your wallet to chain 31337");
   await page.evaluate(() => (window as unknown as { __configureTestWallet: (options: { rejectSwitch?: boolean; rejectNextSignature?: boolean }) => void }).__configureTestWallet({ rejectNextSignature: true }));
   await page.getByRole("button", { name: "Connect and verify wallet" }).click();
-  await expect(page.getByRole("alert")).toContainText("User rejected signing request");
+  await expect(page.locator('p[role="alert"]')).toContainText("User rejected signing request");
   await page.getByRole("button", { name: "Connect and verify wallet" }).click();
   await expect(page.getByRole("status")).toContainText("Wallet ownership verified");
   expect(await page.evaluate(() => (window as unknown as { __walletSwitchCount: () => number }).__walletSwitchCount())).toBe(1);
@@ -154,16 +154,16 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
 
   await page.evaluate(() => (window as unknown as { __configureTestWallet: (options: { rejectNextSignature?: boolean }) => void }).__configureTestWallet({ rejectNextSignature: true }));
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
-  await expect(page.getByRole("alert")).toContainText("User rejected signing request");
+  await expect(page.locator('p[role="alert"]')).toContainText("User rejected signing request");
   await page.evaluate((wrongAddress) => (window as unknown as { __setTestAccount: (address: string) => void }).__setTestAccount(wrongAddress), unrelatedWallet.address);
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
-  await expect(page.getByRole("alert")).toContainText("does not match either wallet frozen into this agreement");
+  await expect(page.locator('p[role="alert"]')).toContainText("does not match either wallet frozen into this agreement");
   await page.evaluate((address) => (window as unknown as { __setTestAccount: (address: string) => void }).__setTestAccount(address), buyerWallet.address);
   await expect(page.getByText(`Connected ${buyerWallet.address.slice(0, 8)}`)).toBeVisible();
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
   await expect(page.getByRole("status")).toContainText("Signature submitted");
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
-  await expect(page.getByRole("alert")).toContainText("A signature for this organization was already recorded");
+  await expect(page.locator('p[role="alert"]')).toContainText("A signature for this organization was already recorded");
   await providerPage.reload();
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 1, method: "evm_setAutomine", params: [false] } });
   await providerPage.getByRole("button", { name: "Sign with connected wallet" }).click();
@@ -205,7 +205,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await providerPage.getByRole("button", { name: "Sign with connected wallet" }).click();
   await expect(providerPage.getByRole("status")).toContainText("Signature submitted");
   await expect(page.getByText("FAILED", { exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("alert")).toContainText("Anchor error");
+  await expect(page.locator('p[role="alert"]')).toContainText("Anchor error");
 
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
