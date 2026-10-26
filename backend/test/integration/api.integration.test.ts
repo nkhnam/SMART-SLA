@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import { NestFactory } from "@nestjs/core";
-import { MembershipRole } from "../../src/generated/prisma/client.js";
-import { AppModule } from "../../src/app.module.js";
-import { configureApplication } from "../../src/config/configure-app.js";
-import { PrismaService } from "../../src/database/prisma.service.js";
+import { MembershipRole } from "../../dist/generated/prisma/client.js";
+import { AppModule } from "../../dist/app.module.js";
+import { configureApplication } from "../../dist/config/configure-app.js";
+import { PrismaService } from "../../dist/database/prisma.service.js";
 
 const prefix = `integration-${randomUUID()}`;
 const origin = "http://localhost:3000";
