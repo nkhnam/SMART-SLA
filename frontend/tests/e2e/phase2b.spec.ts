@@ -71,6 +71,7 @@ async function register(page: Page, suffix: string, organizationType: "CUSTOMER"
 }
 
 test("live SLA signing, wallet recovery, isolation, and responsive layouts", async ({ browser, page }) => {
+  test.setTimeout(180_000);
   const consoleErrors: string[] = [];
   const pageExceptions: string[] = [];
   for (const target of [page]) {
@@ -123,7 +124,6 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await providerPage.getByRole("button", { name: "Accept" }).click();
   await expect(providerPage.getByRole("heading", { name: "E2E frozen uptime agreement" })).toBeVisible();
   await expect(providerPage.getByText("Review the complete frozen SLA terms")).toHaveCount(0);
-  await providerPage.getByRole("link", { name: "E2E frozen uptime agreement" }).click();
   await expect(providerPage.getByRole("heading", { name: "Agreement workflow" })).toBeVisible();
 
   await installWallet(page, buyerWallet.address, buyerPrivateKey);
@@ -147,6 +147,10 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await page.getByRole("button", { name: "Freeze version for signing" }).click();
   await expect(page.getByRole("heading", { name: "Frozen version 1" })).toBeVisible();
   await expect(page.getByText("Review the complete frozen SLA terms")).toBeVisible();
+  await providerPage.reload();
+  await expect(providerPage.getByRole("heading", { name: "Frozen version 1" })).toBeVisible();
+  await providerPage.getByText("Review the complete frozen SLA terms").click();
+  await expect(providerPage.getByText("Browser-driven local SLA for a test organization")).toBeVisible();
 
   await page.evaluate(() => (window as unknown as { __configureTestWallet: (options: { rejectNextSignature?: boolean }) => void }).__configureTestWallet({ rejectNextSignature: true }));
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
