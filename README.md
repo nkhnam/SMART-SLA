@@ -66,7 +66,7 @@ npm audit --omit=dev
 
 Run `npm run build:turbopack` separately to reproduce the local Turbopack worker failure. The production smoke script checks the original 12 Phase 1 routes, page-specific content, demo labels, internal navigation targets and disabled preview actions against the built application. It does not execute browser JavaScript or inspect rendered layout.
 
-Browser automation was **NOT RUN**: local browser use is disabled in the current Work settings. In particular, JavaScript runtime errors, interactive navigation, keyboard behavior, horizontal overflow and layouts at 375px, 768px and 1440px remain unverified. The HTTP smoke test is not a substitute for those browser checks.
+Browser automation was **NOT RUN** for the Phase 2B wallet and agreement flow. The browser tool was available, but PostgreSQL was unreachable and the frontend production build stopped with a filesystem `EPERM` error before the app could be exercised. Wallet account switching, Fuji network prompts, signature rejection, lifecycle refresh, console errors, keyboard behavior, real/Demo Mode separation and layouts at 375px, 768px and 1440px remain unverified. The HTTP smoke test is not a substitute for those browser checks.
 
 Backend checks run from `backend/`: `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm run test:integration`, and `npm audit`. Integration tests require the isolated PostgreSQL test service. Browser-only behavior and responsive rendering remain unverified.
 

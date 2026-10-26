@@ -134,5 +134,6 @@
 - [ ] Complete the full 12-case relayer fault-injection matrix with database and chain assertions. Current coverage is seven pure recovery-decision tests plus one mocked service-level RPC-rejection test; it does not satisfy that matrix.
 - [ ] Run all three dependency audits. NPM could not reach `registry.npmjs.org`, so vulnerability status is not verified.
 - [ ] Run frontend production build and browser scenarios. The build hit `EPERM` creating `.next` route output; no browser scenario was run.
-- [ ] Push the feature branch and inspect the actual GitHub Actions run. GitHub DNS was unavailable at the last push attempt; do not report CI success until the hosted run is observed.
+- [x] Push the feature branch without rewriting history; the remote now contains `71ab14c`.
+- [ ] Inspect the hosted GitHub Actions run. The connected commit-status endpoint currently returns no checks; the workflow-run connector only exposes pull-request runs, and the private repository's Actions page requires sign-in in the browser. Do not report CI success until the actual run is observed.
 - [ ] Reconcile any remaining checks before calling Phase 2B complete. Fuji deployment remains explicitly pending and was not attempted.
