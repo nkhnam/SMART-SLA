@@ -1,97 +1,23 @@
-"use client"
+import Link from "next/link";
+import { ArrowRight, Check, Network, ShieldCheck, Waves } from "lucide-react";
+import { DemoTag } from "@/components/ui";
 
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { ArrowRight, BarChart3, BriefcaseBusiness, FileCheck2 } from "lucide-react"
-import AppShell from "@/components/ui/app-shell"
-import { AiscBadge } from "@/components/ui/brand-logo"
-import MarketingSections, { MarketingHero } from "@/components/home/marketing"
-import { api } from "@/lib/api"
-import { useSession } from "@/lib/session"
-import type { Contract, Violation } from "@/lib/types"
-
-const homeCards = [
-  { href: "/dashboard", eyebrow: "Giám sát", title: "Dashboard", description: "Theo dõi hợp đồng, KPI đo thật và các vụ vi phạm đang mở.", icon: BarChart3, tone: "cyan" },
-  { href: "/marketplace", eyebrow: "Nhà cung cấp", title: "Marketplace", description: "Chọn đối tác dựa trên hiệu suất đã được xác minh.", icon: BriefcaseBusiness, tone: "emerald" },
-  { href: "/contracts", eyebrow: "Hợp đồng SLA", title: "Hợp đồng của tôi", description: "Ký hợp đồng chờ ký, xem điều khoản và kiểm chứng trên Polygon.", icon: FileCheck2, tone: "rose" },
-] as const
-
-const TONE = {
-  cyan: { card: "border-slate-700/80", pill: "text-cyan-300 border-cyan-500/40 bg-cyan-500/10", icon: "text-cyan-200" },
-  emerald: { card: "border-slate-700/80", pill: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10", icon: "text-emerald-200" },
-  rose: { card: "border-slate-700/80", pill: "text-rose-300 border-rose-500/50 bg-rose-500/10", icon: "text-rose-200" },
-} as const
-
-export default function HomePage() {
-  const { user } = useSession()
-  const [stats, setStats] = useState<{ contracts: number; toSign: number; openViolations: number } | null>(null)
-
-  useEffect(() => {
-    if (!user) return // khách chưa đăng nhập: chỉ xem giao diện, không gọi dữ liệu
-    Promise.all([api<Contract[]>("/api/contracts/list"), api<Violation[]>("/api/violations")])
-      .then(([contracts, violations]) =>
-        setStats({
-          contracts: contracts.length,
-          toSign: contracts.filter((c) => c.status === "PENDING_SIGNATURE").length,
-          openViolations: violations.filter((v) => v.status === "PENDING" || v.status === "CHALLENGED").length,
-        }),
-      )
-      .catch(() => setStats(null))
-  }, [user])
-
-  const statItems = [
-    { label: "Hợp đồng", value: stats?.contracts, cls: "text-cyan-200" },
-    { label: "Chờ ký", value: stats?.toSign, cls: "text-violet-200" },
-    { label: "Vi phạm đang mở", value: stats?.openViolations, cls: "text-amber-200" },
-  ]
-
-  return (
-    <AppShell allowGuest>
-      <main className="relative mx-auto w-full max-w-[1600px] px-4 pb-16 pt-10 sm:px-6 lg:px-10">
-
-        {!user && <MarketingHero />}
-        {user && (
-        <section className="relative z-10">
-          <div className="mb-12 text-center">
-            <AiscBadge width={190} className="mb-7" />
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-slate-400">Trung tâm điều hướng</p>
-            <h1 className="mt-3 font-[family-name:var(--font-display)] text-[clamp(40px,6vw,84px)] font-extrabold leading-[1.05] tracking-[-0.03em] text-white">
-              Xin chào, {user?.fullName ?? "Khách tham quan"}
-            </h1>
-            <p className="mx-auto mt-4 max-w-xl text-sm font-semibold leading-6 text-slate-300">Chọn khu vực bạn muốn truy cập trong hệ thống SLA-DEX.</p>
-            <div className="mx-auto mt-7 grid max-w-3xl grid-cols-1 divide-y divide-slate-700/50 rounded-2xl border border-slate-500/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              {statItems.map((s) => (
-                <div key={s.label} className="px-5 py-3 text-left">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{s.label}</span>
-                  <strong className={`mt-1 block font-mono text-lg font-medium ${s.cls}`}>{s.value ?? "—"}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
-            {homeCards.map((card) => {
-              const Icon = card.icon
-              const t = TONE[card.tone]
-              return (
-                <Link key={card.href} href={card.href} className={`group flex min-h-72 flex-col items-center rounded-3xl border p-7 text-center transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${t.card}`}>
-                  <span className={`self-start rounded-full border px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] ${t.pill}`}>{card.eyebrow}</span>
-                  <span className="mt-6 grid h-14 w-14 place-items-center rounded-2xl border border-slate-500/30 bg-slate-900/60">
-                    <Icon className={`h-7 w-7 ${t.icon}`} />
-                  </span>
-                  <h2 className="mt-5 font-[family-name:var(--font-display)] text-[26px] font-bold leading-tight text-white lg:text-[34px]">{card.title}</h2>
-                  <p className="mb-6 mt-3 max-w-sm text-sm font-semibold leading-6 text-slate-300">{card.description}</p>
-                  <span className="mt-auto translate-y-0 pt-0 inline-flex items-center gap-2 rounded-xl border border-blue-400/50 bg-blue-600/40 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-blue-500/60">
-                    Truy cập <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-        )}
-        <MarketingSections loggedIn={!!user} />
-      </main>
-    </AppShell>
-  )
+export default function LandingPage() {
+  return <main className="min-h-screen overflow-hidden bg-white">
+    <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
+      <Link href="/" className="flex items-center gap-3" aria-label="SLA-DEX home"><span className="grid size-10 place-items-center rounded-xl bg-brand text-white"><Network size={21}/></span><span className="font-bold tracking-tight">SLA-DEX</span></Link>
+      <nav aria-label="Main navigation" className="hidden items-center gap-8 text-sm text-muted md:flex"><a href="#platform">Platform</a><a href="#architecture">Architecture</a><a href="#trust">Trust model</a></nav>
+      <Link href="/overview" className="inline-flex items-center gap-2 rounded-lg bg-nav px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700">Explore demo <ArrowRight size={16}/></Link>
+    </header>
+    <section className="mx-auto grid max-w-7xl items-center gap-14 px-6 pb-24 pt-14 lg:grid-cols-[1.05fr_.95fr] lg:px-10 lg:pb-32 lg:pt-24">
+      <div><DemoTag/><p className="mt-8 text-xs font-bold uppercase tracking-[.2em] text-brand">Verifiable SLA infrastructure on Avalanche</p><h1 className="mt-5 max-w-2xl text-5xl font-semibold leading-[1.08] tracking-[-.04em] text-ink sm:text-6xl">Service commitments, backed by evidence.</h1><p className="mt-6 max-w-xl text-lg leading-8 text-muted">SLA-DEX brings agreements, service signals, and dispute evidence into one auditable workspace, designed for a future Avalanche integration.</p><div className="mt-9 flex flex-wrap gap-3"><Link href="/overview" className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-dark">Open the demo <ArrowRight size={16}/></Link><a href="#architecture" className="rounded-lg border border-border px-5 py-3 text-sm font-semibold">Explore the architecture</a></div><div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-xs font-medium text-muted"><span className="flex items-center gap-2"><Check size={15} className="text-success"/> Clear agreement terms</span><span className="flex items-center gap-2"><Check size={15} className="text-success"/> Traceable evidence</span><span className="flex items-center gap-2"><Check size={15} className="text-success"/> Reviewable disputes</span></div></div>
+      <div className="relative"><div className="absolute -inset-8 rounded-full bg-red-50 blur-3xl"/><div className="relative rounded-2xl border border-border bg-white p-5 shadow-2xl shadow-slate-900/10 sm:p-7"><div className="flex items-center justify-between border-b border-border pb-5"><div><p className="text-xs font-semibold text-muted">SERVICE AGREEMENT</p><p className="mt-1 font-semibold">Cloud operations · Northstar / Acme</p></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-success">In good standing</span></div><div className="grid grid-cols-2 gap-3 py-5"><MiniStat label="Uptime target" value="99.95%"/><MiniStat label="Observed uptime" value="99.982%"/><MiniStat label="Evidence sources" value="02 sample sources"/><MiniStat label="Review window" value="72 hours"/></div><div className="rounded-xl border border-border bg-canvas p-4"><div className="flex items-center justify-between"><p className="text-sm font-semibold">Evidence stream</p><span className="text-xs text-muted">Last 24 hours</span></div><div className="mt-5 flex h-24 items-end gap-1.5" aria-label="Illustrative monitoring signal"><div className="h-[58%] flex-1 rounded-t bg-red-200"/><div className="h-[76%] flex-1 rounded-t bg-red-300"/><div className="h-[68%] flex-1 rounded-t bg-red-200"/><div className="h-[82%] flex-1 rounded-t bg-red-300"/><div className="h-[72%] flex-1 rounded-t bg-red-200"/><div className="h-[88%] flex-1 rounded-t bg-red-400"/><div className="h-[78%] flex-1 rounded-t bg-red-300"/><div className="h-[93%] flex-1 rounded-t bg-red-400"/><div className="h-[85%] flex-1 rounded-t bg-red-300"/><div className="h-[96%] flex-1 rounded-t bg-red-500"/></div><div className="mt-3 flex justify-between text-[10px] text-muted"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>Now</span></div></div><div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3"><ShieldCheck size={19} className="text-success"/><div><p className="text-xs font-semibold">Evidence ready for independent review</p><p className="mt-0.5 text-[11px] text-muted">Architecture preview · no live chain connection</p></div></div></div></div>
+    </section>
+    <section id="platform" className="border-y border-border bg-canvas px-6 py-20 lg:px-10"><div className="mx-auto max-w-7xl"><p className="text-xs font-bold uppercase tracking-[.18em] text-brand">A shared operating picture</p><h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight">From commitment to evidence, with every step visible.</h2><div className="mt-10 grid gap-4 md:grid-cols-3"><Feature icon={<ShieldCheck/>} title="Agreements" body="Define service targets, review terms, and keep parties aligned on the commitment."/><Feature icon={<Waves/>} title="Monitoring" body="Compare service observations with agreed thresholds and maintain an event history."/><Feature icon={<Network/>} title="Verification" body="Prepare evidence records for transparent, independent verification."/></div></div></section>
+    <section id="architecture" className="mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:px-10"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-brand">Intended architecture</p><h2 className="mt-3 text-3xl font-semibold tracking-tight">A verifiable flow, from terms to proof.</h2><p className="mt-4 max-w-lg leading-7 text-muted">The application is prepared for an Avalanche-native foundation. Network submission, evidence anchoring, and settlement are future integrations; this experience presents the boundaries without claiming they are live.</p></div><ol className="space-y-3">{["Agree on service terms", "Observe service signals", "Review incident evidence", "Verify an anchored record"].map((step, i) => <li key={step} className="flex items-center gap-4 rounded-xl border border-border p-4"><span className="grid size-8 shrink-0 place-items-center rounded-full bg-red-50 text-sm font-bold text-brand">0{i+1}</span><span className="font-medium">{step}</span><span className="ml-auto text-xs text-muted">{i === 3 ? "Phase 2" : "Workflow"}</span></li>)}</ol></section>
+    <footer id="trust" className="bg-nav px-6 py-8 text-center text-xs text-nav-muted">SLA-DEX · Verifiable SLA Infrastructure · Demo interface with deterministic sample data</footer>
+  </main>;
 }
+
+function MiniStat({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-border p-3"><p className="text-[11px] text-muted">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>; }
+function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) { return <article className="rounded-xl border border-border bg-white p-6"><span className="grid size-10 place-items-center rounded-lg bg-red-50 text-brand">{icon}</span><h3 className="mt-5 font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted">{body}</p></article>; }
