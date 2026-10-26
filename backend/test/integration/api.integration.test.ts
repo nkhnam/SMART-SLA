@@ -59,7 +59,7 @@ async function register(input: ReturnType<typeof registration>) {
 before(async () => {
   const expectedDatabase = new URL(process.env.DATABASE_URL ?? "").pathname.replace(/^\//, "");
   assert.match(expectedDatabase, /_test$/, "integration tests must only run against an isolated _test database");
-  app = await NestFactory.create(AppModule, { logger: false });
+  app = await NestFactory.create(AppModule, { logger: ["error"] });
   configureApplication(app);
   await app.listen(0, "127.0.0.1");
   const address = app.getHttpServer().address();
