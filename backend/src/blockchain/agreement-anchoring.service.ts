@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundExce
 import { randomUUID } from "node:crypto";
 import { defineChain, encodeFunctionData, getAddress, keccak256, parseTransaction, recoverTransactionAddress, stringToHex, type Address, type Hash, type TransactionSerialized } from "viem";
 import { recoverTypedDataAddress } from "viem";
-import { AgreementSignatureParty, AgreementStatus, AnchorTransactionStatus, MembershipRole } from "../generated/prisma/client.js";
+import { AgreementSignatureParty, AgreementStatus, AnchorTransactionStatus, MembershipRole, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { OrganizationAuthContext } from "../agreements/agreement.types.js";
 import { agreementApprovalTypedData, canonicalizeAgreementSnapshot, type AgreementSnapshotInput } from "./agreement-hash.service.js";
@@ -12,6 +12,7 @@ import { resolveAnchorRecovery } from "./anchor-recovery.js";
 
 const leaseMs = 60_000;
 const pollMs = 15_000;
+const replacementSearchDepth = 128n;
 
 function parseSnapshot(payload: string): AgreementSnapshotInput {
   try {
@@ -46,9 +47,11 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     if (this.running || !this.blockchain.isAnchorConfigured()) return;
     this.running = true;
     try {
+      const processedIntentIds: string[] = [];
       for (let count = 0; count < 10; count += 1) {
-        const claimed = await this.claimNextIntent();
+        const claimed = await this.claimNextIntent(processedIntentIds);
         if (!claimed) break;
+        processedIntentIds.push(claimed.id);
         try {
           await this.processIntent(claimed.id, claimed.leaseOwner);
         } catch (error) {
@@ -178,13 +181,14 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     return { agreementId, version: agreement.version, verified: true, transactionHash: snapshot.anchorIntent?.transactionHash ?? null };
   }
 
-  private async claimNextIntent() {
+  private async claimNextIntent(processedIntentIds: string[]) {
     const leaseOwner = randomUUID();
     return this.prisma.$transaction(async (transaction) => {
       const rows = await transaction.$queryRaw<Array<{ id: string }>>`
         SELECT "id" FROM "AnchorIntent"
         WHERE "status" IN ('QUEUED'::"AnchorTransactionStatus", 'SUBMISSION_UNCERTAIN'::"AnchorTransactionStatus", 'SUBMITTED'::"AnchorTransactionStatus", 'REPLACED'::"AnchorTransactionStatus")
           AND ("leaseUntil" IS NULL OR "leaseUntil" < NOW())
+          ${processedIntentIds.length ? Prisma.sql`AND "id" NOT IN (${Prisma.join(processedIntentIds.map((id) => Prisma.sql`${id}::uuid`))})` : Prisma.empty}
         ORDER BY "createdAt" ASC
         FOR UPDATE SKIP LOCKED
         LIMIT 1
@@ -229,7 +233,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         await this.setReconciliationRequired(intent.id, snapshot.agreementId, "registry_record_mismatch");
         return;
       }
-      await this.markConfirmed(intent.id, snapshot.agreementId, leaseOwner, intent.transactionHash ?? intent.replacementHash ?? undefined);
+      await this.markConfirmed(intent.id, snapshot.agreementId, leaseOwner, intent.replacementHash ?? intent.transactionHash ?? undefined);
       return;
     }
 
@@ -294,6 +298,43 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         return;
       }
       const pendingNonce = await client.getTransactionCount({ address: intent.relayerAddress as Address, blockTag: "pending" });
+      const latestNonce = await client.getTransactionCount({ address: intent.relayerAddress as Address, blockTag: "latest" });
+      if (pendingNonce > Number(intent.relayerNonce) && latestNonce <= Number(intent.relayerNonce)) {
+        await this.prisma.$transaction(async (transaction) => {
+          await transaction.anchorIntent.updateMany({
+            where: { id: intent.id, leaseOwner },
+            data: { status: AnchorTransactionStatus.SUBMISSION_UNCERTAIN, lastError: "replacement_pending_unknown", leaseOwner: null, leaseUntil: null }
+          });
+          await transaction.agreement.update({ where: { id: snapshot.agreementId }, data: { blockchainStatus: AnchorTransactionStatus.SUBMISSION_UNCERTAIN } });
+        });
+        return;
+      }
+      if (latestNonce > Number(intent.relayerNonce)) {
+        const latestBlock = await client.getBlockNumber();
+        const firstBlock = latestBlock > replacementSearchDepth ? latestBlock - replacementSearchDepth : 0n;
+        for (let blockNumber = latestBlock; blockNumber >= firstBlock; blockNumber -= 1n) {
+          const block = await client.getBlock({ blockNumber, includeTransactions: true });
+          const replacement = block.transactions.find((transaction) => typeof transaction !== "string"
+            && getAddress(transaction.from) === getAddress(intent.relayerAddress!)
+            && transaction.nonce === Number(intent.relayerNonce));
+          if (!replacement || typeof replacement === "string") continue;
+          if (replacement.hash === intent.transactionHash) {
+            await this.prisma.anchorIntent.updateMany({
+              where: { id: intent.id, leaseOwner },
+              data: { status: AnchorTransactionStatus.SUBMITTED, lastError: null, leaseOwner: null, leaseUntil: null }
+            });
+            return;
+          }
+          await this.prisma.$transaction(async (transaction) => {
+            await transaction.anchorIntent.updateMany({
+              where: { id: intent.id, leaseOwner },
+              data: { status: AnchorTransactionStatus.REPLACED, replacementHash: replacement.hash, lastError: "replacement_discovered", leaseOwner: null, leaseUntil: null }
+            });
+            await transaction.agreement.update({ where: { id: snapshot.agreementId }, data: { blockchainStatus: AnchorTransactionStatus.REPLACED } });
+          });
+          return;
+        }
+      }
       const recovery = resolveAnchorRecovery({
         registry: "missing",
         receipt: "missing",

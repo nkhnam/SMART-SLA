@@ -14,6 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
     "test:unit": "node --import tsx --test test/unit/config-env.test.ts test/unit/agreement-hash.test.ts test/unit/agreement-party.test.ts test/unit/agreement-lifecycle.test.ts test/unit/wallet-link.test.ts test/unit/anchor-recovery.test.ts test/unit/agreement-anchoring.test.ts",
     "test:integration": "node scripts/run-integration.mjs",
+    "test:anchor-integration": "node --import tsx --test test/integration/anchor-recovery.integration.test.ts",
+    "typecheck:anchor-integration": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --esModuleInterop --experimentalDecorators --emitDecoratorMetadata test/integration/anchor-recovery.integration.test.ts",
     "test:migration-upgrade": "node scripts/test-migration-upgrade.mjs",
     "test": "npm run test:unit && npm run test:integration",
     "db:generate": "prisma generate",
