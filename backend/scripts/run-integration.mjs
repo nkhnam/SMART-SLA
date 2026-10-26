@@ -22,7 +22,7 @@ const migration = spawnSync(process.execPath, [prismaCli, "migrate", "deploy"], 
 });
 if (migration.status !== 0) process.exit(migration.status ?? 1);
 
-const tests = spawnSync(process.execPath, ["--import", "tsx", "--test", "test/integration/api.integration.test.ts"], {
+const tests = spawnSync(process.execPath, ["--test", "test/integration/api.integration.test.ts"], {
   cwd: backendDirectory,
   env: environment,
   stdio: "inherit"
