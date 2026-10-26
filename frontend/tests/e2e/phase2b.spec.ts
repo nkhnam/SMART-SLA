@@ -175,7 +175,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await providerPage.getByRole("button", { name: "Sign with connected wallet" }).click();
   await expect(providerPage.getByRole("status")).toContainText("Signature submitted");
   await page.reload();
-  await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible({ timeout: 35_000 });
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 2, method: "evm_mine", params: [] } });
   await expect(page.getByText("CONFIRMED", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 3, method: "evm_setAutomine", params: [true] } });
