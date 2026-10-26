@@ -144,7 +144,13 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await providerPage.getByRole("button", { name: "Connect and verify wallet" }).click();
   await providerPage.getByRole("button", { name: "Select signer" }).click();
 
+  const snapshotPromise = page.waitForResponse((response) => response.url().endsWith(`/agreements/${agreement.id}/signing/prepare`) && response.request().method() === "POST");
   await page.getByRole("button", { name: "Freeze version for signing" }).click();
+  const snapshotResponse = await snapshotPromise;
+  const snapshotBody = await snapshotResponse.text();
+  expect(snapshotResponse.ok(), `signing snapshot preparation returned ${snapshotResponse.status()}: ${snapshotBody}`).toBe(true);
+  const snapshotPayload = JSON.parse(snapshotBody) as { snapshot: { serviceDescription: string } };
+  expect(snapshotPayload.snapshot.serviceDescription).toBe("Browser-driven local SLA for a test organization");
   await expect(page.getByRole("heading", { name: "Frozen version 1" })).toBeVisible();
   await expect(page.getByText("Review the complete frozen SLA terms")).toBeVisible();
   await providerPage.reload();
