@@ -151,10 +151,10 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   expect(snapshotResponse.ok(), `signing snapshot preparation returned ${snapshotResponse.status()}: ${snapshotBody}`).toBe(true);
   const snapshotPayload = JSON.parse(snapshotBody) as { snapshot: { serviceDescription: string } };
   expect(snapshotPayload.snapshot.serviceDescription).toBe("Browser-driven local SLA for a test organization");
-  await expect(page.getByRole("heading", { name: "Frozen version 1" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Frozen version 2" })).toBeVisible();
   await expect(page.getByText("Review the complete frozen SLA terms")).toBeVisible();
   await providerPage.reload();
-  await expect(providerPage.getByRole("heading", { name: "Frozen version 1" })).toBeVisible();
+  await expect(providerPage.getByRole("heading", { name: "Frozen version 2" })).toBeVisible();
   await providerPage.getByText("Review the complete frozen SLA terms").click();
   await expect(providerPage.getByText("Browser-driven local SLA for a test organization")).toBeVisible();
 
