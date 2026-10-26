@@ -3,8 +3,10 @@ import { randomUUID } from "node:crypto";
 import { test, expect, type Page } from "@playwright/test";
 import { privateKeyToAccount } from "viem/accounts";
 
-const buyerWallet = privateKeyToAccount(`0x${"11".repeat(32)}`);
-const supplierWallet = privateKeyToAccount(`0x${"22".repeat(32)}`);
+const buyerPrivateKey = `0x${"11".repeat(32)}` as `0x${string}`;
+const supplierPrivateKey = `0x${"22".repeat(32)}` as `0x${string}`;
+const buyerWallet = privateKeyToAccount(buyerPrivateKey);
+const supplierWallet = privateKeyToAccount(supplierPrivateKey);
 const unrelatedWallet = privateKeyToAccount(`0x${"44".repeat(32)}`);
 const password = "Correct-Horse-Battery-92!";
 const chainId = 31337;
@@ -124,8 +126,8 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await providerPage.getByRole("link", { name: "E2E frozen uptime agreement" }).click();
   await expect(providerPage.getByRole("heading", { name: "Agreement workflow" })).toBeVisible();
 
-  await installWallet(page, buyerWallet.address, buyerWallet.privateKey);
-  await installWallet(providerPage, supplierWallet.address, supplierWallet.privateKey);
+  await installWallet(page, buyerWallet.address, buyerPrivateKey);
+  await installWallet(providerPage, supplierWallet.address, supplierPrivateKey);
   await page.reload();
   await providerPage.reload();
 
