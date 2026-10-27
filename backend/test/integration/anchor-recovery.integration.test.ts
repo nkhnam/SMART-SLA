@@ -330,8 +330,8 @@ test("R09 dropped transactions rebroadcast identical bytes while replacements st
     assert.equal(latestNonce, Number(original.relayerNonce));
     await service().processPendingIntents();
     const pendingReplacement = await state(replaced.agreementId);
-    assert.equal(pendingReplacement.status, "SUBMITTED");
-    assert.equal(pendingReplacement.lastError, null);
+    assert.equal(pendingReplacement.status, "SUBMISSION_UNCERTAIN");
+    assert.equal(pendingReplacement.lastError, "replacement_pending_unknown");
     await mine();
     await service().processPendingIntents();
     const discovered = await state(replaced.agreementId);
@@ -361,7 +361,9 @@ test("R08 an EVM revert is recorded as failed with a reverted receipt", async ()
 test("R10 an expected registry record is confirmed without a duplicate transaction", async () => {
   const fixture = await createFixture();
   const before = await chainClient.getTransactionCount({ address: relayer.address });
-  await relayerWallet.writeContract({ address: registryAddress!, abi: agreementRegistryAbi, functionName: "registerAgreement", args: [fixture.typedData.message, (await buyer.signTypedData(fixture.typedData)), (await supplier.signTypedData(fixture.typedData))] });
+  const registrationHash = await relayerWallet.writeContract({ address: registryAddress!, abi: agreementRegistryAbi, functionName: "registerAgreement", args: [fixture.typedData.message, (await buyer.signTypedData(fixture.typedData)), (await supplier.signTypedData(fixture.typedData))] });
+  await chainClient.waitForTransactionReceipt({ hash: registrationHash });
+  assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).agreementHash, fixture.canonical.hash);
   await service().processPendingIntents();
   const intent = await state(fixture.agreementId);
   assert.equal(intent.status, "CONFIRMED");
