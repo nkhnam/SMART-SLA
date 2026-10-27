@@ -70,11 +70,16 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
     }
   };
   let sendAttempts = 0;
+  let advisoryLockAcquired = false;
   const warningMessages: string[] = [];
   const registered = false;
   const prisma = {
     $transaction: async (callback: (transaction: Record<string, unknown>) => Promise<unknown>) => callback({
       $queryRaw: async (strings: TemplateStringsArray) => strings.join("").includes("FOR UPDATE SKIP LOCKED") ? [{ id: intent.id }] : [],
+      $executeRaw: async (strings: TemplateStringsArray) => {
+        if (strings.join("").includes("pg_advisory_xact_lock")) advisoryLockAcquired = true;
+        return 1;
+      },
       anchorIntent: {
         findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
           if (where?.transactionChainId) return null;
@@ -114,7 +119,7 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
       assert.equal(intent.status, "SUBMISSION_UNCERTAIN");
       assert.equal(intent.signedTransaction, serializedTransaction);
       assert.equal(registered, false);
-      throw Object.assign(new Error("invalid sender", { cause: new TypeError("wallet internals") }), { code: "P2002" });
+      throw Object.assign(new Error("invalid sender", { cause: new TypeError("wallet internals") }), { code: "P2002", meta: { code: "42601" } });
     }
   };
   const blockchain = {
@@ -128,6 +133,7 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
   await service.processPendingIntents();
 
   assert.equal(sendAttempts, 1);
+  assert.equal(advisoryLockAcquired, true);
   assert.equal(intent.status, "FAILED");
   assert.equal(intent.relayerNonce, 0n);
   assert.match(intent.transactionHash ?? "", /^0x[0-9a-f]{64}$/);
@@ -138,5 +144,6 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
   assert.equal(registered, false);
   assert.match(warningMessages[0] ?? "", /errorTypes=Error->TypeError/);
   assert.match(warningMessages[0] ?? "", /errorCode=P2002/);
+  assert.match(warningMessages[0] ?? "", /databaseCode=42601/);
   assert.doesNotMatch(warningMessages[0] ?? "", /invalid sender|wallet internals/);
 });

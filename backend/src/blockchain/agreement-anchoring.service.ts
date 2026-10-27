@@ -55,13 +55,13 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         try {
           await this.processIntent(claimed.id, claimed.leaseOwner);
         } catch (error) {
-          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}).`);
+          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}${this.databaseErrorCode(error)}).`);
           await this.releaseAfterFailure(claimed.id, claimed.leaseOwner, error);
           break;
         }
       }
     } catch (error) {
-      this.logger.error(`Agreement anchor polling failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}).`);
+      this.logger.error(`Agreement anchor polling failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}${this.databaseErrorCode(error)}).`);
     } finally {
       this.running = false;
     }
@@ -393,7 +393,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     }
 
     const prepared = await this.prisma.$transaction(async (transaction) => {
-      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(8273641)`;
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(8273641)`;
       const current = await transaction.anchorIntent.findFirst({ where: { id: intent.id, leaseOwner }, select: { transactionHash: true, signedTransaction: true } });
       if (!current) throw new ConflictException("The anchor intent lease expired before transaction preparation.");
       if (current.transactionHash && current.signedTransaction) return current;
@@ -609,5 +609,13 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     if (!error || typeof error !== "object") return "";
     const code = (error as { code?: unknown }).code;
     return typeof code === "string" && /^[A-Z][A-Z0-9_]{0,31}$/.test(code) ? `; errorCode=${code}` : "";
+  }
+
+  private databaseErrorCode(error: unknown): string {
+    if (!error || typeof error !== "object") return "";
+    const meta = (error as { meta?: unknown }).meta;
+    if (!meta || typeof meta !== "object") return "";
+    const code = (meta as { code?: unknown }).code;
+    return typeof code === "string" && /^[A-Z0-9]{5}$/.test(code) ? `; databaseCode=${code}` : "";
   }
 }
