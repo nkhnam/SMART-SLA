@@ -286,7 +286,10 @@ test("R07 duplicate processing of one logical agreement creates one intent and o
   await Promise.all([service().processPendingIntents(), service().processPendingIntents()]);
   assert.equal(await prisma.anchorIntent.count({ where: { snapshotId: fixture.snapshot.id } }), 1);
   assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).agreementHash, fixture.canonical.hash);
-  assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
+  const submitted = await state(fixture.agreementId);
+  assert.equal(submitted.status, "SUBMITTED");
+  assert.equal(submitted.leaseOwner, null);
+  assert.equal(submitted.leaseUntil, null);
   await service().processPendingIntents();
   assert.equal((await state(fixture.agreementId)).status, "CONFIRMED");
 });

@@ -448,7 +448,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     await this.prisma.$transaction(async (transaction) => {
       await transaction.anchorIntent.updateMany({
         where: { id: intent.id, leaseOwner, transactionHash: prepared.transactionHash },
-        data: { status: AnchorTransactionStatus.SUBMITTED, lastError: null }
+        data: { status: AnchorTransactionStatus.SUBMITTED, lastError: null, leaseOwner: null, leaseUntil: null }
       });
       await transaction.agreement.update({ where: { id: snapshot.agreementId }, data: { blockchainStatus: AnchorTransactionStatus.SUBMITTED } });
     });
