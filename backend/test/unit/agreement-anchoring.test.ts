@@ -114,7 +114,7 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
       assert.equal(intent.status, "SUBMISSION_UNCERTAIN");
       assert.equal(intent.signedTransaction, serializedTransaction);
       assert.equal(registered, false);
-      throw new Error("invalid sender", { cause: new TypeError("wallet internals") });
+      throw Object.assign(new Error("invalid sender", { cause: new TypeError("wallet internals") }), { code: "P2002" });
     }
   };
   const blockchain = {
@@ -137,5 +137,6 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
   assert.equal(intent.lastError, "rpc_rejected");
   assert.equal(registered, false);
   assert.match(warningMessages[0] ?? "", /errorTypes=Error->TypeError/);
+  assert.match(warningMessages[0] ?? "", /errorCode=P2002/);
   assert.doesNotMatch(warningMessages[0] ?? "", /invalid sender|wallet internals/);
 });

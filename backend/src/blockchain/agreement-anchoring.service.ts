@@ -55,13 +55,13 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         try {
           await this.processIntent(claimed.id, claimed.leaseOwner);
         } catch (error) {
-          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}).`);
+          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}).`);
           await this.releaseAfterFailure(claimed.id, claimed.leaseOwner, error);
           break;
         }
       }
     } catch (error) {
-      this.logger.error(`Agreement anchor polling failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}).`);
+      this.logger.error(`Agreement anchor polling failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}).`);
     } finally {
       this.running = false;
     }
@@ -603,5 +603,11 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       current = current.cause;
     }
     return types.join("->") || "unknown";
+  }
+
+  private errorCode(error: unknown): string {
+    if (!error || typeof error !== "object") return "";
+    const code = (error as { code?: unknown }).code;
+    return typeof code === "string" && /^[A-Z][A-Z0-9_]{0,31}$/.test(code) ? `; errorCode=${code}` : "";
   }
 }
