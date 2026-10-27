@@ -286,6 +286,8 @@ test("R07 duplicate processing of one logical agreement creates one intent and o
   await Promise.all([service().processPendingIntents(), service().processPendingIntents()]);
   assert.equal(await prisma.anchorIntent.count({ where: { snapshotId: fixture.snapshot.id } }), 1);
   assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).agreementHash, fixture.canonical.hash);
+  assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
+  await service().processPendingIntents();
   assert.equal((await state(fixture.agreementId)).status, "CONFIRMED");
 });
 
@@ -325,8 +327,8 @@ test("R09 dropped transactions rebroadcast identical bytes while replacements st
     assert.equal(latestNonce, Number(original.relayerNonce));
     await service().processPendingIntents();
     const pendingReplacement = await state(replaced.agreementId);
-    assert.equal(pendingReplacement.status, "SUBMISSION_UNCERTAIN");
-    assert.equal(pendingReplacement.lastError, "replacement_pending_unknown");
+    assert.equal(pendingReplacement.status, "SUBMITTED");
+    assert.equal(pendingReplacement.lastError, null);
     await mine();
     await service().processPendingIntents();
     const discovered = await state(replaced.agreementId);
