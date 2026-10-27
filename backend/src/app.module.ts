@@ -1,12 +1,26 @@
-import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { SlaContractModule } from './sla-contract/sla-contract.module';
-import { AdminModule } from './admin/admin.module';
-import { BillingModule } from './billing/billing.module';
+import { Module } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
+import { AgreementsModule } from "./agreements/agreements.module.js";
+import { ApiExceptionFilter } from "./common/api-exception.filter.js";
+import { AppConfigModule } from "./config/config.module.js";
+import { DatabaseModule } from "./database/database.module.js";
+import { HealthModule } from "./health/health.module.js";
+import { AuthModule } from "./auth/auth.module.js";
+import { OrganizationsModule } from "./organizations/organizations.module.js";
+import { SecurityModule } from "./security/security.module.js";
 
 @Module({
-  imports: [PrismaModule, AuthModule, SlaContractModule, AdminModule, BillingModule, ScheduleModule.forRoot()],
+  imports: [
+    AppConfigModule,
+    DatabaseModule,
+    SecurityModule,
+    HealthModule,
+    AuthModule,
+    OrganizationsModule,
+    AgreementsModule
+  ],
+  providers: [
+    { provide: APP_FILTER, useClass: ApiExceptionFilter }
+  ]
 })
 export class AppModule {}

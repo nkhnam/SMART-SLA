@@ -1,59 +1,77 @@
-import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
-import { CurrentUser, JwtAuthGuard, Roles } from './auth.guard';
-import type { AuthUser } from './auth.guard';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
+import type { Response } from "express";
+import type { AppEnvironment } from "../config/env.schema.js";
+import { AuthContext } from "./auth-context.decorator.js";
+import { AuthService } from "./auth.service.js";
+import { LoginDto, RegisterDto } from "./auth.dto.js";
+import { SESSION_COOKIE_NAME, SessionGuard } from "./session.guard.js";
+import type { AuthenticatedRequest } from "./auth.types.js";
 
-// ThrottlerGuard: vượt giới hạn -> lỗi 429 "Too Many Requests"
-@UseGuards(ThrottlerGuard)
-@Controller('api/auth')
+@ApiTags("auth")
+@Controller("auth")
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly config: ConfigService<AppEnvironment, true>
+  ) {}
 
-  // { email, password, fullName, orgName, accountType: "BUYER" | "SUPPLIER", serviceType? }
-  // Tối đa 3 lần đăng ký / phút / IP (chống tạo tài khoản rác)
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @Post('register')
-  register(@Body() body: any) {
-    return this.auth.register(body);
+  @Post("register")
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @ApiOperation({ summary: "Register a user and create an organization" })
+  async register(@Body() input: RegisterDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.auth.register(input);
+    this.setSessionCookie(response, result.token, result.expiresAt);
+    return { user: result.user, organization: result.organization, expiresAt: result.expiresAt };
   }
 
-  // { email, password } -> { accessToken, user }
-  // Tối đa 5 lần đăng nhập / phút / IP (chống dò mật khẩu)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  @Post('login')
-  login(@Body() body: any) {
-    return this.auth.login(body);
+  @Post("login")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @ApiOperation({ summary: "Create a server-side session" })
+  async login(@Body() input: LoginDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.auth.login(input);
+    this.setSessionCookie(response, result.token, result.expiresAt);
+    return { user: result.user, expiresAt: result.expiresAt };
   }
 
-  // Thông tin người đang đăng nhập
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
-  me(@CurrentUser() user: AuthUser) {
-    return this.auth.me(user);
+  @Post("logout")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(SessionGuard)
+  @ApiCookieAuth()
+  @ApiOperation({ summary: "Revoke the current session" })
+  async logout(
+    @AuthContext() context: NonNullable<AuthenticatedRequest["auth"]>,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    await this.auth.logout(context.sessionId);
+    response.clearCookie(SESSION_COOKIE_NAME, this.cookieOptions());
+    return { success: true };
   }
 
-  // Tự sửa hồ sơ: { fullName?, jobTitle?, currentPassword?, newPassword? }
-  // Giới hạn 10 lần / phút (chống dò mật khẩu hiện tại)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @UseGuards(JwtAuthGuard)
-  @Put('me')
-  updateMe(@CurrentUser() user: AuthUser, @Body() body: any) {
-    return this.auth.updateProfile(user, body);
+  @Get("me")
+  @UseGuards(SessionGuard)
+  @ApiCookieAuth()
+  @ApiOperation({ summary: "Get the current authenticated user" })
+  me(@AuthContext() context: NonNullable<AuthenticatedRequest["auth"]>) {
+    return { user: context.user, expiresAt: context.sessionExpiresAt };
   }
 
-  // Danh sách thành viên cùng doanh nghiệp
-  @UseGuards(JwtAuthGuard)
-  @Get('members')
-  members(@CurrentUser() user: AuthUser) {
-    return this.auth.listMembers(user);
+  private setSessionCookie(response: Response, token: string, expiresAt: Date): void {
+    response.cookie(SESSION_COOKIE_NAME, token, {
+      ...this.cookieOptions(),
+      expires: expiresAt
+    });
   }
 
-  // Admin thêm thành viên: { email, password, fullName, role: ADMIN|OPERATIONS|LEGAL|PM }
-  @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN')
-  @Post('members')
-  addMember(@CurrentUser() user: AuthUser, @Body() body: any) {
-    return this.auth.createMember(user, body);
+  private cookieOptions() {
+    return {
+      httpOnly: true,
+      secure: this.config.getOrThrow("NODE_ENV", { infer: true }) === "production",
+      sameSite: "strict" as const,
+      path: "/api/v1"
+    };
   }
 }

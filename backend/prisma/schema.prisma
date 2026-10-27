@@ -1,334 +1,343 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-// --- BẢNG DỮ LIỆU CỐT LÕI (MODELS) ---
-
-// 1. Tổ chức / Doanh nghiệp (Bên thuê dịch vụ)
-model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  orgType   String   @default("BUYER") // BUYER | SUPPLIER
-  createdAt DateTime @default(now())
-
-  // Gói dịch vụ (tính theo doanh nghiệp)
-  planCode      String?   // PILOT | PAYG | STARTER | ENTERPRISE
-  planStartedAt DateTime?
-  planExpiresAt DateTime? // null với Pay as you go
-  pilotUsedAt   DateTime? // Pilot chỉ dùng 1 lần
-
-  users         User[]
-  contracts     SlaContract[]  @relation("ClientContracts")
-  provider      Provider?
-  notifications Notification[]
-  payments      PaymentTransaction[]
+enum OrganizationType {
+  CUSTOMER
+  PROVIDER
+  OTHER
 }
 
-// 2. Thành viên trong tổ chức (Phân quyền)
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum AgreementStatus {
+  DRAFT
+  AWAITING_COUNTERPARTY
+  AWAITING_SIGNATURES
+  ANCHOR_PENDING
+  ANCHOR_CONFIRMED
+  ANCHOR_FAILED
+  REJECTED
+  CANCELLED
+}
+
+enum SignatureCollectionStatus {
+  NOT_STARTED
+  PENDING
+  PARTIAL
+  COMPLETE
+  INVALIDATED
+}
+
+enum AnchorTransactionStatus {
+  NOT_QUEUED
+  QUEUED
+  SUBMISSION_UNCERTAIN
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  REPLACED
+  RECONCILIATION_REQUIRED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum AgreementPartyRole {
+  BUYER
+  SUPPLIER
+}
+
+enum AgreementSignatureParty {
+  BUYER
+  SUPPLIER
+}
+
 model User {
-  id               String    @id @default(uuid())
-  email            String    @unique
-  passwordHash     String
-  fullName         String
-  jobTitle         String? // Chức vụ (VD: Giám đốc điều hành)
-  role             String    @default("OPERATIONS") // Đã đổi thành String
-  isActive         Boolean   @default(true)
-  failedLoginCount Int       @default(0) // Số lần sai mật khẩu liên tiếp
-  lockedUntil      DateTime? // Khóa tạm đến thời điểm này
-  organizationId   String
-
-  organization Organization @relation(fields: [organizationId], references: [id])
-  createdAt    DateTime     @default(now())
+  id                 String                @id @default(uuid()) @db.Uuid
+  email              String                @unique @db.VarChar(320)
+  passwordHash       String                @db.VarChar(255)
+  displayName        String                @db.VarChar(120)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  memberships        Membership[]
+  sessions           Session[]
+  agreements         Agreement[]           @relation("AgreementCreator")
+  versions           AgreementVersion[]
+  auditEvents        AuditEvent[]
+  invitationsSent    AgreementInvitation[] @relation("InvitationSentBy")
+  invitationsDecided AgreementInvitation[] @relation("InvitationDecidedBy")
+  authorizedSigners  AuthorizedSigner[]
+  signerChallenges   SignerChallenge[]
 }
 
-// 3. Nhà cung cấp dịch vụ (Marketplace)
-model Provider {
-  id             String           @id @default(uuid())
-  name           String           @unique
-  serviceType    String
-  reputation     Int              @default(100) // Điểm uy tín
-  stakedAmount   Float            @default(0) // Ký quỹ SLAD
-  isVerified     Boolean          @default(false)
-  description    String? // Giới thiệu nhà cung cấp (Marketplace)
-  website        String?
-  organizationId String?          @unique // Tài khoản doanh nghiệp của nhà cung cấp
-  organization   Organization?    @relation(fields: [organizationId], references: [id])
-  listings       ServiceListing[]
-  createdAt      DateTime         @default(now())
+model Organization {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  name                String                 @db.VarChar(160)
+  organizationType    OrganizationType
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  memberships         Membership[]
+  agreements          Agreement[]
+  auditEvents         AuditEvent[]
+  invitationsSent     AgreementInvitation[]  @relation("InvitationInviterOrganization")
+  invitationsReceived AgreementInvitation[]  @relation("InvitationInvitedOrganization")
+  participants        AgreementParticipant[]
+  authorizedSigners   AuthorizedSigner[]
+  signerChallenges    SignerChallenge[]
+  buyerSnapshots      SigningSnapshot[]      @relation("SigningSnapshotBuyerOrganization")
+  supplierSnapshots   SigningSnapshot[]      @relation("SigningSnapshotSupplierOrganization")
 
-  contracts SlaContract[] @relation("ProviderContracts")
+  @@index([createdAt])
 }
 
-// 4. Hợp đồng SLA
-model SlaContract {
-  id           String @id @default(uuid())
-  contractCode String @unique // Mã HĐ, VD: SLA-1029
-  contractName String? // Tên hợp đồng do hai bên đặt để quản lý, tìm kiếm (nhãn, không nằm trong hash)
+model Membership {
+  id             String         @id @default(uuid()) @db.Uuid
+  userId         String         @db.Uuid
+  organizationId String         @db.Uuid
+  role           MembershipRole @default(MEMBER)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  // Relations
-  clientId   String
-  client     Organization @relation("ClientContracts", fields: [clientId], references: [id])
-  providerId String
-  provider   Provider     @relation("ProviderContracts", fields: [providerId], references: [id])
-
-  // Điều khoản KPI
-  serviceName            String
-  uptimeTarget           Float // VD: 99.99
-  responseMaxMs          Int // Thời gian phản hồi tối đa (ms)
-  penaltyRule            String // Mô tả luật phạt
-  challengeWindowSeconds Int       @default(172800) // Thời hạn phản đối riêng (mặc định 48h)
-  templateCode           String? // Template gốc (CLOUD_HOSTING, IT_SUPPORT...)
-  hashVersion            Int       @default(1) // 2 = hash gồm cả điều khoản KPI
-  additionalConditions   String[]  @default([]) // Điều kiện bổ sung hai bên tự thống nhất (không đo tự động, có trong hash từ hashVersion 3)
-  terminationAlert       Json?     // Cảnh báo đủ điều kiện chấm dứt: Uptime < 95% trong 2 tháng liên tiếp
-  contractValueVnd       Float?    // Giá trị hợp đồng (VNĐ/tháng), cơ sở quy % hoàn phí ra tiền (hash từ v4)
-  effectiveFrom          DateTime? // Ngày hiệu lực (00:00 giờ VN)
-  effectiveTo            DateTime? // Ngày hết hạn (hết 23:59:59 giờ VN)
-  penaltyCap             Json?     // Trần phạt 8% tổng giá trị HĐ: { warnedLevels, percent, appliedVnd, reachedAt }
-  termsVersion           Int       @default(1) // Phiên bản điều khoản (tăng mỗi lần sửa khi chờ ký)
-  termsUpdatedAt         DateTime?
-  termsUpdatedById       String?
-
-  status String @default("ACTIVE") // Đã đổi thành String
-
-  // Dấu vân tay Web3
-  slaHash String? // keccak256 dữ liệu SLA (đối chiếu với on-chain)
-  txHash  String? // Mã giao dịch trên Polygon Amoy
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  oracleConfigs OracleConfig[]
-  eventLogs     SlaEventLog[]
-  violations    ViolationCase[]
-  kpis          SlaKpi[]
-  signatures    ContractSignature[]
-  tickets       Ticket[]
+  @@unique([userId, organizationId])
+  @@index([organizationId, role])
 }
 
-// 5. Cấu hình tích hợp Oracle
-model OracleConfig {
-  id         String      @id @default(uuid())
-  contractId String
-  contract   SlaContract @relation(fields: [contractId], references: [id])
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @db.Char(64)
+  userId    String    @db.Uuid
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  sourceType   String // Đã đổi thành String (DATADOG, CLOUDWATCH, CUSTOM_WEBHOOK)
-  endpointUrl  String?
-  apiKeySecret String? // Cần mã hóa trước khi lưu
-  isActive     Boolean  @default(true)  // false = đã gỡ nguồn này
-  paused       Boolean  @default(false) // tạm dừng giám sát (giữ cấu hình)
-  lastProbedAt DateTime?               // lần đo gần nhất (chu kỳ đo theo gói)
-  createdAt    DateTime @default(now())
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
 }
 
-// 6. Nhật ký sự kiện từ Oracle (Logs)
-model SlaEventLog {
-  id         String      @id @default(uuid())
-  contractId String
-  contract   SlaContract @relation(fields: [contractId], references: [id])
+model Agreement {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  reference           String                    @unique @db.VarChar(32)
+  ownerOrganizationId String                    @db.Uuid
+  createdByUserId     String                    @db.Uuid
+  status              AgreementStatus           @default(DRAFT)
+  signatureStatus     SignatureCollectionStatus @default(NOT_STARTED)
+  blockchainStatus    AnchorTransactionStatus   @default(NOT_QUEUED)
+  version             Int                       @default(1)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  ownerOrganization   Organization              @relation(fields: [ownerOrganizationId], references: [id], onDelete: Restrict)
+  createdBy           User                      @relation("AgreementCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  versions            AgreementVersion[]
+  invitations         AgreementInvitation[]
+  participants        AgreementParticipant[]
+  signingSnapshots    SigningSnapshot[]
 
-  kpiCode     String // VD: "UPTIME_CHECK", "LATENCY_SPIKE"
-  metricValue Float? // Giá trị thực tế đo được (VD: 98.5%)
-  isUp        Boolean? // HTTP_PROBE: dịch vụ sống/chết
-  latencyMs   Int? // HTTP_PROBE: thời gian phản hồi (ms)
-  isViolation Boolean  @default(false)
-  description String?
-
-  // Dấu vân tay sự kiện trên Polygon
-  eventTxHash String?
-
-  timestamp DateTime @default(now())
+  @@index([ownerOrganizationId, status, updatedAt])
+  @@index([ownerOrganizationId, createdAt])
 }
 
-// 7. Vụ vi phạm SLA + Challenge Window (Automated but Contestable)
-model ViolationCase {
-  id         String      @id @default(uuid())
-  contractId String
-  contract   SlaContract @relation(fields: [contractId], references: [id])
+model AgreementVersion {
+  id                      String            @id @default(uuid()) @db.Uuid
+  agreementId             String            @db.Uuid
+  version                 Int
+  actorUserId             String            @db.Uuid
+  name                    String            @db.VarChar(160)
+  serviceDescription      String            @db.VarChar(4000)
+  counterpartyDisplayName String            @db.VarChar(160)
+  uptimeTargetPercent     Decimal           @db.Decimal(5, 2)
+  responseTimeTargetMs    Int
+  measurementWindowHours  Int
+  exclusions              String[]          @default([])
+  notes                   String?           @db.VarChar(2000)
+  createdAt               DateTime          @default(now())
+  agreement               Agreement         @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  actor                   User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  snapshots               SigningSnapshot[]
 
-  kpiCode     String // VD: "UPTIME"
-  targetValue Float // KPI cam kết (VD: 99.9)
-  actualValue Float // KPI đo được (VD: 98.7)
-  creditBps   Int // Service credit đề xuất, basis point (500 = 5%)
-  creditVndApplied Float? // Số tiền hoàn thực áp sau khi xét trần 8% (chỉ vụ đã chốt)
-
-  evidenceHash      String   @unique // keccak256 bằng chứng, ghi lên contract
-  status            String   @default("PENDING") // PENDING | CHALLENGED | SETTLED
-  challengeDeadline DateTime // Hết hạn cửa sổ phản đối
-
-  challengedBy       String? // "BUYER" | "SUPPLIER"
-  challengedById     String? // Người dùng đã bấm phản đối
-  challengeReason    String?
-  resolution         String? // UPHOLD | DISMISS (admin xử lý phản đối)
-  resolutionNote     String?
-  resolvedById       String?
-  resolvedAt         DateTime?
-  deadlineNotifiedAt DateTime? // Đã nhắc sắp hết hạn phản đối
-
-  // Dấu vết trên Polygon cho từng bước
-  recordTxHash    String? // recordViolation
-  challengeTxHash String? // challenge
-  settleTxHash    String? // settle
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@unique([agreementId, version])
+  @@index([agreementId, version(sort: Desc)])
+  @@index([actorUserId, createdAt])
 }
 
-// 8. KPI linh hoạt của từng hợp đồng (SLA Builder)
-model SlaKpi {
-  id         String      @id @default(uuid())
-  contractId String
-  contract   SlaContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+model AgreementInvitation {
+  id                    String           @id @default(uuid()) @db.Uuid
+  agreementId           String           @db.Uuid
+  agreementVersion      Int
+  inviterOrganizationId String           @db.Uuid
+  invitedOrganizationId String           @db.Uuid
+  invitedByUserId       String           @db.Uuid
+  decidedByUserId       String?          @db.Uuid
+  status                InvitationStatus @default(PENDING)
+  expiresAt             DateTime
+  acceptedAt            DateTime?
+  createdAt             DateTime         @default(now())
+  agreement             Agreement        @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  inviterOrganization   Organization     @relation("InvitationInviterOrganization", fields: [inviterOrganizationId], references: [id], onDelete: Restrict)
+  invitedOrganization   Organization     @relation("InvitationInvitedOrganization", fields: [invitedOrganizationId], references: [id], onDelete: Restrict)
+  invitedBy             User             @relation("InvitationSentBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+  decidedBy             User?            @relation("InvitationDecidedBy", fields: [decidedByUserId], references: [id], onDelete: Restrict)
 
-  kpiCode       String // UPTIME | RESPONSE_TIME | FIRST_RESPONSE | RESOLUTION_TIME | INCIDENT_RESPONSE
-  name          String
-  unit          String // %, ms, phút, giờ
-  comparator    String // GTE (càng cao càng tốt) | LTE (càng thấp càng tốt)
-  target        Float // Ngưỡng cam kết
-  dataSource    String // HTTP_CHECK | WEBHOOK | JIRA
-  windowMinutes Int // Kỳ đo (mặc định 30 ngày)
-  exclusions    Json   @default("[]") // Khung loại trừ hằng tuần
-  creditTiers   Json // Các bậc service credit
-  minPercent    Float? // KPI ticket: % ticket tối thiểu phải đạt ngưỡng
-
-  createdAt DateTime @default(now())
-
-  @@unique([contractId, kpiCode])
+  @@unique([agreementId, agreementVersion])
+  @@index([invitedOrganizationId, status, expiresAt])
+  @@index([inviterOrganizationId, createdAt])
 }
 
-// 9. Thông báo trong web (Dify soạn nội dung + gửi email)
-model Notification {
-  id             String       @id @default(uuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  contractId     String?
-  violationId    String?
-  type           String // VIOLATION_OPENED | DEADLINE_SOON | CHALLENGED | SETTLED | RESOLVED
-  title          String
-  message        String
-  aiGenerated    Boolean      @default(false) // true = do Dify soạn
-  emailStatus    String? // SENT | FAILED | SKIPPED
-  readAt         DateTime?
+model AgreementParticipant {
+  id                 String             @id @default(uuid()) @db.Uuid
+  agreementId        String             @db.Uuid
+  agreementVersion   Int
+  organizationId     String             @db.Uuid
+  role               AgreementPartyRole
+  authorizedSignerId String?            @db.Uuid
+  acceptedAt         DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+  agreement          Agreement          @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  authorizedSigner   AuthorizedSigner?  @relation(fields: [authorizedSignerId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, agreementVersion, organizationId])
+  @@unique([agreementId, agreementVersion, role])
+  @@index([organizationId, acceptedAt])
+}
+
+model AuthorizedSigner {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  organizationId       String                 @db.Uuid
+  userId               String                 @db.Uuid
+  address              String                 @db.VarChar(42)
+  verifiedAt           DateTime               @default(now())
+  revokedAt            DateTime?
+  createdAt            DateTime               @default(now())
+  organization         Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signatures           AgreementSignature[]
+  selectedParticipants AgreementParticipant[]
+  buyerSnapshots       SigningSnapshot[]      @relation("SigningSnapshotBuyerSigner")
+  supplierSnapshots    SigningSnapshot[]      @relation("SigningSnapshotSupplierSigner")
+
+  @@unique([organizationId, address])
+  @@index([organizationId, revokedAt])
+}
+
+model SignerChallenge {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  address        String       @db.VarChar(42)
+  nonce          String       @unique @db.Char(64)
+  expiresAt      DateTime
+  consumedAt     DateTime?
   createdAt      DateTime     @default(now())
-
-  @@index([organizationId, createdAt])
-}
-
-// 10. Chữ ký điện tử EIP-712 của 2 bên
-model ContractSignature {
-  id             String      @id @default(uuid())
-  contractId     String
-  contract       SlaContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  party          String // BUYER | SUPPLIER
-  organizationId String
-
-  declaredWallet String? // Ví người ký đã khai báo
-  declaredById   String?
-  declaredAt     DateTime?
-
-  method        String? // EIP712 (OTP: làm sau)
-  signature     String? // Chữ ký từ ví
-  signerAddress String? // Địa chỉ khôi phục từ chữ ký
-  typedData     Json? // Nội dung đã ký (để ai cũng kiểm chứng lại được)
-  signedById    String?
-  signedAt      DateTime?
-  ip            String?
-  userAgent     String?
-  signerEmail   String? // Email người ký (OTP)
-  otpHash       String? // Bản băm mã OTP (không lưu mã gốc)
-  otpExpiresAt  DateTime?
-  otpAttempts   Int       @default(0)
-  otpSentAt     DateTime?
-  otpUserId     String? // Người đã yêu cầu mã
-
-  createdAt DateTime @default(now())
-
-  @@unique([contractId, party])
-}
-
-// 11. Ticket + khung chat tích hợp sẵn
-model Ticket {
-  id              String          @id @default(uuid())
-  contractId      String
-  contract        SlaContract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  kind            String // NEGOTIATION | SUPPORT
-  source          String          @default("BUILT_IN") // BUILT_IN | WEBHOOK
-  externalId      String? // Mã ticket bên ngoài (VD: SUP-12)
-  title           String
-  status          String          @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CLOSED
-  createdById     String
-  createdByParty  String
-  firstResponseAt DateTime?
-  resolvedAt      DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  messages        TicketMessage[]
-
-  @@unique([contractId, externalId])
-  @@index([contractId, kind])
-}
-
-model TicketMessage {
-  id          String   @id @default(uuid())
-  ticketId    String
-  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  authorId    String
-  authorParty String
-  authorName  String
-  body        String
-  createdAt   DateTime @default(now())
-
-  @@index([ticketId, createdAt])
-}
-
-// 12. Dịch vụ nhà cung cấp đăng lên Marketplace (phải được admin duyệt)
-model ServiceListing {
-  id                   String    @id @default(uuid())
-  providerId           String
-  provider             Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  title                String
-  category             String
-  description          String
-  website              String?
-  priceNote            String?
-  challengeWindowHours Float
-  kpis                 Json // KPI cam kết (cùng định dạng SLA Builder)
-  additionalConditions String[]  @default([]) // Điều kiện bổ sung gợi ý cho hợp đồng
-  status               String    @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED
-  rejectReason         String?
-  createdById          String
-  submittedAt          DateTime?
-  reviewedAt           DateTime?
-  reviewedById         String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  @@index([status])
-}
-
-// 13. Giao dịch gói dịch vụ (demo, không thu tiền thật). idempotencyKey chống ghi trùng.
-model PaymentTransaction {
-  id             String       @id @default(uuid())
-  organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userId         String?
-  kind           String       // SUBSCRIPTION | PER_CONTRACT
-  planCode       String
-  amountVnd      Int
-  status         String       @default("PAID")
-  idempotencyKey String       @unique
-  contractId     String?
-  description    String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, expiresAt])
+}
+
+model SigningSnapshot {
+  id                         String                    @id @default(uuid()) @db.Uuid
+  agreementId                String                    @db.Uuid
+  version                    Int
+  buyerOrganizationId        String                    @db.Uuid
+  supplierOrganizationId     String                    @db.Uuid
+  buyerSigner                String                    @db.VarChar(42)
+  supplierSigner             String                    @db.VarChar(42)
+  buyerAuthorizedSignerId    String                    @db.Uuid
+  supplierAuthorizedSignerId String                    @db.Uuid
+  canonicalPayload           String                    @db.Text
+  snapshotHash               String                    @db.Char(66)
+  agreementKey               String                    @unique @db.Char(66)
+  nonce                      BigInt                    @default(0)
+  validUntil                 DateTime
+  signatureStatus            SignatureCollectionStatus @default(PENDING)
+  invalidatedAt              DateTime?
+  createdAt                  DateTime                  @default(now())
+  agreement                  Agreement                 @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  versionRecord              AgreementVersion          @relation(fields: [agreementId, version], references: [agreementId, version], onDelete: Restrict)
+  buyerOrganization          Organization              @relation("SigningSnapshotBuyerOrganization", fields: [buyerOrganizationId], references: [id], onDelete: Restrict)
+  supplierOrganization       Organization              @relation("SigningSnapshotSupplierOrganization", fields: [supplierOrganizationId], references: [id], onDelete: Restrict)
+  buyerAuthorizedSigner      AuthorizedSigner          @relation("SigningSnapshotBuyerSigner", fields: [buyerAuthorizedSignerId], references: [id], onDelete: Restrict)
+  supplierAuthorizedSigner   AuthorizedSigner          @relation("SigningSnapshotSupplierSigner", fields: [supplierAuthorizedSignerId], references: [id], onDelete: Restrict)
+  signatures                 AgreementSignature[]
+  anchorIntent               AnchorIntent?
+
+  @@unique([agreementId, version])
+  @@index([buyerOrganizationId, createdAt])
+  @@index([supplierOrganizationId, createdAt])
+}
+
+model AgreementSignature {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  snapshotId         String                  @db.Uuid
+  party              AgreementSignatureParty
+  authorizedSignerId String                  @db.Uuid
+  signerAddress      String                  @db.VarChar(42)
+  signature          String                  @db.VarChar(132)
+  digest             String                  @db.Char(66)
+  submittedAt        DateTime                @default(now())
+  snapshot           SigningSnapshot         @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  authorizedSigner   AuthorizedSigner        @relation(fields: [authorizedSignerId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, party])
+  @@index([authorizedSignerId, submittedAt])
+}
+
+model AnchorIntent {
+  id              String                  @id @default(uuid()) @db.Uuid
+  snapshotId      String                  @unique @db.Uuid
+  idempotencyKey  String                  @unique @db.VarChar(64)
+  status          AnchorTransactionStatus @default(QUEUED)
+  attemptCount    Int                     @default(0)
+  relayerNonce    BigInt?
+  transactionChainId Int?
+  relayerAddress  String?                 @db.VarChar(42)
+  signedTransaction String?               @db.Text
+  transactionHash String?                 @unique @db.VarChar(66)
+  replacementHash String?                 @db.VarChar(66)
+  lastError       String?                 @db.VarChar(2000)
+  leaseOwner      String?                 @db.VarChar(120)
+  leaseUntil      DateTime?
+  submittedAt     DateTime?
+  confirmedAt     DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  snapshot        SigningSnapshot         @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@index([status, leaseUntil, createdAt])
+  @@unique([transactionChainId, relayerAddress, relayerNonce])
+}
+
+model AuditEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  actorUserId    String       @db.Uuid
+  organizationId String       @db.Uuid
+  resourceType   String       @db.VarChar(40)
+  resourceId     String       @db.VarChar(64)
+  action         String       @db.VarChar(80)
+  metadata       Json         @default("{}")
   createdAt      DateTime     @default(now())
+  actor          User         @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, createdAt])
+  @@index([resourceType, resourceId, createdAt])
+  @@index([actorUserId, createdAt])
 }

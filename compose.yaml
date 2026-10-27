@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sladex_dev
+      POSTGRES_USER: sladex
+      POSTGRES_PASSWORD: local-dev-only
+    ports:
+      - "5432:5432"
+    volumes:
+      - sladex-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sladex -d sladex_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  postgres-test:
+    image: postgres:17-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: sladex_test
+      POSTGRES_USER: sladex_test
+      POSTGRES_PASSWORD: local-test-only
+    ports:
+      - "5433:5432"
+    volumes:
+      - sladex-postgres-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sladex_test -d sladex_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  sladex-postgres-data:
+  sladex-postgres-test-data:
