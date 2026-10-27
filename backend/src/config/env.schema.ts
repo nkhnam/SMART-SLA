@@ -10,7 +10,13 @@ const environmentSchema = z.object({
   BLOCKCHAIN_CHAIN_ID: z.coerce.number().int().min(1).optional(),
   BLOCKCHAIN_REGISTRY_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
   BLOCKCHAIN_RELAYER_PRIVATE_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
-  BLOCKCHAIN_CONFIRMATIONS: z.coerce.number().int().min(1).max(100).default(1)
+  BLOCKCHAIN_CONFIRMATIONS: z.coerce.number().int().min(1).max(100).default(1),
+  MONITORING_SECRET_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/).optional(),
+  EVIDENCE_RPC_URL: z.string().url().optional(),
+  EVIDENCE_CHAIN_ID: z.coerce.number().int().min(1).optional(),
+  EVIDENCE_REGISTRY_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+  EVIDENCE_RELAYER_PRIVATE_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
+  EVIDENCE_CONFIRMATIONS: z.coerce.number().int().min(1).max(100).default(1)
 }).superRefine((environment, context) => {
   const networkConfigured = [
     environment.BLOCKCHAIN_RPC_URL,
@@ -23,6 +29,24 @@ const environmentSchema = z.object({
       message: "BLOCKCHAIN_RPC_URL, BLOCKCHAIN_CHAIN_ID, and BLOCKCHAIN_REGISTRY_ADDRESS must be configured together",
       path: ["BLOCKCHAIN_RPC_URL"]
     });
+  }
+  const evidenceNetworkConfigured = [
+    environment.EVIDENCE_RPC_URL,
+    environment.EVIDENCE_CHAIN_ID,
+    environment.EVIDENCE_REGISTRY_ADDRESS
+  ].filter(Boolean).length;
+  if ((evidenceNetworkConfigured !== 0 && evidenceNetworkConfigured !== 3)
+    || (environment.EVIDENCE_RELAYER_PRIVATE_KEY && evidenceNetworkConfigured !== 3)
+    || (evidenceNetworkConfigured === 3 && !environment.EVIDENCE_RELAYER_PRIVATE_KEY)) {
+    context.addIssue({
+      code: "custom",
+      message: "EVIDENCE_RPC_URL, EVIDENCE_CHAIN_ID, and EVIDENCE_REGISTRY_ADDRESS must be configured together with EVIDENCE_RELAYER_PRIVATE_KEY",
+      path: ["EVIDENCE_RPC_URL"]
+    });
+  }
+  if (environment.BLOCKCHAIN_RELAYER_PRIVATE_KEY && environment.EVIDENCE_RELAYER_PRIVATE_KEY
+    && environment.BLOCKCHAIN_RELAYER_PRIVATE_KEY.toLowerCase() === environment.EVIDENCE_RELAYER_PRIVATE_KEY.toLowerCase()) {
+    context.addIssue({ code: "custom", message: "The evidence publisher must use an account separate from the agreement relayer", path: ["EVIDENCE_RELAYER_PRIVATE_KEY"] });
   }
 });
 

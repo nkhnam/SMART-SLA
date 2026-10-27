@@ -12,7 +12,7 @@ export function configureApplication(app: INestApplication): void {
     origin: config.getOrThrow("CORS_ORIGINS", { infer: true }),
     credentials: true,
     methods: ["GET", "POST", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "X-Organization-Id", "X-SLA-CSRF"]
+    allowedHeaders: ["Content-Type", "X-Organization-Id", "X-SLA-CSRF", "X-Monitoring-Timestamp", "X-Monitoring-Nonce", "X-Monitoring-Event-Id", "X-Monitoring-Signature"]
   });
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

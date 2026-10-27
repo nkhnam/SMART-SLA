@@ -8,6 +8,7 @@ import { HealthModule } from "./health/health.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { OrganizationsModule } from "./organizations/organizations.module.js";
 import { SecurityModule } from "./security/security.module.js";
+import { MonitoringModule } from "./monitoring/monitoring.module.js";
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { SecurityModule } from "./security/security.module.js";
     HealthModule,
     AuthModule,
     OrganizationsModule,
-    AgreementsModule
+    AgreementsModule,
+    MonitoringModule
   ],
   providers: [
     { provide: APP_FILTER, useClass: ApiExceptionFilter }
