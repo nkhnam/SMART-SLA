@@ -9,3 +9,7 @@
 - [Canonical agreement hashing](protocol/agreement-hashing.md) — snapshot serialization, digest and EIP-712 message rules.
 - [Signing threat model](security/signing-threat-model.md) — assets, authorization boundaries, replay protection and operational limits.
 - [Fuji deployment guide](deployment/fuji.md) — secure manual deployment and independent verification steps.
+- [Phase 2C monitoring architecture](arch/phase2c-monitoring.md) — collection, KPI policy, evidence commitments, retention and relayer separation.
+- [Evidence format v1](protocol/evidence-format.md) — canonical serialization, Merkle construction and standalone verification.
+- [Oracle threat model](security/oracle-threat-model.md) — source trust boundaries and residual risks.
+- [EvidenceRegistry deployment](deployment/evidence-registry.md) — local deployment and separate publisher configuration.

@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Add version-bound monitoring sources and observations, safe HTTP probes, authenticated provider webhooks, deterministic KPI evaluations, breach candidates, canonical evidence exports, and a separately authorized EvidenceRegistry with a durable publisher worker.
+- Add Live Workspace monitoring and source management with source trust labels, cross-source KPI comparison, observation history, evidence export, and verification status.
+- Document Phase 2C collection policy, KPI rules, evidence verification, threat boundaries, retention, and local EvidenceRegistry deployment.
 - Add a frontend-only SLA-DEX workspace with agreement, monitoring, dispute, verification, and settings previews backed by deterministic demo data.
 - Add an authenticated NestJS API, PostgreSQL persistence, immutable draft agreement versions, and a separate live workspace for agreement editing.
 - Add an isolated PostgreSQL integration test setup and a CI workflow for backend and frontend validation.
