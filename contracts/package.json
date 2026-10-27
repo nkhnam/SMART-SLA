@@ -7,6 +7,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhatMainnet",
+    "deploy:evidence:local": "hardhat run scripts/deploy-evidence.ts --network hardhatMainnet",
+    "deploy:evidence:fuji": "hardhat run scripts/deploy-evidence.ts --network avalancheFuji",
     "deploy:fuji": "hardhat run scripts/deploy.ts --network avalancheFuji"
   },
   "devDependencies": {
