@@ -17,3 +17,9 @@ The canonical manifest contains schema version, agreement ID, immutable agreemen
 ## Privacy and limits
 
 The commitment excludes endpoint URLs, webhook secrets, raw provider payloads, SLA prose, and personal information. Exported records include measurement provenance and normalized values. Verification establishes integrity relative to the publisher's commitment, not the truth, independence, or legal effect of the measurements.
+
+## Measurement and exclusions
+
+Measurement truth, source provenance, evidence integrity, an on-chain commitment, and agreement signing are distinct claims. A valid Merkle proof shows that package records match the committed root; it does not establish that a probe or provider report reflects objective service behavior. The chain records the publisher's commitment, while agreement signatures bind the parties to the canonical SLA snapshot.
+
+Free-text exclusions are not machine-verifiable maintenance semantics and are not applied to KPI calculations. Structured exclusions remain unsupported. A future implementation must bind each exclusion to explicit authorization for the signed agreement version, preserve immutable audit history, and reject retroactive changes to an anchored version.

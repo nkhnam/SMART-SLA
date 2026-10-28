@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { privateKeyToAccount } from "viem/accounts";
 
 const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
@@ -44,8 +45,19 @@ const environmentSchema = z.object({
       path: ["EVIDENCE_RPC_URL"]
     });
   }
-  if (environment.BLOCKCHAIN_RELAYER_PRIVATE_KEY && environment.EVIDENCE_RELAYER_PRIVATE_KEY
-    && environment.BLOCKCHAIN_RELAYER_PRIVATE_KEY.toLowerCase() === environment.EVIDENCE_RELAYER_PRIVATE_KEY.toLowerCase()) {
+  let agreementRelayerAddress: string | undefined;
+  let evidencePublisherAddress: string | undefined;
+  try {
+    if (environment.BLOCKCHAIN_RELAYER_PRIVATE_KEY) agreementRelayerAddress = privateKeyToAccount(environment.BLOCKCHAIN_RELAYER_PRIVATE_KEY as `0x${string}`).address.toLowerCase();
+  } catch {
+    context.addIssue({ code: "custom", message: "Invalid EVM relayer private key", path: ["BLOCKCHAIN_RELAYER_PRIVATE_KEY"] });
+  }
+  try {
+    if (environment.EVIDENCE_RELAYER_PRIVATE_KEY) evidencePublisherAddress = privateKeyToAccount(environment.EVIDENCE_RELAYER_PRIVATE_KEY as `0x${string}`).address.toLowerCase();
+  } catch {
+    context.addIssue({ code: "custom", message: "Invalid EVM relayer private key", path: ["EVIDENCE_RELAYER_PRIVATE_KEY"] });
+  }
+  if (agreementRelayerAddress && evidencePublisherAddress && agreementRelayerAddress === evidencePublisherAddress) {
     context.addIssue({ code: "custom", message: "The evidence publisher must use an account separate from the agreement relayer", path: ["EVIDENCE_RELAYER_PRIVATE_KEY"] });
   }
 });

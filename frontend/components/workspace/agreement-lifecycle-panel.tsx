@@ -58,7 +58,7 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
   }
 
   useEffect(() => {
-    if (agreement.status === "DRAFT" || agreement.status === "REJECTED" || agreement.status === "CANCELLED") return;
+    if (agreement.status === "DRAFT" || agreement.status === "AWAITING_COUNTERPARTY" || agreement.status === "REJECTED" || agreement.status === "CANCELLED") return;
     let active = true;
     void Promise.all([
       getAgreementSigning(organizationId, agreement.id),

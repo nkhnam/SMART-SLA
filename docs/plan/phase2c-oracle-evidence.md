@@ -31,3 +31,15 @@
 - Tampering invalidates hashes/proofs; local EVM anchors are authorized, unique, immutable and readable independently.
 - The Live Workspace distinguishes operator probes, provider reports, synthetic tests and fixture-only demo data.
 - Existing Phase 2A/2B migrations, APIs, tests and Demo Mode remain intact; CI claims are limited to observed GitHub results.
+
+## Phase 2C.1 acceptance status
+
+The inherited Phase 2B Playwright failures were traced to an expected duplicate-signature `409` negative path and a signer selector rendered only after wallet ownership verification; a separate pending-agreement signing request was a UI defect and is now suppressed while the agreement awaits counterparty acceptance. The regression tests assert the scoped status/payload and verification prerequisite.
+
+The UI compares evaluations only when agreement version and window boundaries match. It exposes each source's coverage, trust category and health result, plus coverage, uptime and arithmetic-mean latency differences. Low-coverage and unavailable-health comparisons are labeled `INSUFFICIENT_COMPARISON`; differences are review signals and never imply fraud.
+
+Free-text SLA exclusions remain unsupported by the KPI engine. They are not parsed as maintenance windows and cannot alter an anchored agreement's signed meaning.
+
+The complete controlled local scenario (synthetic service fixture, healthy/outage measurements, persisted PostgreSQL transitions, KPI breach candidate, evidence export, local EvidenceRegistry receipt/read-back and independent tamper rejection) is not yet wired into a reproducible command. The monitoring worker and evidence publisher failure/recovery matrices against PostgreSQL and a local EVM are also not complete. Do not mark Phase 2C accepted until those gates, the dedicated authenticated monitoring flows, and hosted browser run pass.
+
+Current repeatable checks are `cd backend && npm ci && npm run lint && npm run build && npm run typecheck && npm run test:unit && npm run test:integration && npm run test:anchor-integration && npm run test:migration-upgrade && npm audit --audit-level=high`, `cd contracts && npm ci && npm run compile && npm test && npm audit --audit-level=high`, and `cd frontend && npm ci && npm run test:api && npm run lint && npx tsc --noEmit && npm run build && npm run test:production-smoke && npm audit --audit-level=high`. The Playwright commands are run by GitHub Actions after it starts isolated PostgreSQL, a local EVM, deploys both registries, and starts the API: `npx playwright test --config=playwright.config.ts --grep "live SLA signing"`, `npx playwright test --config=playwright.config.ts --grep "expired signing authorization"`, and `npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts` from `frontend/`.

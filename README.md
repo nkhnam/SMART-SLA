@@ -37,13 +37,15 @@ npm ci
 npm run test:integration
 ```
 
+The Phase 2C checks also require the local EVM workflow described below; a full controlled HTTP-monitoring-to-evidence demonstration is not yet implemented, so Phase 2C remains unaccepted. Do not treat the existing agreement relayer fault suite as evidence-publisher recovery coverage.
+
 See [docs/arch/phase2a-backend.md](docs/arch/phase2a-backend.md) for API, data, security, and future-chain boundaries.
 
 ## Phase 2B signing and registry
 
 The Live Workspace uses the authenticated backend for invitation, wallet authorization, frozen snapshot review, signatures, anchoring and independent registry verification. Contract compilation and signing tests run on a local EVM; they do not need Fuji funds. See [the Phase 2B architecture](docs/arch/phase2b-avalanche.md), [signing threat model](docs/security/signing-threat-model.md), and [Fuji deployment guide](docs/deployment/fuji.md). Fuji deployment has not been performed and is not automatic in CI.
 
-The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Evidence registry deployments use `npm run deploy:evidence:local`; the Fuji variant requires an explicit `EVIDENCE_PUBLISHER_ADDRESS`. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend.
+The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Evidence registry deployments use `npm run deploy:evidence:local`; the Fuji variant requires an explicit `EVIDENCE_PUBLISHER_ADDRESS`. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend. Local CI E2E starts a private Hardhat chain, deploys the agreement and evidence registries, and uses test-only accounts; its successful agreement-signing flow does not yet exercise authenticated monitoring configuration, a local service outage or publisher restart recovery.
 
 `AnchorIntent` stores the signed transaction, transaction hash, chain, relayer and nonce before broadcast. Recovery checks registry state and receipt first, rebroadcasts only those same bytes while the nonce is unused, and stops for manual reconciliation if another transaction consumed the nonce. To test a Phase 2A draft upgrade plus Phase 2B constraints, set `TEST_DATABASE_URL` to an isolated database name ending in `_test`, then run `npm run test:migration-upgrade` from `backend/`; the test creates and drops a temporary sibling database.
 
@@ -66,10 +68,10 @@ npm audit --omit=dev
 
 Run `npm run build:turbopack` separately to reproduce the local Turbopack worker failure. The production smoke script checks the original 12 Phase 1 routes, page-specific content, demo labels, internal navigation targets and disabled preview actions against the built application. It does not execute browser JavaScript or inspect rendered layout.
 
-Browser automation was **NOT RUN** for the Phase 2B wallet and agreement flow. The browser tool was available, but PostgreSQL was unreachable and the frontend production build stopped with a filesystem `EPERM` error before the app could be exercised. Wallet account switching, Fuji network prompts, signature rejection, lifecycle refresh, console errors, keyboard behavior, real/Demo Mode separation and layouts at 375px, 768px and 1440px remain unverified. The HTTP smoke test is not a substitute for those browser checks.
+The Playwright suite covers the Phase 2B wallet and agreement flow and a Phase 2C live-workspace empty state. The required hosted runner also executes the inherited cases separately and the Phase 2C viewport case at 375px, 768px and 1440px. Those checks must be considered unverified until a GitHub Actions run for the current commit completes successfully. They do not cover the full authenticated monitoring, outage, evidence-export or publisher-recovery acceptance scenario.
 
 Backend checks run from `backend/`: `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm run test:integration`, and `npm audit`. Integration tests require the isolated PostgreSQL test service. Browser-only behavior and responsive rendering remain unverified.
 
 See [docs/index.md](docs/index.md) for architecture and legacy inventory.
 
-Phase 2C configuration adds `MONITORING_SECRET_ENCRYPTION_KEY` (32 random bytes encoded as 64 hex characters) and, when evidence anchoring is enabled, `EVIDENCE_RPC_URL`, `EVIDENCE_CHAIN_ID`, `EVIDENCE_REGISTRY_ADDRESS`, `EVIDENCE_RELAYER_PRIVATE_KEY`, and `EVIDENCE_CONFIRMATIONS`. The evidence relayer key must differ from the Phase 2B agreement relayer key. See the [monitoring architecture](docs/arch/phase2c-monitoring.md), [evidence format](docs/protocol/evidence-format.md), [oracle threat model](docs/security/oracle-threat-model.md), and [registry deployment guide](docs/deployment/evidence-registry.md).
+Phase 2C configuration adds `MONITORING_SECRET_ENCRYPTION_KEY` (32 random bytes encoded as 64 hex characters) and, when evidence anchoring is enabled, `EVIDENCE_RPC_URL`, `EVIDENCE_CHAIN_ID`, `EVIDENCE_REGISTRY_ADDRESS`, `EVIDENCE_RELAYER_PRIVATE_KEY`, and `EVIDENCE_CONFIRMATIONS`. Configuration rejects invalid relayer keys and rejects the publisher if its derived EVM address matches the Phase 2B agreement relayer address. See the [monitoring architecture](docs/arch/phase2c-monitoring.md), [evidence format](docs/protocol/evidence-format.md), [oracle threat model](docs/security/oracle-threat-model.md), and [registry deployment guide](docs/deployment/evidence-registry.md).

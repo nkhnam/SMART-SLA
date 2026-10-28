@@ -1,4 +1,4 @@
-name: Phase 2A
+name: Phase 2C Oracle Monitoring and Evidence
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  phase2c-validation:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,10 +56,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Install pinned browser test tools
-        working-directory: frontend
-        run: npm install --no-save --package-lock=false @playwright/test@1.64.0 viem@2.57.11
-      - name: Validate frontend
+      - name: Validate Phase 2C frontend
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
@@ -132,14 +129,30 @@ jobs:
             sleep 2
           done
           node -e 'const fs=require("node:fs");process.stderr.write(fs.readFileSync(process.env.RUNNER_TEMP+"/sladex-backend.log","utf8"));process.exit(1)'
-      - name: Run Playwright browser E2E
+      - name: Install Playwright Chromium
         working-directory: frontend
         env:
           CI: "true"
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
-        run: |
-          npx playwright install --with-deps chromium
-          npm run test:e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run inherited Phase 2B live signing regression
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+        run: npx playwright test --config=playwright.config.ts --grep "live SLA signing"
+      - name: Run inherited Phase 2B expired authorization regression
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+        run: npx playwright test --config=playwright.config.ts --grep "expired signing authorization"
+      - name: Run Phase 2C monitoring browser cases at 375, 768 and 1440 pixels
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+        run: npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts
       - name: Print relayer failure diagnostics
         if: failure()
         run: |
@@ -161,6 +174,9 @@ jobs:
             frontend/playwright-report/
             frontend/test-results/
           if-no-files-found: ignore
+      - name: Check whitespace errors
+        if: always()
+        run: git diff --check
       - name: Stop local EVM and backend
         if: always()
         run: |

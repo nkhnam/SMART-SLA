@@ -74,15 +74,21 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   test.setTimeout(180_000);
   const consoleErrors: string[] = [];
   const pageExceptions: string[] = [];
+  const clientFailures: Array<{ method: string; path: string; status: number }> = [];
+  const captureClientFailures = (target: Page) => target.on("response", (response) => {
+    if (response.status() === 404 || response.status() === 409) clientFailures.push({ method: response.request().method(), path: new URL(response.url()).pathname, status: response.status() });
+  });
   for (const target of [page]) {
     target.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
     target.on("pageerror", (error) => pageExceptions.push(error.message));
+    captureClientFailures(target);
   }
   const customer = await register(page, "buyer", "CUSTOMER");
   const providerContext = await browser.newContext({ baseURL: "http://127.0.0.1:3000" });
   const providerPage = await providerContext.newPage();
   providerPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   providerPage.on("pageerror", (error) => pageExceptions.push(error.message));
+  captureClientFailures(providerPage);
   const provider = await register(providerPage, "supplier", "PROVIDER");
 
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -168,7 +174,11 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await expect(page.getByText(`Connected ${buyerWallet.address.slice(0, 8)}`)).toBeVisible();
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
   await expect(page.getByRole("status")).toContainText("Signature submitted");
+  const duplicateSignatureResponse = page.waitForResponse((response) => response.url().endsWith(`/agreements/${agreement.id}/signatures`) && response.request().method() === "POST");
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
+  const duplicateSignature = await duplicateSignatureResponse;
+  expect(duplicateSignature.status()).toBe(409);
+  expect(await duplicateSignature.json()).toMatchObject({ error: { code: "ConflictException", message: "A signature for this organization was already recorded." }, path: `/api/v1/agreements/${agreement.id}/signatures` });
   await expect(page.locator('p[role="alert"]')).toContainText("A signature for this organization was already recorded");
   await providerPage.reload();
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 1, method: "evm_setAutomine", params: [false] } });
@@ -210,7 +220,8 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await expect(page.getByRole("link", { name: /Live workspace/ })).toBeVisible();
   await expect(page.getByText("E2E frozen uptime agreement", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "Demo Mode overflows at desktop width").toBe(true);
-  expect(consoleErrors).toEqual([]);
+  expect(consoleErrors).toEqual(["Failed to load resource: the server responded with a status of 409 (Conflict)"]);
+  expect(clientFailures).toEqual([{ method: "POST", path: `/api/v1/agreements/${agreement.id}/signatures`, status: 409 }]);
   expect(pageExceptions).toEqual([]);
   await providerContext.close();
   expect(customer.organizationId).toMatch(/^[0-9a-f-]{36}$/i);
@@ -265,12 +276,13 @@ test("expired signing authorization is rejected after successful invitation acce
   await expect(providerPage.getByRole("heading", { name: "E2E expired anchor agreement" })).toBeVisible();
   await expect(providerPage.getByText("SUPPLIER: Test Organization expired-supplier")).toBeVisible();
   await expect(providerPage.getByRole("heading", { name: "Authorize the organization signer" })).toBeVisible();
-  await expect(providerPage.getByRole("button", { name: "Select signer" })).toBeVisible();
+  await expect(providerPage.getByRole("button", { name: "Select signer" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Connect and verify wallet" }).click();
   await expect(page.getByRole("status")).toContainText("Wallet ownership verified");
   await providerPage.getByRole("button", { name: "Connect and verify wallet" }).click();
   await expect(providerPage.getByRole("status")).toContainText("Wallet ownership verified");
+  await expect(providerPage.getByRole("button", { name: "Select signer" })).toBeVisible();
   await page.getByRole("button", { name: "Select signer" }).click();
   await providerPage.getByRole("button", { name: "Select signer" }).click();
   await page.getByRole("button", { name: "Freeze version for signing" }).click();

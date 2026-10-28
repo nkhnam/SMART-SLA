@@ -16,7 +16,11 @@ Signed webhooks authenticate HMAC-SHA256 over the raw JSON body and the timestam
 
 `sla-dex-kpi/1` constructs the expected sample grid from the measurement interval and window. A scheduled slot without a valid observation is `unknown`; it is never turned into uptime or downtime. Coverage is valid slots divided by expected slots. Uptime is healthy divided by valid healthy-plus-failed slots, but is exposed only at 80% coverage. Lower coverage produces `INSUFFICIENT_DATA`. Latency is the arithmetic mean of available valid latency values; the signed SLA does not specify a percentile. A crossed target produces `BREACH_CANDIDATE`, not an adjudicated breach. Free-text exclusions are not interpreted automatically.
 
-Evaluations are idempotent per source, window, and algorithm version. The current UI compares source evaluations side by side. It does not infer fraud from source differences.
+Evaluations are idempotent per source, window, and algorithm version. The UI compares only evaluations from the selected agreement version with identical window boundaries. It shows per-source coverage, trust category and health result, along with coverage, uptime and arithmetic-mean latency differences. Fewer than two overlapping sources, coverage below 80%, or unavailable health results produces `INSUFFICIENT_COMPARISON`. Otherwise equal values produce `AGREEMENT` and differing values produce `DISAGREEMENT`. A disagreement is for review and does not imply manipulation or fraud.
+
+Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
+
+Phase 2C.1 verification status: the pending-counterparty signing request is suppressed in the UI, the inherited duplicate-signature conflict is asserted as a scoped expected `409`, the signer test waits for wallet verification, frontend source-comparison boundaries have tests, and a basic responsive live-workspace empty-state browser case is defined. A controlled PostgreSQL-to-local-EVM monitoring demo, monitoring worker concurrency/restart tests, evidence publisher fault matrix and hosted browser result remain required before acceptance.
 
 ## Evidence format
 
@@ -25,6 +29,8 @@ The export uses `sla-dex-evidence/1`, UTF-8 canonical JSON with NFC-normalized s
 The manifest binds agreement ID and immutable version, window boundaries, algorithm version, observation count, Merkle root, and the ordered observation digests. The batch digest is keccak256 of that canonical manifest. The exported verifier recomputes every leaf and proof from the package. The hash proves package integrity relative to the registered commitment; it cannot prove that the original measurement was accurate.
 
 The chain stores no endpoint URL, provider payload, SLA text, user identity, or observation body. `EvidenceRegistry` records a unique batch key, version key, Merkle root, batch digest, schema hash, window, reporter, and chain timestamp. Only the configured publisher can commit. The owner can rotate the publisher. That permission identifies an allowed reporter; it does not make the reporter a universally trusted oracle.
+
+Interpret the resulting proof in separate layers: measurement truth concerns whether the service behaved as recorded; source provenance identifies who or what reported and collected a value; evidence integrity establishes that exported records match their Merkle commitment; an on-chain commitment records the publisher's root and public metadata; agreement signing binds the parties to an immutable SLA version. None of the latter three independently proves objective measurement truth.
 
 ## Relayer and retention
 

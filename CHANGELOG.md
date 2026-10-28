@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+- Stop requesting agreement signing data while an invitation is still awaiting counterparty acceptance; assert the duplicate-signature `409` response by request and verify signer selection only after wallet ownership verification.
+- Add deterministic matching-window source comparison with coverage, health-result, uptime and latency differences; low-coverage comparisons remain explicitly insufficient and are not interpreted as fraud.
+- Pin Playwright and viem as frontend development dependencies, remove CI's temporary installation step, and add separate inherited browser regression steps plus a responsive Phase 2C empty-state case.
+- Record that free-text exclusions are unsupported calculation inputs and distinguish measurement truth, source provenance, evidence integrity, chain commitment and agreement signing.
+
+### Known incomplete acceptance
+- The controlled PostgreSQL/local-EVM monitoring outage demo, worker concurrency/restart integration tests, evidence publisher fault matrix, and hosted Phase 2C browser result remain incomplete; Phase 2C acceptance is therefore pending.
+
 ### Added
 - Add version-bound monitoring sources and observations, safe HTTP probes, authenticated provider webhooks, deterministic KPI evaluations, breach candidates, canonical evidence exports, and a separately authorized EvidenceRegistry with a durable publisher worker.
 - Add Live Workspace monitoring and source management with source trust labels, cross-source KPI comparison, observation history, evidence export, and verification status.
