@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Execute monitoring source/evidence advisory locks without deserializing PostgreSQL `void` results, fixing source and evidence creation failures on real PostgreSQL.
 - Reload the Customer agreement after Provider invitation acceptance and assert the signing-ready state before wallet verification in the expired-authorization browser regression.
 - Treat contract reverts before transaction preparation as failed anchors rather than retryable RPC outages, and refresh the Customer view after the final Provider signature before checking expired-approval rejection.
 - Scope monitoring loading state to the selected organization and agreement, remove synchronous effect updates, and ignore cancelled requests so late responses cannot replace current data or errors.
@@ -12,9 +13,10 @@
 - Record that free-text exclusions are unsupported calculation inputs and distinguish measurement truth, source provenance, evidence integrity, chain commitment and agreement signing.
 
 ### Known incomplete acceptance
-- The controlled PostgreSQL/local-EVM monitoring outage demo, worker concurrency/restart integration tests, evidence publisher fault matrix, and hosted Phase 2C browser result remain incomplete; Phase 2C acceptance is therefore pending.
+- Monitoring-worker concurrency/restart integration tests, the evidence-publisher fault matrix, and dedicated authenticated monitoring browser flows remain incomplete; the reproducible synthetic happy path does not establish full Phase 2C or production readiness.
 
 ### Added
+- Add a two-run full-stack Phase 2C acceptance command using isolated PostgreSQL and local EVMs, real bilateral signing and evidence relaying, labeled synthetic webhook reports, deterministic KPI/evidence checks, standalone tamper rejection and agreement-version isolation; retain safe artifacts in CI.
 - Add version-bound monitoring sources and observations, safe HTTP probes, authenticated provider webhooks, deterministic KPI evaluations, breach candidates, canonical evidence exports, and a separately authorized EvidenceRegistry with a durable publisher worker.
 - Add Live Workspace monitoring and source management with source trust labels, cross-source KPI comparison, observation history, evidence export, and verification status.
 - Document Phase 2C collection policy, KPI rules, evidence verification, threat boundaries, retention, and local EvidenceRegistry deployment.

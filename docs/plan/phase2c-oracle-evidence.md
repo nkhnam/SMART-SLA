@@ -32,6 +32,26 @@
 - The Live Workspace distinguishes operator probes, provider reports, synthetic tests and fixture-only demo data.
 - Existing Phase 2A/2B migrations, APIs, tests and Demo Mode remain intact; CI claims are limited to observed GitHub results.
 
+## Reproducible full-stack acceptance implementation
+
+Baseline: `e99df5193dbc6acde9b852004279e91deb31a93f`. This scenario verifies the happy path and version boundaries; it does not close the monitoring-worker or evidence-publisher reliability matrices.
+
+1. Add `backend/scripts/run-phase2c-acceptance.mjs` and a `test:phase2c-acceptance` command. Build the existing backend/contracts, create two fresh isolated databases and local EVM processes, deploy the existing registries, run the scenario once per environment, and clean up resources in `finally`. Use an optional test-only PostgreSQL URL or an ephemeral Docker PostgreSQL container. Retain only explicitly requested safe acceptance artifacts.
+2. Add `backend/test/integration/phase2c-acceptance.test.ts`. Use real HTTP authentication, organization authorization, invitation acceptance, wallet-link challenges, bilateral EIP-712 approvals and the existing AgreementRegistry relayer. Confirm the receipt and independently read the registered snapshot.
+3. Create an authorized signed-webhook source named as a synthetic acceptance fixture. Advance only the Node test process's Date clock, submit 12 fresh HMAC-authenticated reports over one signed hour (4 healthy, 4 outage, 4 recovery), and keep `PROVIDER_REPORTED` provenance. Assert exact persisted results: coverage 100%, uptime 66.67%, available-latency mean 100 ms, and one `BREACH_CANDIDATE`. Exercise invalid authentication and duplicate delivery without changing guards; retain the existing separate SSRF regressions.
+4. Build/export evidence through the API, check deterministic reconstruction and idempotency, publish through the existing EvidenceRegistry worker, and compare every public commitment field through an independent EVM client. Run `npm run verify:evidence -- <file>` against the untouched export and a copied export with one changed observation; require exits 0 and 1 respectively and unchanged original bytes/commitment.
+5. Amend the SLA through the API. Verify old sources cannot ingest into the new version, old rows/evidence remain version-bound, and mismatched observation/source versions fail PostgreSQL constraints.
+6. Document the exact command, outputs, cleanup and safe diagnostics in `docs/ref/phase2c-acceptance.md`; add the reference to the index and an additive CI step. Run two fresh scenarios and all relevant existing checks, then report actual transaction hashes, verifier results, remaining Gate 3 work and hosted CI status.
+
+Decision: use the signed-webhook boundary rather than an SSRF exception or a fixture-only database seed. A test clock avoids waiting an hour without bypassing webhook freshness checks; it does not measure a real outage. Runtime services, schemas and contracts stay unchanged unless the real scenario exposes a defect. Random database-generated IDs and ingestion timestamps mean roots can differ between fresh runs; deterministic means the same immutable export reconstructs the same root, proofs and digest.
+
+### Remaining Gate 3 reliability tasks
+
+- [ ] Exercise monitoring-worker concurrent claims, expired leases, restart recovery, duplicate schedules and collection-failure persistence against PostgreSQL.
+- [ ] Exercise the evidence-publisher crash/broadcast/RPC/nonce/confirmation/publisher-rotation and commitment-mismatch fault matrix against PostgreSQL and a local EVM.
+- [ ] Add dedicated authenticated monitoring/source-management browser flows and a real public-endpoint observation scenario without weakening SSRF restrictions.
+- [ ] Map rejected HTTP source validation errors to a suitable client error; current loopback rejection is secure but returns a generic HTTP 500.
+
 ## Phase 2C.1 acceptance status
 
 The inherited Phase 2B Playwright failures were traced to an expected duplicate-signature `409` negative path and a signer selector rendered only after wallet ownership verification; a separate pending-agreement signing request was a UI defect and is now suppressed while the agreement awaits counterparty acceptance. The regression tests assert the scoped status/payload and verification prerequisite.
@@ -40,6 +60,6 @@ The UI compares evaluations only when agreement version and window boundaries ma
 
 Free-text SLA exclusions remain unsupported by the KPI engine. They are not parsed as maintenance windows and cannot alter an anchored agreement's signed meaning.
 
-The complete controlled local scenario (synthetic service fixture, healthy/outage measurements, persisted PostgreSQL transitions, KPI breach candidate, evidence export, local EvidenceRegistry receipt/read-back and independent tamper rejection) is not yet wired into a reproducible command. The monitoring worker and evidence publisher failure/recovery matrices against PostgreSQL and a local EVM are also not complete. Do not mark Phase 2C accepted until those gates, the dedicated authenticated monitoring flows, and hosted browser run pass.
+The controlled local scenario is implemented by `backend/scripts/run-phase2c-acceptance.mjs`; its exact command, expected results, trust limits, artifacts and cleanup are in [the acceptance reference](../ref/phase2c-acceptance.md). Two fresh PostgreSQL/local-EVM runs passed with healthy/outage/recovery reports, persisted KPI/breach/evidence rows, real registry receipts/read-back, standalone verification and tamper rejection. The runtime fix uses `$executeRaw` for advisory locks whose `void` results cannot be deserialized by `$queryRaw`. The inherited hosted browser regressions passed at baseline `e99df51`. The monitoring-worker and evidence-publisher failure/recovery matrices and dedicated authenticated monitoring browser flows remain incomplete; this scenario does not establish full Phase 2C or production readiness.
 
 Current repeatable checks are `cd backend && npm ci && npm run lint && npm run build && npm run typecheck && npm run test:unit && npm run test:integration && npm run test:anchor-integration && npm run test:migration-upgrade && npm audit --audit-level=high`, `cd contracts && npm ci && npm run compile && npm test && npm audit --audit-level=high`, and `cd frontend && npm ci && npm run test:api && npm run lint && npx tsc --noEmit && npm run build && npm run test:production-smoke && npm audit --audit-level=high`. The Playwright commands are run by GitHub Actions after it starts isolated PostgreSQL, a local EVM, deploys both registries, and starts the API: `npx playwright test --config=playwright.config.ts --grep "live SLA signing"`, `npx playwright test --config=playwright.config.ts --grep "expired signing authorization"`, and `npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts` from `frontend/`.

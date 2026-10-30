@@ -51,7 +51,7 @@ export class MonitoringSourceService {
         : MonitoringTrustCategory.OPERATOR_COLLECTED;
     const now = new Date();
     const source = await this.prisma.$transaction(async (transaction) => {
-      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.organization.id}))`;
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${context.organization.id}))`;
       const sourceCount = await transaction.monitoringSource.count({ where: { organizationId: context.organization.id, enabled: true } });
       if (sourceCount >= maximumSourcesPerOrganization) throw new ConflictException("The organization has reached its active monitoring source limit.");
       const created = await transaction.monitoringSource.create({

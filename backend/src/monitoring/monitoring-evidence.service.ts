@@ -67,7 +67,7 @@ export class MonitoringEvidenceService {
     if (existing) return { ...existing, verification: { algorithm: "keccak256-prefixed-merkle-v1", root: existing.merkleRoot, independentlyVerifiable: false } };
     const anchorKey = keccak256(toBytes(canonicalJson({ agreementId, agreementVersion: manifestBase.agreementVersion, windowStart: start.toISOString(), windowEnd: end.toISOString() })));
     const batch = await this.prisma.$transaction(async (transaction) => {
-      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`${agreementId}:${manifestBase.agreementVersion}:${start.toISOString()}:${end.toISOString()}`}))`;
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${agreementId}:${manifestBase.agreementVersion}:${start.toISOString()}:${end.toISOString()}`}))`;
       const existingBatch = await transaction.evidenceBatch.findUnique({
         where: { agreementId_agreementVersion_windowStart_windowEnd: { agreementId, agreementVersion: manifestBase.agreementVersion, windowStart: start, windowEnd: end } },
         select: { id: true, agreementVersion: true, windowStart: true, windowEnd: true, schemaVersion: true, algorithmVersion: true, merkleRoot: true, batchDigest: true, observationCount: true, createdAt: true, anchorIntent: { select: { status: true, transactionChainId: true, transactionHash: true } } }

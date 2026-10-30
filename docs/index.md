@@ -13,3 +13,4 @@
 - [Evidence format v1](protocol/evidence-format.md) — canonical serialization, Merkle construction and standalone verification.
 - [Oracle threat model](security/oracle-threat-model.md) — source trust boundaries and residual risks.
 - [EvidenceRegistry deployment](deployment/evidence-registry.md) — local deployment and separate publisher configuration.
+- [Phase 2C full-stack acceptance](ref/phase2c-acceptance.md) — two fresh PostgreSQL/local-EVM runs, synthetic observations, evidence verification, tamper rejection and cleanup.

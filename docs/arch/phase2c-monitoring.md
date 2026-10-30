@@ -1,5 +1,7 @@
 # Phase 2C Oracle Monitoring and Evidence
 
+> updated 2026-10-30 · e99df51
+
 ## Scope
 
 Phase 2C collects measurements for an exact immutable agreement version, evaluates the signed uptime and response-time targets, and creates a portable integrity package. It does not resolve disputes, transfer money, or establish that a measurement is truthful.
@@ -20,7 +22,7 @@ Evaluations are idempotent per source, window, and algorithm version. The UI com
 
 Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
 
-Phase 2C.1 verification status: the pending-counterparty signing request is suppressed in the UI, the inherited duplicate-signature conflict is asserted as a scoped expected `409`, the signer test waits for wallet verification, frontend source-comparison boundaries have tests, and a basic responsive live-workspace empty-state browser case is defined. A controlled PostgreSQL-to-local-EVM monitoring demo, monitoring worker concurrency/restart tests, evidence publisher fault matrix and hosted browser result remain required before acceptance.
+The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. The existing hosted signing/monitoring browser regressions passed at baseline `e99df51`. Monitoring-worker concurrency/restart coverage, the evidence-publisher fault matrix and dedicated authenticated monitoring browser flows remain Gate 3 work; happy-path acceptance is not full Phase 2C or production readiness.
 
 ## Evidence format
 
