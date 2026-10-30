@@ -1,4 +1,5 @@
-import { IsBoolean, IsEnum, IsISO8601, IsInt, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, Matches } from "class-validator";
+import { IsBoolean, IsEnum, IsISO8601, IsInt, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, Matches, ValidateIf } from "class-validator";
+import { Type } from "class-transformer";
 import { MonitoringSourceType } from "../generated/prisma/client.js";
 
 export class CreateMonitoringSourceDto {
@@ -49,7 +50,7 @@ export class UpdateMonitoringSourceDto {
   @Max(365)
   retentionDays?: number;
 
-  @IsOptional()
+  @ValidateIf((_input: unknown, value: unknown) => value !== undefined)
   @IsBoolean()
   enabled?: boolean;
 
@@ -59,11 +60,13 @@ export class UpdateMonitoringSourceDto {
 }
 
 export class MonitoringObservationQueryDto {
+  @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(1)
   page = 1;
 
+  @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(1)

@@ -13,9 +13,11 @@ import { privateKeyToAccount } from "viem/accounts";
 
 const backend = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const contracts = resolve(backend, "../contracts");
+const frontend = resolve(backend, "../frontend");
 const workerReliability = process.argv.includes("--worker-reliability");
 const publisherReliability = process.argv.includes("--publisher-reliability");
-assert.ok(!(workerReliability && publisherReliability), "Choose one reliability mode per invocation");
+const browserMonitoring = process.argv.includes("--browser-monitoring");
+assert.ok([workerReliability, publisherReliability, browserMonitoring].filter(Boolean).length <= 1, "Choose one reliability mode per invocation");
 const outputArgument = process.argv.indexOf("--output");
 assert.ok(outputArgument > 0 && process.argv[outputArgument + 1], "Usage: npm run test:phase2c-acceptance -- --output <absolute-artifact-directory>");
 const outputRoot = process.argv[outputArgument + 1];
@@ -109,6 +111,8 @@ async function runScenario(databaseUrl, index) {
   let databaseCreated = false;
   let evm;
   let evmOutput = "";
+  let api;
+  let apiOutput = "";
   try {
     await admin.connect();
     await admin.query(`CREATE DATABASE "${databaseName}"`);
@@ -142,6 +146,22 @@ async function runScenario(databaseUrl, index) {
       EVIDENCE_RELAYER_PRIVATE_KEY: evidenceKey, EVIDENCE_CONFIRMATIONS: "1", PHASE2C_ACCEPTANCE_OUTPUT: directory
     });
     await runNode([join(backend, "node_modules/prisma/build/index.js"), "migrate", "deploy"], backend, environment, join(directory, "migrations.log"));
+    if (browserMonitoring) {
+      const apiPort = await availablePort();
+      const frontendPort = await availablePort();
+      const origin = `http://127.0.0.1:${frontendPort}`;
+      const apiBase = `http://127.0.0.1:${apiPort}/api/v1`;
+      Object.assign(environment, { PORT: String(apiPort), CORS_ORIGINS: origin, NEXT_PUBLIC_API_BASE_URL: apiBase, PLAYWRIGHT_BASE_URL: origin });
+      const frontendEnvironment = { ...environment, NODE_ENV: "production" };
+      api = child(process.execPath, [join(backend, "dist/main.js")], { cwd: backend, env: environment });
+      api.stdout.on("data", (data) => { apiOutput += String(data); });
+      api.stderr.on("data", (data) => { apiOutput += String(data); });
+      await ready("Browser test API", async () => (await fetch(`${apiBase}/auth/me`, { signal: AbortSignal.timeout(1_000) })).status === 401, api);
+      await runNode([process.env.npm_execpath, "run", "build"], frontend, frontendEnvironment, join(directory, "frontend-build.log"));
+      await runNode([join(frontend, "node_modules/@playwright/test/cli.js"), "test", "--config=playwright.config.ts", "tests/e2e/phase2c.spec.ts", "--grep", "Gate 3C", "--workers=1", "--retries=0", "--reporter=line", "--output", join(directory, "browser-results")], frontend, frontendEnvironment, join(directory, "browser.log"));
+      console.log(`Authenticated monitoring browser flows passed; diagnostics: ${directory}`);
+      return;
+    }
     if (publisherReliability) {
       await runNode(["--test", "test/integration/evidence-publisher.integration.test.ts"], backend, environment, join(directory, "test.log"));
       console.log(`Evidence publisher reliability run ${index} passed; diagnostics: ${directory}`);
@@ -151,6 +171,8 @@ async function runScenario(databaseUrl, index) {
     const summary = JSON.parse(await readFile(join(directory, "summary.json"), "utf8"));
     console.log(JSON.stringify({ run: index, ...summary }));
   } finally {
+    if (api) await stop(api);
+    if (browserMonitoring) await writeFile(join(directory, "api.log"), safeLog(apiOutput));
     if (evm) await stop(evm);
     await writeFile(join(directory, "evm.log"), safeLog(evmOutput));
     if (databaseCreated) await admin.query(`DROP DATABASE "${databaseName}" WITH (FORCE)`);
@@ -183,8 +205,8 @@ try {
     try { await client.connect(); await client.query("SELECT 1"); return true; } finally { await client.end(); }
   });
   await runNode([process.env.npm_execpath, "run", "build"], backend, { ...environment, DATABASE_URL: databaseUrl }, join(output, "backend-build.log"));
-  for (const index of [1, 2]) await runScenario(databaseUrl, index);
-  console.log(`${workerReliability ? "Monitoring reliability" : publisherReliability ? "Evidence publisher reliability" : "Phase 2C acceptance"}: 2 fresh runs passed. Safe artifacts: ${output}`);
+  for (const index of browserMonitoring ? [1] : [1, 2]) await runScenario(databaseUrl, index);
+  console.log(`${browserMonitoring ? "Monitoring browser acceptance: 1 fresh run" : `${workerReliability ? "Monitoring reliability" : publisherReliability ? "Evidence publisher reliability" : "Phase 2C acceptance"}: 2 fresh runs`} passed. ${browserMonitoring ? "Disposable test artifacts" : "Safe artifacts"}: ${output}`);
 } catch (error) {
   console.error(`Phase 2C acceptance failed (${error.name}): ${safeLog(error.message)}. Safe diagnostics: ${output}`);
   process.exitCode = 1;

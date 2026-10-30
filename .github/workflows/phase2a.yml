@@ -143,6 +143,7 @@ jobs:
           EVIDENCE_RELAYER_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
           EVIDENCE_CONFIRMATIONS: "1"
         run: |
+          export MONITORING_SECRET_ENCRYPTION_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
           nohup npm start </dev/null > "$RUNNER_TEMP/sladex-backend.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/sladex-backend.pid"
           for attempt in $(seq 1 60); do
@@ -163,6 +164,13 @@ jobs:
           CI: "true"
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
         run: npx playwright test --config=playwright.config.ts --grep "live SLA signing"
+      - name: Run authenticated monitoring and source management browser flows
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+          DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+        run: npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts --grep "Gate 3C" --retries=0
       - name: Run inherited Phase 2B expired authorization regression
         working-directory: frontend
         env:
@@ -174,7 +182,7 @@ jobs:
         env:
           CI: "true"
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
-        run: npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts
+        run: npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts --grep-invert "Gate 3C"
       - name: Print relayer failure diagnostics
         if: failure()
         run: |

@@ -16,3 +16,4 @@
 - [Phase 2C full-stack acceptance](ref/phase2c-acceptance.md) — two fresh PostgreSQL/local-EVM runs, synthetic observations, evidence verification, tamper rejection and cleanup.
 - [Monitoring worker reliability](ref/monitoring-worker-reliability.md) — Gate 3A recovery states, PostgreSQL fault matrix, lease fencing, diagnostics and remaining Gate 3B work.
 - [Evidence publisher reliability](ref/evidence-publisher-reliability.md) — Gate 3B durable transaction recovery, local-EVM fault matrix, finality checks and safe diagnostics.
+- [Authenticated monitoring browser flows](ref/monitoring-browser-flows.md) — Gate 3C real-session source management, role/version boundaries, responsive coverage and isolated reproduction.

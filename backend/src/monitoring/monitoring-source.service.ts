@@ -28,7 +28,7 @@ export class MonitoringSourceService {
       where: { agreementId, agreementVersion: agreement.version },
       orderBy: { createdAt: "asc" }
     });
-    return sources.map((source) => this.sourceView(source, context.organization.id));
+    return sources.map((source) => this.sourceView(source, context.organization));
   }
 
   async createSource(context: OrganizationAuthContext, agreementId: string, input: CreateMonitoringSourceDto) {
@@ -41,7 +41,7 @@ export class MonitoringSourceService {
     if (input.type === MonitoringSourceType.SIGNED_WEBHOOK && input.endpointUrl) {
       throw new BadRequestException("A signed webhook source does not configure an endpoint URL.");
     }
-    const endpointUrl = input.endpointUrl ? validateEndpointUrl(input.endpointUrl).toString() : null;
+    const endpointUrl = input.endpointUrl ? this.endpointUrl(input.endpointUrl) : null;
     const secret = input.type === MonitoringSourceType.SIGNED_WEBHOOK ? createWebhookSecret() : null;
     const encryptionKey = secret ? this.getEncryptionKey() : null;
     const trustCategory = input.type === MonitoringSourceType.SIGNED_WEBHOOK
@@ -84,7 +84,7 @@ export class MonitoringSourceService {
       return created;
     });
 
-    return { ...this.sourceView(source, context.organization.id), webhookSecret: secret };
+    return { ...this.sourceView(source, context.organization), webhookSecret: secret };
   }
 
   async updateSource(context: OrganizationAuthContext, agreementId: string, sourceId: string, input: UpdateMonitoringSourceDto) {
@@ -108,13 +108,19 @@ export class MonitoringSourceService {
     const secret = input.rotateWebhookSecret ? createWebhookSecret() : null;
     const encryptionKey = secret ? this.getEncryptionKey() : null;
     const updated = await this.prisma.$transaction(async (transaction) => {
+      if (input.enabled === true) {
+        await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${context.organization.id}))`;
+        const otherActiveSources = await transaction.monitoringSource.count({ where: { organizationId: context.organization.id, enabled: true, id: { not: source.id } } });
+        if (otherActiveSources >= maximumSourcesPerOrganization) throw new ConflictException("The organization has reached its active monitoring source limit.");
+      }
       const next = await transaction.monitoringSource.update({
         where: { id: source.id },
         data: {
           ...(input.name !== undefined ? { name: input.name.normalize("NFC").trim() } : {}),
-          ...(input.endpointUrl !== undefined ? { endpointUrl: validateEndpointUrl(input.endpointUrl).toString() } : {}),
+          ...(input.endpointUrl !== undefined ? { endpointUrl: this.endpointUrl(input.endpointUrl) } : {}),
           ...(input.intervalSeconds !== undefined ? { intervalSeconds: input.intervalSeconds } : {}),
           ...(input.retentionDays !== undefined ? { retentionDays: input.retentionDays } : {}),
+          ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
           ...((input.enabled !== undefined || input.intervalSeconds !== undefined)
             ? { nextRunAt: (input.enabled ?? source.enabled) && source.type === MonitoringSourceType.HTTP_PROBE ? nextScheduledAt(source.createdAt, input.intervalSeconds ?? source.intervalSeconds, new Date()) : null }
             : {}),
@@ -133,7 +139,7 @@ export class MonitoringSourceService {
       });
       return next;
     });
-    return { ...this.sourceView(updated, context.organization.id), webhookSecret: secret };
+    return { ...this.sourceView(updated, context.organization), webhookSecret: secret };
   }
 
   async listObservations(context: OrganizationAuthContext, agreementId: string, query: MonitoringObservationQueryDto) {
@@ -258,13 +264,14 @@ export class MonitoringSourceService {
     id: string; organizationId: string; type: MonitoringSourceType; trustCategory: MonitoringTrustCategory; name: string;
     endpointUrl: string | null; intervalSeconds: number; retentionDays: number; enabled: boolean; nextRunAt: Date | null;
     lastRunAt: Date | null; createdAt: Date;
-  }, organizationId: string) {
+  }, organization: OrganizationAuthContext["organization"]) {
     return {
       id: source.id,
       type: source.type,
       trustCategory: source.trustCategory,
       name: source.name,
-      endpointUrl: source.organizationId === organizationId ? source.endpointUrl : null,
+      endpointUrl: source.organizationId === organization.id ? source.endpointUrl : null,
+      canManage: source.organizationId === organization.id && organization.role !== MembershipRole.MEMBER,
       intervalSeconds: source.intervalSeconds,
       retentionDays: source.retentionDays,
       enabled: source.enabled,
@@ -276,6 +283,15 @@ export class MonitoringSourceService {
 
   private requireSourceAdministrator(context: OrganizationAuthContext): void {
     if (context.organization.role === MembershipRole.MEMBER) throw new ForbiddenException("Only an organization OWNER or ADMIN can configure monitoring sources.");
+  }
+
+  private endpointUrl(value: string): string {
+    try {
+      return validateEndpointUrl(value).toString();
+    } catch (error) {
+      if (error instanceof TypeError) throw new BadRequestException(error.message);
+      throw error;
+    }
   }
 
   private getEncryptionKey(): Buffer {

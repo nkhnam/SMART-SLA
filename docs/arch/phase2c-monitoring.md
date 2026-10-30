@@ -1,6 +1,6 @@
 # Phase 2C Oracle Monitoring and Evidence
 
-> updated 2026-10-30 · 79aa99f
+> updated 2026-10-30 · 716b76d
 
 ## Scope
 
@@ -24,7 +24,7 @@ Evaluations are idempotent per source, window, and algorithm version. The UI com
 
 Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
 
-The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency/crash/lease recovery and evidence-publisher failure/finality recovery have separate PostgreSQL reliability commands. Dedicated authenticated monitoring-management browser flows and a real public-endpoint observation scenario remain separate acceptance work; these checks do not establish full Phase 2C or production readiness.
+The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency/crash/lease recovery and evidence-publisher failure/finality recovery have separate PostgreSQL reliability commands. The [authenticated monitoring browser flows](../ref/monitoring-browser-flows.md) cover source lifecycle, role/organization/version boundaries, sparse KPI results, evidence export and responsive layouts. A real public-endpoint observation scenario remains separate acceptance work; these checks do not establish full Phase 2C or production readiness.
 
 ## Evidence format
 
