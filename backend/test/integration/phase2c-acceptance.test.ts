@@ -18,6 +18,7 @@ import { evidenceRegistryAbi } from "../../dist/monitoring/evidence-registry.abi
 import { MonitoringWorkerService } from "../../dist/monitoring/monitoring-worker.service.js";
 import { MonitoringRetentionService } from "../../dist/monitoring/monitoring-retention.service.js";
 import { buildMerkleEntries } from "../../dist/monitoring/evidence-protocol.js";
+import { runPublicHttpsAcceptance } from "./public-https.live.ts";
 
 type Actor = { cookie: string; organizationId: string };
 type Source = { id: string; createdAt: string; trustCategory: string; webhookSecret: string };
@@ -28,7 +29,8 @@ type Package = {
   verification: { valid: boolean; recordsVerified: number };
 };
 
-test("synthetic provider reports persist, breach, commit, verify, reject tampering and remain version-scoped", { timeout: 120_000 }, async (t) => {
+const publicHttps = process.env.PHASE2C_PUBLIC_HTTPS === "1";
+test(publicHttps ? "real public HTTPS observations persist, evaluate, export and verify without a transport override" : "synthetic provider reports persist, breach, commit, verify, reject tampering and remain version-scoped", { timeout: publicHttps ? 240_000 : 120_000 }, async (t) => {
   assert.equal(process.env.NODE_ENV, "test");
   assert.match(new URL(process.env.DATABASE_URL!).pathname, /^\/phase2c_[a-f0-9]{32}_test$/);
   const rpcUrl = new URL(process.env.BLOCKCHAIN_RPC_URL!);
@@ -80,7 +82,7 @@ test("synthetic provider reports persist, breach, commit, verify, reject tamperi
     }
     const customer = await register("CUSTOMER");
     const provider = await register("PROVIDER");
-    const terms = { name: "Synthetic acceptance SLA", serviceDescription: "Controlled provider-reported healthy/outage/recovery fixture; not independent measurement", counterpartyDisplayName: "Synthetic Provider", terms: { uptimeTargetPercent: 99, responseTimeTargetMs: 200, measurementWindowHours: 1, exclusions: [] } };
+    const terms = { name: publicHttps ? "Real public HTTPS acceptance SLA" : "Synthetic acceptance SLA", serviceDescription: publicHttps ? "Real operator HTTP probes in an isolated acceptance environment; not an independent oracle" : "Controlled provider-reported healthy/outage/recovery fixture; not independent measurement", counterpartyDisplayName: "Synthetic Provider", terms: { uptimeTargetPercent: 99, responseTimeTargetMs: 200, measurementWindowHours: 1, exclusions: [] } };
     const agreement = await api<{ id: string }>(customer, "/agreements", "POST", terms);
     const path = `/agreements/${agreement.id}`;
     const monitoring = `${path}/monitoring`;
@@ -122,6 +124,11 @@ test("synthetic provider reports persist, breach, commit, verify, reject tamperi
       assert.equal(record.version, 1n);
       assert.ok(record.registeredAt > 0n);
     });
+    if (publicHttps) {
+      stage = "real public HTTPS acceptance";
+      await runPublicHttpsAcceptance({ app, api, customer, provider, path, monitoring, output, reader, snapshotHash: snapshotHash!, agreementTransaction: agreementTransaction!, terms });
+      return;
+    }
     const source = await api<Source>(provider, `${monitoring}/sources`, "POST", { type: "SIGNED_WEBHOOK", name: "SYNTHETIC acceptance fixture: healthy -> outage -> recovery", intervalSeconds: 300 });
     assert.equal(source.trustCategory, "PROVIDER_REPORTED");
     const start = new Date(source.createdAt);

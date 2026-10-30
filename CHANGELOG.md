@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- Add opt-in Gate 3D real public HTTPS acceptance through the default HTTP_PROBE worker, isolated PostgreSQL, sparse KPI evaluation, existing evidence export/local-EVM publishing, standalone tamper rejection, version isolation and explicit network-failure diagnostics; keep external-network checks outside deterministic CI.
+- Add deterministic HTTP-probe regressions for both pinned DNS callback modes, redirect DNS revalidation, HTTPS hostname preservation, HTTP/TLS/DNS errors, timeout and response-size limits.
 - Add authenticated monitoring Playwright flows against isolated PostgreSQL/local EVMs for source lifecycle, secret rotation, role/organization/version boundaries, sparse KPI evaluation, evidence download, logout and responsive layouts.
 - Add the Gate 3B two-run isolated PostgreSQL/local-EVM publisher fault matrix, including process loss, RPC uncertainty, nonce contention/replacement, persisted-byte integrity, publisher rotation, receipt finality and PostgreSQL rollback; run it with Gate 2/3A in CI.
 - Add a two-run isolated PostgreSQL monitoring-worker reliability command and CI step covering concurrent claims, process termination, expired/missing leases, stale writers, schedule idempotency and PostgreSQL transaction failures through controlled probe-boundary fixtures.
@@ -17,7 +19,8 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
-- Document monitoring-worker and evidence-publisher recovery states and authenticated monitoring browser diagnostics; a real public-endpoint observation scenario remains separate, and the current checks do not establish full Phase 2C or production readiness.
+- Replace stale README acceptance/browser-coverage statements with implemented gate references, trust limits, reproduction commands and remaining Fuji prerequisites.
+- Document monitoring-worker and evidence-publisher recovery states, authenticated monitoring browser diagnostics and separate opt-in real HTTPS acceptance; the current checks do not establish full Phase 2C or production readiness.
 - Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
 - Discover mined same-nonce replacements within a bounded 128-block scan, preserve uncertainty for unidentified pending replacements, and route consumed nonces without a match to manual reconciliation.
 - Add the PostgreSQL/local-EVM relayer fault matrix and Playwright wallet-flow suite to the existing hosted workflow; the new integration and browser suites still require a hosted run for verification.
@@ -31,6 +34,7 @@
 - Remove the legacy NestJS/PostgreSQL backend, Polygon contracts, backend-connected frontend flows, and AISC demo assets from the Phase 1 branch.
 
 ### Fixed
+- Return a one-element validated address list when Node requests `all: true` from the pinned DNS callback, fixing real HTTPS probes that previously failed with `ERR_INVALID_IP_ADDRESS` while preserving public-IP checks and TLS hostname validation.
 - Convert monitoring observation pagination query strings before validation, persist source pause/resume while preserving the concurrent active-source quota, align management controls with source ownership, return HTTP 400 for rejected endpoints, and contain agreement selectors and one-time secret notices on narrow screens.
 - Fence evidence transaction preparation, broadcast admission and state writes with per-claim leases; preserve and validate signed bytes across uncertain sends, wait for known pending transactions and reconcile consumed unknown nonces without creating replacement operations.
 - Bind evidence commitment/confirmed-nonce decisions to one canonical block snapshot and require confirmation depth for both successful and reverted receipts; compare all commitment fields and separate historical reporter identity from current publisher configuration.

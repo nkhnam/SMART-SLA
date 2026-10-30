@@ -37,7 +37,7 @@ npm ci
 npm run test:integration
 ```
 
-The Phase 2C checks also require the local EVM workflow described below; a full controlled HTTP-monitoring-to-evidence demonstration is not yet implemented, so Phase 2C remains unaccepted. Do not treat the existing agreement relayer fault suite as evidence-publisher recovery coverage.
+Phase 2C has separate reproducible gates: [Gate 2 synthetic full-stack acceptance](docs/ref/phase2c-acceptance.md), [Gate 3A worker reliability](docs/ref/monitoring-worker-reliability.md), [Gate 3B evidence-publisher recovery](docs/ref/evidence-publisher-reliability.md), [Gate 3C authenticated browser flows](docs/ref/monitoring-browser-flows.md), and [Gate 3D real public HTTPS collection](docs/ref/public-https-acceptance.md). Each uses isolated PostgreSQL; the evidence gates also use a private local EVM. These checks do not establish full Phase 2C or production readiness.
 
 See [docs/arch/phase2a-backend.md](docs/arch/phase2a-backend.md) for API, data, security, and future-chain boundaries.
 
@@ -45,7 +45,7 @@ See [docs/arch/phase2a-backend.md](docs/arch/phase2a-backend.md) for API, data, 
 
 The Live Workspace uses the authenticated backend for invitation, wallet authorization, frozen snapshot review, signatures, anchoring and independent registry verification. Contract compilation and signing tests run on a local EVM; they do not need Fuji funds. See [the Phase 2B architecture](docs/arch/phase2b-avalanche.md), [signing threat model](docs/security/signing-threat-model.md), and [Fuji deployment guide](docs/deployment/fuji.md). Fuji deployment has not been performed and is not automatic in CI.
 
-The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Evidence registry deployments use `npm run deploy:evidence:local`; the Fuji variant requires an explicit `EVIDENCE_PUBLISHER_ADDRESS`. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend. Local CI E2E starts a private Hardhat chain, deploys the agreement and evidence registries, and uses test-only accounts; its successful agreement-signing flow does not yet exercise authenticated monitoring configuration, a local service outage or publisher restart recovery.
+The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Evidence registry deployments use `npm run deploy:evidence:local`; the Fuji variant requires an explicit `EVIDENCE_PUBLISHER_ADDRESS`. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend. Local CI E2E starts a private Hardhat chain, deploys both registries and uses test-only accounts. It covers signing, synthetic monitoring/evidence, worker and publisher recovery, and authenticated monitoring configuration. Synthetic outage values are controlled inputs, not real service outages.
 
 `AnchorIntent` stores the signed transaction, transaction hash, chain, relayer and nonce before broadcast. Recovery checks registry state and receipt first, rebroadcasts only those same bytes while the nonce is unused, and stops for manual reconciliation if another transaction consumed the nonce. To test a Phase 2A draft upgrade plus Phase 2B constraints, set `TEST_DATABASE_URL` to an isolated database name ending in `_test`, then run `npm run test:migration-upgrade` from `backend/`; the test creates and drops a temporary sibling database.
 
@@ -68,9 +68,9 @@ npm audit --omit=dev
 
 Run `npm run build:turbopack` separately to reproduce the local Turbopack worker failure. The production smoke script checks the original 12 Phase 1 routes, page-specific content, demo labels, internal navigation targets and disabled preview actions against the built application. It does not execute browser JavaScript or inspect rendered layout.
 
-The Playwright suite covers the Phase 2B wallet and agreement flow and a Phase 2C live-workspace empty state. The required hosted runner also executes the inherited cases separately and the Phase 2C viewport case at 375px, 768px and 1440px. Those checks must be considered unverified until a GitHub Actions run for the current commit completes successfully. They do not cover the full authenticated monitoring, outage, evidence-export or publisher-recovery acceptance scenario.
+The Playwright suite covers Phase 2B wallet/signing regressions and Gate 3C authenticated source management, secret rotation, role/organization/version boundaries, sparse KPI evaluation and evidence download. Responsive cases run at 375px, 768px and 1440px. Use the GitHub Actions result for the exact commit as the hosted verdict. Gate 3D is an opt-in real-network command, excluded from deterministic CI; it retains DNS/network diagnostics and exits nonzero when no healthy HTTPS response was observed. See its reference for commands, provenance and limitations.
 
-Backend checks run from `backend/`: `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm run test:integration`, and `npm audit`. Integration tests require the isolated PostgreSQL test service. Browser-only behavior and responsive rendering remain unverified.
+Backend checks run from `backend/`: `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm run test:integration`, and `npm audit`. Integration tests require the isolated PostgreSQL test service. Browser and responsive verification are covered by the dedicated Playwright command and hosted workflow, with results tied to their tested commit.
 
 See [docs/index.md](docs/index.md) for architecture and legacy inventory.
 

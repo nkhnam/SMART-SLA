@@ -1,6 +1,6 @@
 # Phase 2C Oracle Monitoring and Evidence
 
-> updated 2026-10-30 · 716b76d
+> updated 2026-10-30 · 5a03b56
 
 ## Scope
 
@@ -10,7 +10,7 @@ Monitoring configuration is available only to OWNER/ADMIN members of an accepted
 
 ## Collection
 
-HTTP probes use a fixed GET request, 5-second timeout, 64 KiB response cap, standard ports, public-address DNS pinning, and redirect revalidation. Redirects cannot downgrade HTTPS. The response body is discarded. DNS answers containing any private or reserved address are rejected. A database lease and `FOR UPDATE SKIP LOCKED` claim one due source across workers; every scheduled run has a uniqueness key. Probe failures are stored as categorized observations and do not stop the API.
+HTTP probes use a fixed GET request, 5-second socket timeout, 64 KiB response cap, standard ports, public-address DNS pinning, and redirect revalidation. The pinned lookup returns either one validated address or a one-element address list when Node requests `all: true`; it never performs an unvalidated second lookup. Redirects cannot downgrade HTTPS. The response body is discarded. DNS answers containing any private or reserved address are rejected. A database lease and `FOR UPDATE SKIP LOCKED` claim one due source across workers; every scheduled run has a uniqueness key. Probe failures are stored as categorized observations and do not stop the API.
 
 Each claim uses a fresh ownership token. Terminal writes lock the source and verify its current token, PostgreSQL lease time and `RUNNING` run before atomically persisting the result. Expired or missing leases recover retained orphan runs to `FAILED` with `lease_expired` or `lease_missing`, including disabled sources and sources whose next schedule is still in the future. A lost historical measurement remains unknown; recovery never re-probes it or fabricates an observation. Internal collection/database failures remain distinct from measured HTTP failures. The [Gate 3A reliability reference](../ref/monitoring-worker-reliability.md) defines lock/expiry semantics, PostgreSQL fault tests and diagnostics.
 
@@ -24,7 +24,7 @@ Evaluations are idempotent per source, window, and algorithm version. The UI com
 
 Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
 
-The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency/crash/lease recovery and evidence-publisher failure/finality recovery have separate PostgreSQL reliability commands. The [authenticated monitoring browser flows](../ref/monitoring-browser-flows.md) cover source lifecycle, role/organization/version boundaries, sparse KPI results, evidence export and responsive layouts. A real public-endpoint observation scenario remains separate acceptance work; these checks do not establish full Phase 2C or production readiness.
+The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency/crash/lease recovery and evidence-publisher failure/finality recovery have separate PostgreSQL reliability commands. The [authenticated monitoring browser flows](../ref/monitoring-browser-flows.md) cover source lifecycle, role/organization/version boundaries, sparse KPI results, evidence export and responsive layouts. [Real public HTTPS acceptance](../ref/public-https-acceptance.md) uses the default worker and real clock, retains categorized network failures, checks deliberately missing coverage and verifies existing evidence on a local EVM. It is opt-in and excluded from deterministic CI. These checks do not establish full Phase 2C or production readiness.
 
 ## Evidence format
 

@@ -17,7 +17,8 @@ const frontend = resolve(backend, "../frontend");
 const workerReliability = process.argv.includes("--worker-reliability");
 const publisherReliability = process.argv.includes("--publisher-reliability");
 const browserMonitoring = process.argv.includes("--browser-monitoring");
-assert.ok([workerReliability, publisherReliability, browserMonitoring].filter(Boolean).length <= 1, "Choose one reliability mode per invocation");
+const publicHttps = process.argv.includes("--public-https");
+assert.ok([workerReliability, publisherReliability, browserMonitoring, publicHttps].filter(Boolean).length <= 1, "Choose one acceptance mode per invocation");
 const outputArgument = process.argv.indexOf("--output");
 assert.ok(outputArgument > 0 && process.argv[outputArgument + 1], "Usage: npm run test:phase2c-acceptance -- --output <absolute-artifact-directory>");
 const outputRoot = process.argv[outputArgument + 1];
@@ -27,6 +28,7 @@ const output = await mkdtemp(join(outputRoot, "phase2c-"));
 const runtimeHome = await mkdtemp(join(output, ".runtime-"));
 const testEnvironment = {
   ...process.env, NODE_ENV: "test", HOME: runtimeHome, USERPROFILE: runtimeHome,
+  PHASE2C_PUBLIC_HTTPS: publicHttps ? "1" : "0",
   APPDATA: join(runtimeHome, "appdata"), LOCALAPPDATA: join(runtimeHome, "localappdata"),
   XDG_CONFIG_HOME: join(runtimeHome, "config"), XDG_CACHE_HOME: join(runtimeHome, "cache"),
   TMPDIR: runtimeHome, TMP: runtimeHome, TEMP: runtimeHome, npm_config_cache: join(runtimeHome, "npm-cache")
@@ -205,8 +207,8 @@ try {
     try { await client.connect(); await client.query("SELECT 1"); return true; } finally { await client.end(); }
   });
   await runNode([process.env.npm_execpath, "run", "build"], backend, { ...environment, DATABASE_URL: databaseUrl }, join(output, "backend-build.log"));
-  for (const index of browserMonitoring ? [1] : [1, 2]) await runScenario(databaseUrl, index);
-  console.log(`${browserMonitoring ? "Monitoring browser acceptance: 1 fresh run" : `${workerReliability ? "Monitoring reliability" : publisherReliability ? "Evidence publisher reliability" : "Phase 2C acceptance"}: 2 fresh runs`} passed. ${browserMonitoring ? "Disposable test artifacts" : "Safe artifacts"}: ${output}`);
+  for (const index of browserMonitoring || publicHttps ? [1] : [1, 2]) await runScenario(databaseUrl, index);
+  console.log(`${publicHttps ? "Public HTTPS acceptance: 1 real-network run" : browserMonitoring ? "Monitoring browser acceptance: 1 fresh run" : `${workerReliability ? "Monitoring reliability" : publisherReliability ? "Evidence publisher reliability" : "Phase 2C acceptance"}: 2 fresh runs`} passed. ${browserMonitoring ? "Disposable test artifacts" : "Safe artifacts"}: ${output}`);
 } catch (error) {
   console.error(`Phase 2C acceptance failed (${error.name}): ${safeLog(error.message)}. Safe diagnostics: ${output}`);
   process.exitCode = 1;

@@ -17,3 +17,5 @@
 - [Monitoring worker reliability](ref/monitoring-worker-reliability.md) — Gate 3A recovery states, PostgreSQL fault matrix, lease fencing, diagnostics and remaining Gate 3B work.
 - [Evidence publisher reliability](ref/evidence-publisher-reliability.md) — Gate 3B durable transaction recovery, local-EVM fault matrix, finality checks and safe diagnostics.
 - [Authenticated monitoring browser flows](ref/monitoring-browser-flows.md) — Gate 3C real-session source management, role/version boundaries, responsive coverage and isolated reproduction.
+- [Real public HTTPS acceptance](ref/public-https-acceptance.md) — opt-in Gate 3D production probe, real PostgreSQL observations, missing coverage, local-EVM evidence and network diagnostics.
+- [Public HTTPS acceptance implementation record](plan/done/public-https-acceptance.md) — design, rejected alternatives, regression findings and local validation results.

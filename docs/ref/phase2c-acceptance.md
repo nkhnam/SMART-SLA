@@ -52,6 +52,6 @@ The runner stops its API/EVM processes, drops only its uniquely created database
 
 - Monitoring-worker claim contention, lease expiry, duplicate scheduling, process restart and collection-failure persistence now have the separate [Gate 3A PostgreSQL reliability command](monitoring-worker-reliability.md); run it alongside this Gate 2 scenario.
 - Evidence-publisher crash/broadcast, RPC, nonce, confirmation, publisher-rotation and durable lease recovery now have the separate [Gate 3B PostgreSQL/local-EVM reliability command](evidence-publisher-reliability.md); run it alongside Gate 2/3A.
-- Authenticated browser monitoring/source management beyond the current browser cases, and a real public-endpoint observation scenario that preserves all SSRF controls.
-- HTTP source validation currently blocks loopback URLs but maps the thrown validation error to a generic HTTP 500; improving that response is outside this signed-webhook acceptance scenario.
+- [Gate 3C authenticated browser monitoring/source management](monitoring-browser-flows.md) now covers lifecycle, roles, version boundaries, KPI evaluation and evidence download. [Gate 3D real public HTTPS acceptance](public-https-acceptance.md) separately exercises the production probe without weakening SSRF controls and stays outside deterministic CI.
+- HTTP source validation rejects loopback URLs with HTTP 400; Gate 3C covers the authenticated error response.
 - Fuji deployment, funded transactions, operational configuration and production readiness remain separate gates; this scenario performs none of them.

@@ -57,7 +57,10 @@ function requestPinned(url: URL, address: string, family: 4 | 6): Promise<HttpRe
   return new Promise((resolve, reject) => {
     const started = performance.now();
     const requestFn = url.protocol === "https:" ? httpsRequest : httpRequest;
-    const lookup: LookupFunction = (_hostname, _options, callback) => callback(null, address, family);
+    const lookup: LookupFunction = (_hostname, options, callback) => {
+      if (options.all) callback(null, [{ address, family }]);
+      else callback(null, address, family);
+    };
     const request = requestFn(url, {
       method: "GET",
       headers: { accept: "*/*", "user-agent": "SLA-DEX-Monitor/1" },
