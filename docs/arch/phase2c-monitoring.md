@@ -1,6 +1,6 @@
 # Phase 2C Oracle Monitoring and Evidence
 
-> updated 2026-10-30 · 63e47a3
+> updated 2026-10-30 · 79aa99f
 
 ## Scope
 
@@ -24,7 +24,7 @@ Evaluations are idempotent per source, window, and algorithm version. The UI com
 
 Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
 
-The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency, crash and lease recovery have a separate PostgreSQL reliability command. The evidence-publisher fault matrix and dedicated authenticated monitoring browser flows remain Gate 3 work; these checks do not establish full Phase 2C or production readiness.
+The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency/crash/lease recovery and evidence-publisher failure/finality recovery have separate PostgreSQL reliability commands. Dedicated authenticated monitoring-management browser flows and a real public-endpoint observation scenario remain separate acceptance work; these checks do not establish full Phase 2C or production readiness.
 
 ## Evidence format
 
@@ -38,7 +38,7 @@ Interpret the resulting proof in separate layers: measurement truth concerns whe
 
 ## Relayer and retention
 
-Evidence uses a separately configured publisher account and PostgreSQL nonce lock `8273642`; Phase 2B AgreementRegistry uses lock `8273641`. Before broadcast, the worker persists the signed transaction, chain ID, nonce, sender, and hash. Retries rebroadcast those same signed bytes. It confirms only after a successful receipt, configured confirmation depth, and matching registry read-back. Conflicting chain state is marked for reconciliation.
+Evidence uses a separately configured publisher account and PostgreSQL nonce lock `8273642`; Phase 2B AgreementRegistry uses lock `8273641`. Before broadcast, the worker persists the signed transaction, chain ID, nonce, sender, and hash. Retries validate the complete persisted transaction against the configured domain and exact batch calldata, then reuse those same signed bytes. Per-claim lease tokens and PostgreSQL time fence preparation, broadcast admission and status writes. Commitment and confirmed nonce decisions use one block snapshot; both successful and reverted receipts require canonical block identity and configured confirmation depth before terminal status. Historical reporter identity remains valid after publisher rotation. Conflicting chain state, unattributable existing commitments and consumed unknown nonces require reconciliation; RPC/database outages retain uncertainty. The [Gate 3B reliability reference](../ref/evidence-publisher-reliability.md) defines the fault matrix, recovery states and remaining limits.
 
 Unanchored observations expire after each source's configured retention interval (default 90 days). A daily cleanup deletes expired observations only if no evidence record references them. Evidence records and their observations remain available after inclusion in an evidence batch. `MonitoringRun` operational metadata is retained separately.
 

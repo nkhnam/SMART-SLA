@@ -265,7 +265,7 @@ test("transient PostgreSQL authorization read failure does not disable a source"
   assert.equal(await prisma.monitoringObservation.count({ where: { sourceId: fixture.id } }), 0);
 });
 
-test("process killed at the probe boundary recovers its committed run without replaying the old measurement", { timeout: 15_000 }, async () => {
+test("process killed at the probe boundary recovers its committed run without replaying the old measurement", { timeout: 15_000 }, async (t) => {
   const fixture = await source();
   const child = spawn(process.execPath, ["--input-type=module", "--eval", `
     import "reflect-metadata";
@@ -281,6 +281,9 @@ test("process killed at the probe boundary recovers its committed run without re
   let diagnostics = "";
   child.stderr.on("data", (chunk) => { diagnostics += chunk; });
   const closed = once(child, "close");
+  const stop = () => { if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); };
+  t.signal.addEventListener("abort", stop, { once: true });
+  t.after(async () => { stop(); await closed; });
   try {
     const entered = await Promise.race([once(child, "message"), closed.then(() => { throw new Error(`Crash fixture exited before probe: ${diagnostics}`); })]);
     assert.equal(entered[0], "probe-entered");
@@ -299,7 +302,7 @@ test("process killed at the probe boundary recovers its committed run without re
     assert.equal(recovered.errorCode, "lease_expired");
     assert.equal(await prisma.monitoringObservation.count({ where: { sourceId: fixture.id } }), 0);
     assert.equal((await prisma.monitoringSource.findUniqueOrThrow({ where: { id: fixture.id } })).nextRunAt!.getTime(), claimed.nextRunAt!.getTime());
-  } finally { if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); await closed; }
+  } finally { stop(); await closed; t.signal.removeEventListener("abort", stop); }
 });
 
 test("PostgreSQL failure advancing a claimed source rolls back run creation and leaves the schedule retryable", async () => {

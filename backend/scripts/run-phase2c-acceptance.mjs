@@ -14,6 +14,8 @@ import { privateKeyToAccount } from "viem/accounts";
 const backend = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const contracts = resolve(backend, "../contracts");
 const workerReliability = process.argv.includes("--worker-reliability");
+const publisherReliability = process.argv.includes("--publisher-reliability");
+assert.ok(!(workerReliability && publisherReliability), "Choose one reliability mode per invocation");
 const outputArgument = process.argv.indexOf("--output");
 assert.ok(outputArgument > 0 && process.argv[outputArgument + 1], "Usage: npm run test:phase2c-acceptance -- --output <absolute-artifact-directory>");
 const outputRoot = process.argv[outputArgument + 1];
@@ -140,6 +142,11 @@ async function runScenario(databaseUrl, index) {
       EVIDENCE_RELAYER_PRIVATE_KEY: evidenceKey, EVIDENCE_CONFIRMATIONS: "1", PHASE2C_ACCEPTANCE_OUTPUT: directory
     });
     await runNode([join(backend, "node_modules/prisma/build/index.js"), "migrate", "deploy"], backend, environment, join(directory, "migrations.log"));
+    if (publisherReliability) {
+      await runNode(["--test", "test/integration/evidence-publisher.integration.test.ts"], backend, environment, join(directory, "test.log"));
+      console.log(`Evidence publisher reliability run ${index} passed; diagnostics: ${directory}`);
+      return;
+    }
     await runNode(["--test", "test/integration/phase2c-acceptance.test.ts"], backend, environment, join(directory, "test.log"));
     const summary = JSON.parse(await readFile(join(directory, "summary.json"), "utf8"));
     console.log(JSON.stringify({ run: index, ...summary }));
@@ -177,7 +184,7 @@ try {
   });
   await runNode([process.env.npm_execpath, "run", "build"], backend, { ...environment, DATABASE_URL: databaseUrl }, join(output, "backend-build.log"));
   for (const index of [1, 2]) await runScenario(databaseUrl, index);
-  console.log(`${workerReliability ? "Monitoring reliability" : "Phase 2C acceptance"}: 2 fresh runs passed. Safe artifacts: ${output}`);
+  console.log(`${workerReliability ? "Monitoring reliability" : publisherReliability ? "Evidence publisher reliability" : "Phase 2C acceptance"}: 2 fresh runs passed. Safe artifacts: ${output}`);
 } catch (error) {
   console.error(`Phase 2C acceptance failed (${error.name}): ${safeLog(error.message)}. Safe diagnostics: ${output}`);
   process.exitCode = 1;

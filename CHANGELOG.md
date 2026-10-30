@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add the Gate 3B two-run isolated PostgreSQL/local-EVM publisher fault matrix, including process loss, RPC uncertainty, nonce contention/replacement, persisted-byte integrity, publisher rotation, receipt finality and PostgreSQL rollback; run it with Gate 2/3A in CI.
 - Add a two-run isolated PostgreSQL monitoring-worker reliability command and CI step covering concurrent claims, process termination, expired/missing leases, stale writers, schedule idempotency and PostgreSQL transaction failures through controlled probe-boundary fixtures.
 - Add a two-run full-stack Phase 2C acceptance command using isolated PostgreSQL and local EVMs, real bilateral signing and evidence relaying, labeled synthetic webhook reports, deterministic KPI/evidence checks, standalone tamper rejection and agreement-version isolation; retain safe artifacts in CI.
 - Add version-bound monitoring sources and observations, safe HTTP probes, authenticated provider webhooks, deterministic KPI evaluations, breach candidates, canonical evidence exports, and a separately authorized EvidenceRegistry with a durable publisher worker.
@@ -15,7 +16,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
-- Document monitoring-worker recovery states and safe diagnostics; the evidence-publisher fault matrix and dedicated authenticated monitoring browser flows remain incomplete, and the current checks do not establish full Phase 2C or production readiness.
+- Document monitoring-worker and evidence-publisher recovery states and safe diagnostics; dedicated authenticated monitoring browser flows remain incomplete, and the current checks do not establish full Phase 2C or production readiness.
 - Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
 - Discover mined same-nonce replacements within a bounded 128-block scan, preserve uncertainty for unidentified pending replacements, and route consumed nonces without a match to manual reconciliation.
 - Add the PostgreSQL/local-EVM relayer fault matrix and Playwright wallet-flow suite to the existing hosted workflow; the new integration and browser suites still require a hosted run for verification.
@@ -29,6 +30,9 @@
 - Remove the legacy NestJS/PostgreSQL backend, Polygon contracts, backend-connected frontend flows, and AISC demo assets from the Phase 1 branch.
 
 ### Fixed
+- Fence evidence transaction preparation, broadcast admission and state writes with per-claim leases; preserve and validate signed bytes across uncertain sends, wait for known pending transactions and reconcile consumed unknown nonces without creating replacement operations.
+- Bind evidence commitment/confirmed-nonce decisions to one canonical block snapshot and require confirmation depth for both successful and reverted receipts; compare all commitment fields and separate historical reporter identity from current publisher configuration.
+- Stop owned crash-fixture child processes when their test is cancelled, including the inherited Gate 3A probe fixture, without increasing its timeout.
 - Fence monitoring completion/failure writes with per-claim ownership, PostgreSQL lease time and the source lock; retain orphan runs as explicit failed collection attempts without inventing downtime or replaying historical slots.
 - Keep monitoring sources enabled after transient database errors during agreement validation; only explicit agreement authorization rejection disables a source.
 - Execute monitoring source/evidence advisory locks without deserializing PostgreSQL `void` results, fixing source and evidence creation failures on real PostgreSQL.

@@ -17,6 +17,7 @@
     "test:anchor-integration": "node --import tsx --test test/integration/anchor-recovery.integration.test.ts",
     "test:phase2c-acceptance": "node scripts/run-phase2c-acceptance.mjs",
     "test:monitoring-reliability": "node scripts/run-phase2c-acceptance.mjs --worker-reliability",
+    "test:evidence-reliability": "node scripts/run-phase2c-acceptance.mjs --publisher-reliability",
     "typecheck:anchor-integration": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --esModuleInterop --experimentalDecorators --emitDecoratorMetadata test/integration/anchor-recovery.integration.test.ts",
     "test:migration-upgrade": "node scripts/test-migration-upgrade.mjs",
     "verify:evidence": "node --import tsx scripts/verify-evidence.ts",
