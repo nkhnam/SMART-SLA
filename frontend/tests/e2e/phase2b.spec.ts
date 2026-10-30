@@ -278,6 +278,8 @@ test("expired signing authorization is rejected after successful invitation acce
   await expect(providerPage.getByRole("heading", { name: "Authorize the organization signer" })).toBeVisible();
   await expect(providerPage.getByRole("button", { name: "Select signer" })).toHaveCount(0);
 
+  await page.reload();
+  await expect(page.getByText("AWAITING SIGNATURES", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Connect and verify wallet" }).click();
   await expect(page.getByRole("status")).toContainText("Wallet ownership verified");
   await providerPage.getByRole("button", { name: "Connect and verify wallet" }).click();
