@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { defineChain, encodeFunctionData, getAddress, keccak256, parseTransaction, recoverTransactionAddress, stringToHex, type Address, type Hash, type TransactionSerialized } from "viem";
+import { BaseError, ContractFunctionRevertedError, defineChain, encodeFunctionData, getAddress, keccak256, parseTransaction, recoverTransactionAddress, stringToHex, type Address, type Hash, type TransactionSerialized } from "viem";
 import { recoverTypedDataAddress } from "viem";
 import { AgreementSignatureParty, AgreementStatus, AnchorTransactionStatus, MembershipRole, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../database/prisma.service.js";
@@ -578,6 +578,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
   }
 
   private errorClass(error: unknown): string {
+    if (error instanceof BaseError && error.walk((cause) => cause instanceof ContractFunctionRevertedError) instanceof ContractFunctionRevertedError) return "transaction_reverted";
     const name = error instanceof Error ? error.name : "";
     const message = error instanceof Error ? error.message.toLowerCase() : "";
     if (/invalid sender|insufficient funds|intrinsic gas too low|invalid transaction|invalid signature/.test(message)) return "rpc_rejected";

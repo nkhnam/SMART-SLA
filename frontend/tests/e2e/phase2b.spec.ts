@@ -300,6 +300,7 @@ test("expired signing authorization is rejected after successful invitation acce
   await providerPage.reload();
   await providerPage.getByRole("button", { name: "Sign with connected wallet" }).click();
   await expect(providerPage.getByRole("status")).toContainText("Signature submitted");
+  await page.reload();
   await expect(page.getByText("FAILED", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('p[role="alert"]')).toContainText("Anchor error");
   expect(consoleErrors).toEqual([]);

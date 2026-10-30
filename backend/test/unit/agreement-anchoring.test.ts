@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { privateKeyToAccount } from "viem/accounts";
-import { keccak256, parseTransaction } from "viem";
+import { BaseError, ContractFunctionExecutionError, ContractFunctionRevertedError, keccak256, parseTransaction } from "viem";
 import { AgreementAnchoringService } from "../../src/blockchain/agreement-anchoring.service.js";
 import { agreementApprovalTypedData, canonicalizeAgreementSnapshot } from "../../src/blockchain/agreement-hash.service.js";
 
@@ -10,6 +10,52 @@ const registryAddress = "0x00000000000000000000000000000000000000a1" as const;
 const buyer = privateKeyToAccount(`0x${"11".repeat(32)}`);
 const supplier = privateKeyToAccount(`0x${"22".repeat(32)}`);
 const relayer = privateKeyToAccount(`0x${"33".repeat(32)}`);
+
+for (const scenario of [
+  {
+    name: "an unprepared contract revert fails even when its diagnostic message contains an HTTP link",
+    error: new ContractFunctionExecutionError(new ContractFunctionRevertedError({ abi: [], data: "0xdeadbeef", functionName: "registerAgreement" }), { abi: [], functionName: "registerAgreement" }),
+    status: "FAILED",
+    reason: "transaction_reverted"
+  },
+  {
+    name: "an unprepared RPC outage remains queued for retry",
+    error: new BaseError("HTTP request failed"),
+    status: "QUEUED",
+    reason: "rpc_unavailable"
+  }
+]) {
+  test(scenario.name, async () => {
+    let intentState: Record<string, unknown> = {};
+    let agreementState: Record<string, unknown> = {};
+    const prisma = {
+      $transaction: async (callback: (transaction: unknown) => Promise<unknown>) => callback({
+        $queryRaw: async () => [{ id: "intent-1" }],
+        anchorIntent: { update: async () => undefined }
+      }),
+      anchorIntent: {
+        findFirst: async () => ({ id: "intent-1" }),
+        findUnique: async () => ({ signedTransaction: null, snapshot: { agreementId: "agreement-1" } }),
+        updateMany: async ({ data }: { data: Record<string, unknown> }) => { intentState = data; return { count: 1 }; }
+      },
+      agreement: { updateMany: async ({ data }: { data: Record<string, unknown> }) => { agreementState = data; return { count: 1 }; } }
+    };
+    const blockchain = {
+      isAnchorConfigured: () => true,
+      getSigningContext: async () => { throw scenario.error; }
+    };
+    const service = new AgreementAnchoringService(prisma as never, blockchain as never);
+    Object.assign(service, { logger: { warn: () => undefined, error: () => undefined } });
+
+    await service.processPendingIntents();
+
+    assert.equal(intentState.status, scenario.status);
+    assert.equal(intentState.lastError, scenario.reason);
+    assert.equal(intentState.leaseOwner, null);
+    assert.equal(agreementState.blockchainStatus, scenario.status);
+    assert.equal(agreementState.status, scenario.status === "FAILED" ? "ANCHOR_FAILED" : undefined);
+  });
+}
 
 test("an RPC rejection before broadcast preserves the signed transaction and fails without retrying", async () => {
   const agreementId = "3ebf6e45-1c81-4e68-9510-13c6cfb6c9a7";
