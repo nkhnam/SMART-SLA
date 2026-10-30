@@ -9,9 +9,10 @@ import { MonitoringSourceService } from "./monitoring-source.service.js";
 import { MonitoringWorkerService } from "./monitoring-worker.service.js";
 import { EvidenceAnchorWorkerService } from "./evidence-anchor-worker.service.js";
 import { MonitoringRetentionService } from "./monitoring-retention.service.js";
+import { MONITORING_HTTP_PROBE, probeHttpEndpoint } from "./http-probe.js";
 
 @Module({
   controllers: [MonitoringController, MonitoringWebhookController],
-  providers: [MonitoringAccessService, MonitoringKpiService, MonitoringEvidenceService, MonitoringSourceService, MonitoringWorkerService, EvidenceAnchorWorkerService, MonitoringRetentionService, SessionGuard, OrganizationContextGuard]
+  providers: [{ provide: MONITORING_HTTP_PROBE, useValue: probeHttpEndpoint }, MonitoringAccessService, MonitoringKpiService, MonitoringEvidenceService, MonitoringSourceService, MonitoringWorkerService, EvidenceAnchorWorkerService, MonitoringRetentionService, SessionGuard, OrganizationContextGuard]
 })
 export class MonitoringModule {}

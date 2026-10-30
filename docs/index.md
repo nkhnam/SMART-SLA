@@ -14,3 +14,4 @@
 - [Oracle threat model](security/oracle-threat-model.md) — source trust boundaries and residual risks.
 - [EvidenceRegistry deployment](deployment/evidence-registry.md) — local deployment and separate publisher configuration.
 - [Phase 2C full-stack acceptance](ref/phase2c-acceptance.md) — two fresh PostgreSQL/local-EVM runs, synthetic observations, evidence verification, tamper rejection and cleanup.
+- [Monitoring worker reliability](ref/monitoring-worker-reliability.md) — Gate 3A recovery states, PostgreSQL fault matrix, lease fencing, diagnostics and remaining Gate 3B work.

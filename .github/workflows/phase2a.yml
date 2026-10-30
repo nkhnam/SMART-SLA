@@ -75,6 +75,11 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
         run: npm run test:phase2c-acceptance -- --output "$RUNNER_TEMP/phase2c-acceptance"
+      - name: Run monitoring worker reliability against isolated PostgreSQL
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+        run: npm run test:monitoring-reliability -- --output "$RUNNER_TEMP/phase2c-acceptance"
       - name: Upload Phase 2C acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4

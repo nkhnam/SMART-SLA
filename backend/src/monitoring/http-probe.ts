@@ -8,6 +8,8 @@ const requestTimeoutMs = 5_000;
 const responseLimitBytes = 65_536;
 const redirectLimit = 3;
 
+export const MONITORING_HTTP_PROBE = Symbol("MONITORING_HTTP_PROBE");
+
 export type HttpProbeResult = {
   observedAt: Date;
   httpStatus: number | null;

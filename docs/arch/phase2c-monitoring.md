@@ -1,6 +1,6 @@
 # Phase 2C Oracle Monitoring and Evidence
 
-> updated 2026-10-30 · e99df51
+> updated 2026-10-30 · 63e47a3
 
 ## Scope
 
@@ -12,6 +12,8 @@ Monitoring configuration is available only to OWNER/ADMIN members of an accepted
 
 HTTP probes use a fixed GET request, 5-second timeout, 64 KiB response cap, standard ports, public-address DNS pinning, and redirect revalidation. Redirects cannot downgrade HTTPS. The response body is discarded. DNS answers containing any private or reserved address are rejected. A database lease and `FOR UPDATE SKIP LOCKED` claim one due source across workers; every scheduled run has a uniqueness key. Probe failures are stored as categorized observations and do not stop the API.
 
+Each claim uses a fresh ownership token. Terminal writes lock the source and verify its current token, PostgreSQL lease time and `RUNNING` run before atomically persisting the result. Expired or missing leases recover retained orphan runs to `FAILED` with `lease_expired` or `lease_missing`, including disabled sources and sources whose next schedule is still in the future. A lost historical measurement remains unknown; recovery never re-probes it or fabricates an observation. Internal collection/database failures remain distinct from measured HTTP failures. The [Gate 3A reliability reference](../ref/monitoring-worker-reliability.md) defines lock/expiry semantics, PostgreSQL fault tests and diagnostics.
+
 Signed webhooks authenticate HMAC-SHA256 over the raw JSON body and the timestamp, nonce, and event ID headers. HMAC comparison is constant-time. The server encrypts generated secrets with AES-256-GCM and the configured 32-byte `MONITORING_SECRET_ENCRYPTION_KEY`; a secret is returned only when created or rotated. Events are freshness-limited to five minutes, size-limited to 64 KiB, throttled to 30 requests per minute, and protected by unique nonce and idempotency keys. Provider reports are labeled `PROVIDER_REPORTED`; they are not described as independent measurements.
 
 ## Evaluation
@@ -22,7 +24,7 @@ Evaluations are idempotent per source, window, and algorithm version. The UI com
 
 Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
 
-The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. The existing hosted signing/monitoring browser regressions passed at baseline `e99df51`. Monitoring-worker concurrency/restart coverage, the evidence-publisher fault matrix and dedicated authenticated monitoring browser flows remain Gate 3 work; happy-path acceptance is not full Phase 2C or production readiness.
+The [full-stack acceptance command](../ref/phase2c-acceptance.md) runs two fresh test PostgreSQL/local-EVM environments, real authenticated bilateral agreement signing, synthetic provider-reported healthy/outage/recovery observations, persisted KPI/breach/evidence records, both registry relayers, independent chain read-back and standalone tamper rejection. A test-process Date clock compresses the signed one-hour sample grid without changing runtime freshness or authorization checks. Monitoring-worker concurrency, crash and lease recovery have a separate PostgreSQL reliability command. The evidence-publisher fault matrix and dedicated authenticated monitoring browser flows remain Gate 3 work; these checks do not establish full Phase 2C or production readiness.
 
 ## Evidence format
 

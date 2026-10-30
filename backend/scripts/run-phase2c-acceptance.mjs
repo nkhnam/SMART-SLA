@@ -13,6 +13,7 @@ import { privateKeyToAccount } from "viem/accounts";
 
 const backend = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const contracts = resolve(backend, "../contracts");
+const workerReliability = process.argv.includes("--worker-reliability");
 const outputArgument = process.argv.indexOf("--output");
 assert.ok(outputArgument > 0 && process.argv[outputArgument + 1], "Usage: npm run test:phase2c-acceptance -- --output <absolute-artifact-directory>");
 const outputRoot = process.argv[outputArgument + 1];
@@ -112,6 +113,13 @@ async function runScenario(databaseUrl, index) {
     databaseCreated = true;
     const isolatedUrl = new URL(databaseUrl);
     isolatedUrl.pathname = `/${databaseName}`;
+    if (workerReliability) {
+      const environment = { ...testEnvironment, DATABASE_URL: isolatedUrl.toString(), CORS_ORIGINS: "http://localhost:3000" };
+      await runNode([join(backend, "node_modules/prisma/build/index.js"), "migrate", "deploy"], backend, environment, join(directory, "migrations.log"));
+      await runNode(["--test", "test/integration/monitoring-worker.integration.test.ts"], backend, environment, join(directory, "test.log"));
+      console.log(`Monitoring reliability run ${index} passed; diagnostics: ${directory}`);
+      return;
+    }
     const port = await availablePort();
     const rpcUrl = `http://127.0.0.1:${port}`;
     const environment = { ...testEnvironment, DATABASE_URL: isolatedUrl.toString(), CORS_ORIGINS: "http://localhost:3000", MONITORING_SECRET_ENCRYPTION_KEY: randomBytes(32).toString("hex") };
@@ -145,7 +153,7 @@ async function runScenario(databaseUrl, index) {
 
 try {
   const environment = testEnvironment;
-  await runNode([hardhatCli, "compile"], contracts, environment, join(output, "contracts-build.log"));
+  if (!workerReliability) await runNode([hardhatCli, "compile"], contracts, environment, join(output, "contracts-build.log"));
   let databaseUrl = process.env.TEST_DATABASE_URL;
   if (databaseUrl) {
     const parsed = new URL(databaseUrl);
@@ -169,7 +177,7 @@ try {
   });
   await runNode([process.env.npm_execpath, "run", "build"], backend, { ...environment, DATABASE_URL: databaseUrl }, join(output, "backend-build.log"));
   for (const index of [1, 2]) await runScenario(databaseUrl, index);
-  console.log(`Phase 2C acceptance: 2 fresh runs passed. Safe artifacts: ${output}`);
+  console.log(`${workerReliability ? "Monitoring reliability" : "Phase 2C acceptance"}: 2 fresh runs passed. Safe artifacts: ${output}`);
 } catch (error) {
   console.error(`Phase 2C acceptance failed (${error.name}): ${safeLog(error.message)}. Safe diagnostics: ${output}`);
   process.exitCode = 1;

@@ -2,20 +2,8 @@
 
 ## [Unreleased]
 
-### Fixed
-- Execute monitoring source/evidence advisory locks without deserializing PostgreSQL `void` results, fixing source and evidence creation failures on real PostgreSQL.
-- Reload the Customer agreement after Provider invitation acceptance and assert the signing-ready state before wallet verification in the expired-authorization browser regression.
-- Treat contract reverts before transaction preparation as failed anchors rather than retryable RPC outages, and refresh the Customer view after the final Provider signature before checking expired-approval rejection.
-- Scope monitoring loading state to the selected organization and agreement, remove synchronous effect updates, and ignore cancelled requests so late responses cannot replace current data or errors.
-- Stop requesting agreement signing data while an invitation is still awaiting counterparty acceptance; assert the duplicate-signature `409` response by request and verify signer selection only after wallet ownership verification.
-- Add deterministic matching-window source comparison with coverage, health-result, uptime and latency differences; low-coverage comparisons remain explicitly insufficient and are not interpreted as fraud.
-- Pin Playwright and viem as frontend development dependencies, remove CI's temporary installation step, and add separate inherited browser regression steps plus a responsive Phase 2C empty-state case.
-- Record that free-text exclusions are unsupported calculation inputs and distinguish measurement truth, source provenance, evidence integrity, chain commitment and agreement signing.
-
-### Known incomplete acceptance
-- Monitoring-worker concurrency/restart integration tests, the evidence-publisher fault matrix, and dedicated authenticated monitoring browser flows remain incomplete; the reproducible synthetic happy path does not establish full Phase 2C or production readiness.
-
 ### Added
+- Add a two-run isolated PostgreSQL monitoring-worker reliability command and CI step covering concurrent claims, process termination, expired/missing leases, stale writers, schedule idempotency and PostgreSQL transaction failures through controlled probe-boundary fixtures.
 - Add a two-run full-stack Phase 2C acceptance command using isolated PostgreSQL and local EVMs, real bilateral signing and evidence relaying, labeled synthetic webhook reports, deterministic KPI/evidence checks, standalone tamper rejection and agreement-version isolation; retain safe artifacts in CI.
 - Add version-bound monitoring sources and observations, safe HTTP probes, authenticated provider webhooks, deterministic KPI evaluations, breach candidates, canonical evidence exports, and a separately authorized EvidenceRegistry with a durable publisher worker.
 - Add Live Workspace monitoring and source management with source trust labels, cross-source KPI comparison, observation history, evidence export, and verification status.
@@ -27,6 +15,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Document monitoring-worker recovery states and safe diagnostics; the evidence-publisher fault matrix and dedicated authenticated monitoring browser flows remain incomplete, and the current checks do not establish full Phase 2C or production readiness.
 - Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
 - Discover mined same-nonce replacements within a bounded 128-block scan, preserve uncertainty for unidentified pending replacements, and route consumed nonces without a match to manual reconciliation.
 - Add the PostgreSQL/local-EVM relayer fault matrix and Playwright wallet-flow suite to the existing hosted workflow; the new integration and browser suites still require a hosted run for verification.
@@ -40,6 +29,16 @@
 - Remove the legacy NestJS/PostgreSQL backend, Polygon contracts, backend-connected frontend flows, and AISC demo assets from the Phase 1 branch.
 
 ### Fixed
+- Fence monitoring completion/failure writes with per-claim ownership, PostgreSQL lease time and the source lock; retain orphan runs as explicit failed collection attempts without inventing downtime or replaying historical slots.
+- Keep monitoring sources enabled after transient database errors during agreement validation; only explicit agreement authorization rejection disables a source.
+- Execute monitoring source/evidence advisory locks without deserializing PostgreSQL `void` results, fixing source and evidence creation failures on real PostgreSQL.
+- Reload the Customer agreement after Provider invitation acceptance and assert the signing-ready state before wallet verification in the expired-authorization browser regression.
+- Treat contract reverts before transaction preparation as failed anchors rather than retryable RPC outages, and refresh the Customer view after the final Provider signature before checking expired-approval rejection.
+- Scope monitoring loading state to the selected organization and agreement, remove synchronous effect updates, and ignore cancelled requests so late responses cannot replace current data or errors.
+- Stop requesting agreement signing data while an invitation is still awaiting counterparty acceptance; assert the duplicate-signature `409` response by request and verify signer selection only after wallet ownership verification.
+- Add deterministic matching-window source comparison with coverage, health-result, uptime and latency differences; low-coverage comparisons remain explicitly insufficient and are not interpreted as fraud.
+- Pin Playwright and viem as frontend development dependencies, remove CI's temporary installation step, and add separate inherited browser regression steps plus a responsive Phase 2C empty-state case.
+- Record that free-text exclusions are unsupported calculation inputs and distinguish measurement truth, source provenance, evidence integrity, chain commitment and agreement signing.
 - Register the static invitation inbox route before the agreement UUID route so `/agreements/invitations` reaches the authenticated invitation handler.
 
 ### Security
