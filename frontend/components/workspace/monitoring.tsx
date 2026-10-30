@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageTitle, Status } from "@/components/ui";
 import { compareMonitoringSources } from "@/lib/monitoring-comparison";
 import { ApiError, buildEvidenceBatch, createMonitoringSource, evaluateMonitoringKpis, exportEvidenceBatch, listAgreements, listMonitoringBreaches, listMonitoringKpis, listMonitoringObservations, listMonitoringSources, updateMonitoringSource, type EvidenceBatch, type LiveAgreement, type MonitoringBreach, type MonitoringEvaluation, type MonitoringObservation, type MonitoringSource } from "@/lib/live-api";
@@ -8,8 +8,40 @@ import { useWorkspace } from "./workspace-context";
 
 export function LiveMonitoring() {
   const { selectedOrganization } = useWorkspace();
+  return <>
+    <PageTitle title="Live monitoring" subtitle="Measurements and evidence are bound to an immutable, bilaterally signed agreement version." />
+    <div className="mb-5 flex flex-wrap items-center gap-2"><Status tone="green">LIVE DATA</Status><span className="text-xs text-muted">A breach candidate is an automated signal, not an adjudication.</span></div>
+    {selectedOrganization ? <MonitoringForOrganization key={selectedOrganization.id} organizationId={selectedOrganization.id} /> : <p role="status">Loading organization…</p>}
+  </>;
+}
+
+function MonitoringForOrganization({ organizationId }: { organizationId: string }) {
   const [agreements, setAgreements] = useState<LiveAgreement[]>([]);
   const [selectedId, setSelectedId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listAgreements(organizationId).then((result) => {
+      if (!active) return;
+      const confirmed = result.data.filter((item) => item.status === "ANCHOR_CONFIRMED");
+      setAgreements(confirmed);
+      setSelectedId(confirmed[0]?.id ?? "");
+    }).catch((cause) => { if (active) setError(cause instanceof ApiError ? cause.message : "Agreements could not be loaded."); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [organizationId]);
+
+  if (loading) return <p role="status" aria-live="polite" className="rounded-xl border border-border bg-white p-6 text-sm text-muted">Loading live monitoring data…</p>;
+  if (error) return <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-white p-4 text-sm text-danger">{error}</p>;
+  const agreement = agreements.find((item) => item.id === selectedId);
+  if (!agreement) return <section className="rounded-xl border border-border bg-white p-6"><h2 className="font-semibold">No confirmed agreements</h2><p className="mt-2 text-sm text-muted">Monitoring starts after both parties sign and the current agreement version is confirmed on the configured network.</p></section>;
+
+  return <MonitoringForAgreement key={agreement.id} organizationId={organizationId} agreement={agreement} selector={<label className="grid gap-2 text-xs font-medium text-muted">Confirmed agreement<select aria-label="Confirmed agreement" value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="min-w-64 rounded-lg border border-border px-3 py-2 text-sm text-ink">{agreements.map((item) => <option key={item.id} value={item.id}>{item.reference} · {item.name} · v{item.version}</option>)}</select></label>} />;
+}
+
+function MonitoringForAgreement({ organizationId, agreement, selector }: { organizationId: string; agreement: LiveAgreement; selector: ReactNode }) {
+  const { selectedOrganization } = useWorkspace();
   const [sources, setSources] = useState<MonitoringSource[]>([]);
   const [observations, setObservations] = useState<MonitoringObservation[]>([]);
   const [evaluations, setEvaluations] = useState<MonitoringEvaluation[]>([]);
@@ -25,50 +57,32 @@ export function LiveMonitoring() {
   const [evaluationWindow, setEvaluationWindow] = useState<{ windowStart: string; windowEnd: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const agreement = useMemo(() => agreements.find((item) => item.id === selectedId) ?? null, [agreements, selectedId]);
   const sourceComparison = useMemo(() => agreement ? compareMonitoringSources(evaluations.map((item) => ({
     ...item,
     sourceName: item.source.name,
     trustCategory: item.source.trustCategory
   })), agreement.version) : null, [agreement, evaluations]);
-  const reload = useCallback(async (organizationId: string, agreementId: string) => {
-    setLoading(true);
+  const reload = useCallback(async (organizationId: string, agreementId: string, isActive: () => boolean = () => true) => {
     try {
       const [sourceResult, observationResult, kpiResult, breachResult] = await Promise.all([
         listMonitoringSources(organizationId, agreementId), listMonitoringObservations(organizationId, agreementId), listMonitoringKpis(organizationId, agreementId), listMonitoringBreaches(organizationId, agreementId)
       ]);
+      if (!isActive()) return;
       setSources(sourceResult);
       setObservations(observationResult.data);
       setEvaluations(kpiResult);
       setBreaches(breachResult);
       setError(null);
     } finally {
-      setLoading(false);
+      if (isActive()) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!selectedOrganization) return;
     let active = true;
-    setLoading(true);
-    listAgreements(selectedOrganization.id).then((result) => {
-      if (!active) return;
-      const confirmed = result.data.filter((item) => item.status === "ANCHOR_CONFIRMED");
-      setAgreements(confirmed);
-      setSelectedId((current) => confirmed.some((item) => item.id === current) ? current : confirmed[0]?.id ?? "");
-    }).catch((cause) => { if (active) setError(cause instanceof ApiError ? cause.message : "Agreements could not be loaded."); }).finally(() => { if (active) setLoading(false); });
+    void reload(organizationId, agreement.id, () => active).catch((cause) => { if (active) setError(cause instanceof ApiError ? cause.message : "Monitoring data could not be loaded."); });
     return () => { active = false; };
-  }, [selectedOrganization]);
-
-  useEffect(() => {
-    if (!selectedOrganization || !selectedId) return;
-    let active = true;
-    queueMicrotask(() => {
-      if (!active) return;
-      reload(selectedOrganization.id, selectedId).catch((cause) => { if (active) setError(cause instanceof ApiError ? cause.message : "Monitoring data could not be loaded."); });
-    });
-    return () => { active = false; };
-  }, [selectedOrganization, selectedId, reload]);
+  }, [organizationId, agreement.id, reload]);
 
   async function addSource(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,6 +92,7 @@ export function LiveMonitoring() {
       const created = await createMonitoringSource(selectedOrganization.id, agreement.id, { type: sourceType, name: sourceName, ...(sourceType === "HTTP_PROBE" ? { endpointUrl } : {}), intervalSeconds, retentionDays: 90 });
       setNotice(created.webhookSecret ? `${created.name} is configured. Copy this one-time webhook secret now: ${created.webhookSecret}` : `${created.name} is configured. The first probe is queued.`);
       setSourceName(""); setEndpointUrl("");
+      setLoading(true);
       await reload(selectedOrganization.id, agreement.id);
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : "The monitoring source could not be created."); }
     finally { setBusy(false); }
@@ -89,6 +104,7 @@ export function LiveMonitoring() {
     try {
       const updated = await updateMonitoringSource(selectedOrganization.id, agreement.id, source.id, body);
       setNotice(updated.webhookSecret ? `New webhook secret for ${updated.name}; copy it now: ${updated.webhookSecret}` : `${updated.name} updated.`);
+      setLoading(true);
       await reload(selectedOrganization.id, agreement.id);
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : "The source could not be updated."); }
     finally { setBusy(false); }
@@ -102,6 +118,7 @@ export function LiveMonitoring() {
     try {
       await evaluateMonitoringKpis(selectedOrganization.id, agreement.id, window);
       setEvaluationWindow(window);
+      setLoading(true);
       await reload(selectedOrganization.id, agreement.id);
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : "KPI evaluation failed."); }
     finally { setBusy(false); }
@@ -116,6 +133,7 @@ export function LiveMonitoring() {
       if (!evaluationWindow) await evaluateMonitoringKpis(selectedOrganization.id, agreement.id, window);
       setEvaluationWindow(window);
       setBatch(await buildEvidenceBatch(selectedOrganization.id, agreement.id, window));
+      setLoading(true);
       await reload(selectedOrganization.id, agreement.id);
     }
     catch (cause) { setError(cause instanceof ApiError ? cause.message : "Evidence could not be assembled."); }
@@ -137,18 +155,14 @@ export function LiveMonitoring() {
   }
 
   return <>
-    <PageTitle title="Live monitoring" subtitle="Measurements and evidence are bound to an immutable, bilaterally signed agreement version." />
-    <div className="mb-5 flex flex-wrap items-center gap-2"><Status tone="green">LIVE DATA</Status><span className="text-xs text-muted">A breach candidate is an automated signal, not an adjudication.</span></div>
     {error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-white p-4 text-sm text-danger">{error}</p>}
     {notice && <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-white p-4 text-sm text-emerald-800">{notice}</p>}
     {loading && <p role="status" aria-live="polite" className="rounded-xl border border-border bg-white p-6 text-sm text-muted">Loading live monitoring data…</p>}
-    {!loading && !agreements.length && <section className="rounded-xl border border-border bg-white p-6"><h2 className="font-semibold">No confirmed agreements</h2><p className="mt-2 text-sm text-muted">Monitoring starts after both parties sign and the current agreement version is confirmed on the configured network.</p></section>}
-    {!loading && agreements.length > 0 && <>
       <section className="mb-5 flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-white p-4 sm:p-5">
-        <label className="grid gap-2 text-xs font-medium text-muted">Confirmed agreement<select aria-label="Confirmed agreement" value={selectedId} onChange={(event) => { setSelectedId(event.target.value); setBatch(null); setEvaluationWindow(null); }} className="min-w-64 rounded-lg border border-border px-3 py-2 text-sm text-ink">{agreements.map((item) => <option key={item.id} value={item.id}>{item.reference} · {item.name} · v{item.version}</option>)}</select></label>
+        {selector}
         {agreement && <p className="text-xs text-muted">Signed targets: {agreement.terms.uptimeTargetPercent}% uptime · {agreement.terms.responseTimeTargetMs} ms response · {agreement.terms.measurementWindowHours} hour window</p>}
       </section>
-      <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+      {!loading && <><div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-xl border border-border bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Measurement sources</h2><p className="mt-1 text-xs text-muted">Source category reflects who collected or reported the measurement.</p></div><span className="text-xs text-muted">{sources.length} configured</span></div>
           <div className="mt-4 space-y-2">{sources.map((source) => <article key={source.id} className="rounded-lg border border-border p-3"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-medium">{source.name}</p><Status tone={source.trustCategory === "PROVIDER_REPORTED" ? "blue" : "green"}>{source.trustCategory.replaceAll("_", " ")}</Status></div><p className="mt-1 break-all text-xs text-muted">{source.type.replaceAll("_", " ")} · every {source.intervalSeconds}s · {source.enabled ? "active" : "paused"}{source.endpointUrl ? ` · ${source.endpointUrl}` : ""}</p>{selectedOrganization?.role !== "MEMBER" && <div className="mt-2 flex flex-wrap gap-2"><button disabled={busy} onClick={() => void updateSource(source, { enabled: !source.enabled })} className="rounded border border-border px-2 py-1 text-[11px] font-semibold">{source.enabled ? "Pause" : "Resume"}</button>{source.type === "SIGNED_WEBHOOK" && <button disabled={busy} onClick={() => void updateSource(source, { rotateWebhookSecret: true })} className="rounded border border-border px-2 py-1 text-[11px] font-semibold">Rotate secret</button>}</div>}</article>)}{sources.length === 0 && <p className="rounded-lg bg-canvas p-4 text-sm text-muted">No sources yet.</p>}</div>
           {selectedOrganization?.role !== "MEMBER" && <form onSubmit={addSource} className="mt-5 grid gap-3 border-t border-border pt-4"><h3 className="text-sm font-semibold">Add monitoring source</h3><label className="grid gap-1 text-xs text-muted">Source type<select value={sourceType} onChange={(event) => setSourceType(event.target.value as MonitoringSource["type"])} className="w-fit rounded-lg border border-border px-3 py-2 text-sm text-ink"><option value="HTTP_PROBE">Server HTTP probe</option><option value="SIGNED_WEBHOOK">Signed provider webhook</option></select></label><label className="grid gap-1 text-xs text-muted">Source name<input required maxLength={120} value={sourceName} onChange={(event) => setSourceName(event.target.value)} className="rounded-lg border border-border px-3 py-2 text-sm text-ink" /></label>{sourceType === "HTTP_PROBE" ? <label className="grid gap-1 text-xs text-muted">Public HTTP or HTTPS endpoint<input required type="url" value={endpointUrl} onChange={(event) => setEndpointUrl(event.target.value)} placeholder="https://status.example.com/health" className="rounded-lg border border-border px-3 py-2 text-sm text-ink" /></label> : <p className="rounded-lg bg-canvas p-3 text-xs leading-5 text-muted">The generated webhook secret is shown once. Submit to <code>/api/v1/monitoring/webhooks/{"{sourceId}"}</code> with signed timestamp, nonce, event ID, and raw-body HMAC headers.</p>}<label className="grid gap-1 text-xs text-muted">Interval (60–3600 seconds)<input required type="number" min={60} max={3600} step={60} value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} className="w-40 rounded-lg border border-border px-3 py-2 text-sm text-ink" /></label><button disabled={busy} className="w-fit rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Add source</button></form>}
