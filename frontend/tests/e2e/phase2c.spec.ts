@@ -375,7 +375,7 @@ monitoringTest("Gate 3C rejects restricted endpoints and hides sources after an 
   const rejected = customer.page.waitForResponse((response) => response.url().endsWith(`/agreements/${primary}/monitoring/sources`) && response.request().method() === "POST");
   await customer.page.getByRole("button", { name: "Add source", exact: true }).click();
   expect((await rejected).status()).toBe(400);
-  await expect(customer.page.getByRole("alert")).toContainText("publicly routable");
+  await expect(customer.page.getByRole("main").getByRole("alert")).toContainText("publicly routable");
   expect(await api<Source[]>(customer, `/agreements/${primary}/monitoring/sources`)).toEqual([]);
   const source = await addWebhook(customer, primary, "SYNTHETIC version-one source");
   await webhook(customer, source, source.webhookSecret!);
