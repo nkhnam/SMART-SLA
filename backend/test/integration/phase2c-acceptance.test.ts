@@ -111,8 +111,8 @@ test(publicHttps ? "real public HTTPS observations persist, evaluate, export and
       }
       await agreementWorker.processPendingIntents();
       await agreementWorker.processPendingIntents();
-      const anchor = await api<{ agreementStatus: string; blockchainStatus: string; anchor: { transactionHash: Hex } }>(customer, `${path}/anchor`);
-      assert.equal(anchor.agreementStatus, "ANCHOR_CONFIRMED");
+      const anchor = await api<{ agreementStatus: string; blockchainStatus: string; anchor: { transactionHash: Hex; lastError: string | null } }>(customer, `${path}/anchor`);
+      assert.equal(anchor.agreementStatus, "ANCHOR_CONFIRMED", `Agreement worker state ${anchor.blockchainStatus}; reason ${anchor.anchor?.lastError ?? "none"}`);
       assert.equal(anchor.blockchainStatus, "CONFIRMED");
       agreementTransaction = anchor.anchor.transactionHash;
       assert.equal((await reader.getTransactionReceipt({ hash: agreementTransaction })).status, "success");

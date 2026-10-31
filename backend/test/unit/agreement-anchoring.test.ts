@@ -125,6 +125,28 @@ test("a final head RPC rejection cannot fail a worker operation without receipt 
   assert.equal((fixture.intent as unknown as { lastError: string }).lastError, "rpc_unavailable");
 });
 
+for (const fault of ["missing code", "wrong domain"]) {
+  test(`a changing head with ${fault} cannot terminally reconcile a worker operation`, async () => {
+    const fixture = await proofFixture(3, 102n);
+    if (fault === "missing code") fixture.client.getCode = async () => "0x";
+    else { const read = fixture.client.readContract; fixture.client.readContract = async (args) => args.functionName === "eip712Domain" ? ["0x0f", "Wrong Registry", "1", BigInt(chainId), registryAddress, "0x", []] : read(args); }
+    let reads = 0;
+    fixture.client.getBlock = async ({ blockNumber } = {}) => ({ number: blockNumber ?? 102n, hash: ++reads === 1 ? fixture.receipt.blockHash : `0x${"ff".repeat(32)}` });
+    await fixture.service.processPendingIntents();
+    assert.equal(fixture.intent.status, "SUBMITTED");
+    assert.equal((fixture.intent as unknown as { lastError: string }).lastError, "evaluated_head_changed");
+  });
+}
+
+for (const [name, v, verified] of [["EIP-155", BigInt(chainId) * 2n + 35n, true], ["other chain", BigInt(chainId + 1) * 2n + 35n, false], ["unprotected", 27n, false], ["missing", undefined, false]] as const) {
+  test(`legacy chain identity ${name} is derived from signed v only when RPC chainId is absent`, async () => {
+    const fixture = await proofFixture(1, 100n);
+    Object.assign(fixture.transaction, { chainId: undefined, type: "legacy", v });
+    assert.equal((await fixture.verify()).verified, verified);
+    assert.equal(fixture.writes(), 0);
+  });
+}
+
 for (const [name, change] of [["valid", () => undefined], ["calldata", (f: Awaited<ReturnType<typeof proofFixture>>) => { f.transaction.input = "0x"; }], ["sender", (f: Awaited<ReturnType<typeof proofFixture>>) => { f.transaction.from = buyer.address; }], ["nonce", (f: Awaited<ReturnType<typeof proofFixture>>) => { f.transaction.nonce++; }]] as const) {
   test(`tracked replacement ${name} is independently validated without overwriting original identity`, async () => {
     const fixture = await proofFixture(3, 102n);

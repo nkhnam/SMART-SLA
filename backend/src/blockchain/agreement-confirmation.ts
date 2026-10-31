@@ -75,16 +75,16 @@ export async function evaluateAgreementConfirmation(
     if (await client.getChainId() !== chainId) return result("RETRYABLE_RPC_ERROR", "wrong_chain_id");
     const head = await client.getBlock({ blockTag: "latest" });
     if (head.number === null || !head.hash) return result("RETRYABLE_RPC_ERROR", "head_unavailable");
-    const bytecode = await client.getCode({ address: registryAddress, blockNumber: head.number });
-    if (!bytecode || bytecode === "0x") return result("RECONCILIATION_REQUIRED", "registry_contract_missing");
-    const [, name, version, domainChainId, verifyingContract] = await client.readContract({ address: registryAddress, abi: agreementRegistryAbi, functionName: "eip712Domain", blockNumber: head.number });
-    if (name !== "SLA-DEX Agreement Registry" || version !== "1" || domainChainId !== BigInt(chainId) || getAddress(verifyingContract) !== getAddress(registryAddress)) return result("RECONCILIATION_REQUIRED", "registry_domain_mismatch");
-    const record = await client.readContract({ address: registryAddress, abi: agreementRegistryAbi, functionName: "getAgreement", args: [snapshot.agreementKey as Hex], blockNumber: head.number });
     const headUnchanged = async () => (await client.getBlock({ blockNumber: head.number })).hash === head.hash;
     const stable = async (proof: AgreementProof) => {
       try { return await headUnchanged() ? proof : result("RETRYABLE_RPC_ERROR", "evaluated_head_changed"); }
       catch { return result("RETRYABLE_RPC_ERROR", "rpc_unavailable"); }
     };
+    const bytecode = await client.getCode({ address: registryAddress, blockNumber: head.number });
+    if (!bytecode || bytecode === "0x") return stable(result("RECONCILIATION_REQUIRED", "registry_contract_missing"));
+    const [, name, version, domainChainId, verifyingContract] = await client.readContract({ address: registryAddress, abi: agreementRegistryAbi, functionName: "eip712Domain", blockNumber: head.number });
+    if (name !== "SLA-DEX Agreement Registry" || version !== "1" || domainChainId !== BigInt(chainId) || getAddress(verifyingContract) !== getAddress(registryAddress)) return stable(result("RECONCILIATION_REQUIRED", "registry_domain_mismatch"));
+    const record = await client.readContract({ address: registryAddress, abi: agreementRegistryAbi, functionName: "getAgreement", args: [snapshot.agreementKey as Hex], blockNumber: head.number });
     const matching = record.registeredAt !== 0n
       && record.agreementHash.toLowerCase() === snapshot.snapshotHash.toLowerCase() && record.version === BigInt(snapshot.version)
       && record.buyerOrganization.toLowerCase() === approval.args[0].buyerOrganization.toLowerCase()
@@ -104,7 +104,8 @@ export async function evaluateAgreementConfirmation(
       if (error instanceof Error && error.name === "TransactionNotFoundError") return null;
       throw error;
     });
-    if (tx && (tx.hash.toLowerCase() !== hash.toLowerCase() || tx.chainId !== chainId
+    const signedChainId = tx?.chainId ?? (tx?.type === "legacy" && typeof tx.v === "bigint" && tx.v >= 35n ? Number((tx.v - 35n) / 2n) : undefined);
+    if (tx && (tx.hash.toLowerCase() !== hash.toLowerCase() || signedChainId !== chainId
       || getAddress(tx.from) !== getAddress(intent.relayerAddress!) || tx.nonce !== Number(intent.relayerNonce)
       || !tx.to || getAddress(tx.to) !== getAddress(registryAddress) || tx.value !== 0n || tx.input.toLowerCase() !== approval.calldata.toLowerCase())) {
       return stable(result("RECONCILIATION_REQUIRED", "transaction_integrity_mismatch"));
