@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add a keyless unsigned Fuji deployment preview and an explicitly gated private-prompt deployer identity checker; neither signs or broadcasts.
 - Add a localhost-only, keyless backend launcher with private DB-password input, allowlisted child environment, safe startup diagnostics and an auto-stop verification mode; suppress monitoring, retention and both anchor workers in local safe mode.
 - Add a private-prompt Fuji database connection checker with read-only queries, keyless environment validation and credential-free result files.
 - Add a separate localhost-only PostgreSQL Compose configuration for the Fuji demo, with an isolated volume and no committed database password; document the initialized schema, restricted database roles and operator-managed vault provisioning.
@@ -23,6 +24,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Require per-contract initcode approval, exact pair nonces, explicit gas/fixed-price limits and a bounded 0.002 AVAX deployment envelope on Fuji sends; validate the first deployment proof and actual paid fee before evidence deployment, and preserve local deployment output.
 - Close N2 demo planning with owner-attested shared testnet custody and an approved 0.0418 AVAX planning envelope; retain identity, gas, secret-injection, fee-control and separate execution gates without authorizing key export, funding, deployment or workers.
 - Record verified Gate 4A.1 confirmation evidence, close Fuji prerequisite N1 after full hosted regression success, and synchronize the README, signing threat model and completed plan while retaining N2 custody/funding and N3 deployment approval as NO-GO prerequisites.
 - Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.

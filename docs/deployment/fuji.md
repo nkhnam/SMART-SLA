@@ -103,22 +103,44 @@ Predicted CREATE addresses assume the deployer pending nonce, AgreementRegistry 
 
 ## Separately approved execution — STOP here for Gate 4A
 
+### N3 preparation tools — no key or broadcast by default
+
+From `contracts/`, run `npx hardhat run scripts/preview-fuji-deploy.ts --network hardhatMainnet --no-compile` to obtain an unsigned preview from `fuji-deployment-draft.json`. The wrapper uses a simulated network; the script uses public clients against Fuji and PublicNode, requires the same executed block hash, checks the deployer is an EOA with clear nonces and estimates both deployments. It never reads a key or signs/sends a transaction. Output includes full initcode hashes (including the EvidenceRegistry publisher argument), proposed gas/fees, starting nonce and conditional CREATE addresses; it explicitly leaves deployment authorization and signer verification false. The second deployment is hypothetical until the first succeeds. An unfunded/RPC-rejected estimate fails closed.
+
+Draft gas ceilings are 1,200,000 for AgreementRegistry and 800,000 for EvidenceRegistry. Preview proposes a fixed legacy gas price of twice the observed RPC price, rejecting a proposal above the draft 1 gwei ceiling. The pair's hard fee-envelope ceiling is 0.002 AVAX, excluding the separately reserved 0.0002 AVAX for rotation. These draft inputs are not execution approval. Re-read and approve the actual preview just before each transaction.
+
+`powershell -NoProfile -File scripts/verify-deployer.ps1` stops without prompting. Only after separate authorization for private key export/input, adding `-IdentityCheckApproved` prompts without echo and passes the input via stdin to an environment-isolated identity checker. It derives and compares the address against the public draft; it never signs a message or transaction, creates a wallet client or contacts RPC. No key, signature or signed transaction is written to disk/output. Immutable strings still exist in process memory until collection/exit; local administrators can inspect memory. This identity tool is not a private-key injector for the deployment scripts; secure execution-time provisioning must still be arranged separately. Do not invoke it with a real key during preparation.
+
+In addition to the five public roles and `FUJI_DEPLOYMENT_APPROVED=43113`, execution requires these public values, reviewed for the one contract being sent:
+
+| Variable | Meaning |
+| --- | --- |
+| `FUJI_APPROVED_CONTRACT` | Exactly `AgreementRegistry` or `EvidenceRegistry`; approve each step separately. |
+| `FUJI_APPROVED_INITCODE_HASH` | Reviewed full initcode hash for that contract, including constructor arguments. |
+| `FUJI_AGREEMENT_DEPLOYMENT_TX_HASH` | Required for EvidenceRegistry: verified first deployment hash, used to validate its receipt/transaction and actual fee. |
+| `FUJI_DEPLOYER_START_NONCE` | Starting nonce for the pair; second deployment must use start + 1. |
+| `FUJI_GAS_PRICE_WEI` | Explicit fixed legacy gas price; do not substitute the draft price ceiling automatically. |
+| `FUJI_AGREEMENT_GAS_LIMIT`, `FUJI_EVIDENCE_GAS_LIMIT` | Approved per-transaction limits, each covering the fresh estimate plus 20% margin. |
+| `FUJI_MAX_DEPLOYMENT_FEE_WEI` | Pair envelope, at most `2000000000000000` wei; sum of both gas limits times fixed gas price must fit. |
+
+Both Fuji paths pass explicit nonce, gas, gasPrice and zero value to the wallet. Admission rejects missing/invalid limits, wrong contract/initcode, pending/consumed nonces, an observed price above the approved price or insufficient gas margin. A transaction can fail instead of increasing its approved fee. The EvidenceRegistry path verifies the first transaction's sender, chain, nonce, zero value and full initcode against AgreementRegistry, a successful receipt at its predicted address, canonical block identity and matching runtime outside immutable slots. It adds that receipt's actual fee to the second transaction's maximum fee and rejects a sum above the pair envelope, even if fee allocations changed between invocations. These controls bound these two transactions, not unrelated wallet activity, funding amounts, rotations or online workers. Exclusive deployer use and independent receipt/domain verification remain mandatory. No automatic retry or replacement is added.
+
 Both scripts validate actual chain before wallet access/broadcast. Allowed targets: named `hardhatMainnet`/`localEvm` at 31337, or `avalancheFuji` at 43113 with explicit approval/five distinct roles. The connected deployer must match `FUJI_DEPLOYER_ADDRESS`. A renamed mainnet endpoint fails its actual-chain check; editing the scripts themselves is outside this protection.
 
-Only after the GO checklist and a separate owner approval naming Fuji funding/deployment, inject the dedicated deployer key securely and run from `contracts/`. **These commands are not part of Gate 4A.**
+Only after the GO checklist and separate owner approval naming Fuji funding/deployment, arrange secure deployer-key provisioning and the public execution limits above. Run from `contracts/` one approved contract at a time. **These commands are not part of preparation.**
 
 ````powershell
 try {
     $env:FUJI_DEPLOYMENT_APPROVED = '43113'
     npm run deploy:fuji
     if ($LASTEXITCODE -ne 0) { throw 'Stop: reconcile AgreementRegistry sender/nonce/hash before proceeding.' }
-    npm run deploy:evidence:fuji
-    if ($LASTEXITCODE -ne 0) { throw 'Stop: reconcile EvidenceRegistry sender/nonce/hash before retrying.' }
 } finally {
     Remove-Item Env:FUJI_DEPLOYMENT_APPROVED -ErrorAction SilentlyContinue
     Remove-Item Env:AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY -ErrorAction SilentlyContinue
 }
 ````
+
+Stop and independently verify the AgreementRegistry receipt/runtime/domain. Only then obtain a separate EvidenceRegistry approval, set its specific contract/initcode hash with the same pair starting nonce, refresh all checks and run `npm run deploy:evidence:fuji` under the same approval/key cleanup discipline. Never chain the two commands automatically or reuse the first contract's hash/approval for the second.
 
 Retain the submitted hash immediately when printed. Scripts wait for a successful receipt at one confirmation and matching contract address; evidence deployment additionally checks owner/publisher. Timeout/nonzero exit after submission is uncertainty. If the RPC fails before a hash is printed, recover from sender/nonce and chain history. Scripts are not a deployment journal; blind retries can deploy additional immutable registries.
 
