@@ -8,7 +8,9 @@
 - [Phase 2B implementation plan](plan/phase2b-avalanche.md) — work sequence, review focus, validation and delivery checklist.
 - [Canonical agreement hashing](protocol/agreement-hashing.md) — snapshot serialization, digest and EIP-712 message rules.
 - [Signing threat model](security/signing-threat-model.md) — assets, authorization boundaries, replay protection and operational limits.
-- [Fuji deployment guide](deployment/fuji.md) — secure manual deployment and independent verification steps.
+- [Fuji preflight and deployment runbook](deployment/fuji.md) — keyless chain/gas/role checks, separate approval, placeholders, confirmation blocker and recovery limits.
+- [Gate 4A preflight audit](research/fuji-preflight.md) — readiness findings, historical acceptance boundaries and actual local/RPC results.
+- [Gate 4A implementation and blockers](plan/fuji-preflight.md) — preflight work sequence and separately approved deployment prerequisites.
 - [Phase 2C monitoring architecture](arch/phase2c-monitoring.md) — collection, KPI policy, evidence commitments, retention and relayer separation.
 - [Evidence format v1](protocol/evidence-format.md) — canonical serialization, Merkle construction and standalone verification.
 - [Oracle threat model](security/oracle-threat-model.md) — source trust boundaries and residual risks.

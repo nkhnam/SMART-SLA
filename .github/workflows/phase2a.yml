@@ -232,6 +232,7 @@ jobs:
         working-directory: contracts
         run: |
           npm run compile
+          npm run typecheck
           npm test
       - name: Audit contract dependencies
         working-directory: contracts

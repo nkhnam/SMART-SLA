@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add Gate 4A keyless Fuji preflight for actual chain identity, pinned build metadata, public role separation, deployment gas/balance/nonce planning and optional post-deployment runtime/domain/owner/publisher read-back; missing prerequisites retain NO-GO status and no transactions are sent.
 - Add opt-in Gate 3D real public HTTPS acceptance through the default HTTP_PROBE worker, isolated PostgreSQL, sparse KPI evaluation, existing evidence export/local-EVM publishing, standalone tamper rejection, version isolation and explicit network-failure diagnostics; keep external-network checks outside deterministic CI.
 - Add deterministic HTTP-probe regressions for both pinned DNS callback modes, redirect DNS revalidation, HTTPS hostname preservation, HTTP/TLS/DNS errors, timeout and response-size limits.
 - Add authenticated monitoring Playwright flows against isolated PostgreSQL/local EVMs for source lifecycle, secret rotation, role/organization/version boundaries, sparse KPI evaluation, evidence download, logout and responsive layouts.
@@ -19,6 +20,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the unresolved agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.
 - Replace stale README acceptance/browser-coverage statements with implemented gate references, trust limits, reproduction commands and remaining Fuji prerequisites.
 - Document monitoring-worker and evidence-publisher recovery states, authenticated monitoring browser diagnostics and separate opt-in real HTTPS acceptance; the current checks do not establish full Phase 2C or production readiness.
 - Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
@@ -52,6 +54,7 @@
 - Register the static invitation inbox route before the agreement UUID route so `/agreements/invitations` reaches the authenticated invitation handler.
 
 ### Security
+- Check allowed network/actual chain, explicit Fuji approval, distinct public roles and deployer identity before either registry deployment; suppress raw RPC diagnostics and preserve local CI output compatibility.
 - Upgrade Next.js and its matching ESLint config to 16.4.3 and refresh the lockfile to clear reported dependency vulnerabilities.
 - Enforce server-checked membership scope, opaque HttpOnly sessions, CSRF origin checks, role-gated writes, and production HTTPS CORS origins.
 - Pin patched `solc`, `tmp` and Zod versions after dependency auditing found high-severity advisories in the initial contract toolchain.

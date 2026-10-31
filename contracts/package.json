@@ -6,6 +6,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "typecheck": "tsc --noEmit",
+    "preflight:fuji": "hardhat run scripts/preflight-fuji.ts --network hardhatMainnet",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhatMainnet",
     "deploy:evidence:local": "hardhat run scripts/deploy-evidence.ts --network hardhatMainnet",
     "deploy:evidence:fuji": "hardhat run scripts/deploy-evidence.ts --network avalancheFuji",
