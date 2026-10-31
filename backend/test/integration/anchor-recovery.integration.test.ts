@@ -171,6 +171,7 @@ before(async () => {
 
 afterEach(async () => {
   for (const fixture of fixtures.splice(0)) {
+    await prisma.auditEvent.deleteMany({ where: { resourceType: "agreement", resourceId: fixture.agreementId } });
     await prisma.anchorIntent.deleteMany({ where: { snapshot: { agreementId: fixture.agreementId } } });
     await prisma.signingSnapshot.deleteMany({ where: { agreementId: fixture.agreementId } });
     await prisma.agreement.deleteMany({ where: { id: fixture.agreementId } });
@@ -303,7 +304,8 @@ test("R09 dropped transactions rebroadcast identical bytes while replacements st
   const rejectBeforeSend = controlledClient({ sendRawTransaction: (async () => { throw new Error("invalid sender"); }) as never });
   await service(rejectBeforeSend).processPendingIntents();
   const stored = await state(dropped.agreementId);
-  await prisma.anchorIntent.update({ where: { id: stored.id }, data: { status: "SUBMISSION_UNCERTAIN", lastError: null } });
+  await service().retry(context(dropped), dropped.agreementId);
+  assert.equal((await prisma.agreement.findUniqueOrThrow({ where: { id: dropped.agreementId } })).status, "ANCHOR_PENDING");
   await service().processPendingIntents();
   const rebroadcast = await state(dropped.agreementId);
   assert.equal(rebroadcast.transactionHash, stored.transactionHash);
@@ -411,7 +413,8 @@ test("R01 RPC rejection persists a failed signed intent without on-chain registr
   assert.equal(intent.attemptCount, 1);
   assert.ok(intent.signedTransaction);
   assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).registeredAt, 0n);
-  await prisma.anchorIntent.update({ where: { id: intent.id }, data: { status: "SUBMISSION_UNCERTAIN", lastError: null } });
+  await service().retry(context(fixture), fixture.agreementId);
+  assert.equal((await prisma.agreement.findUniqueOrThrow({ where: { id: fixture.agreementId } })).status, "ANCHOR_PENDING");
   await service().processPendingIntents();
   const rebroadcast = await state(fixture.agreementId);
   assert.equal(rebroadcast.status, "SUBMITTED");
@@ -642,4 +645,33 @@ test("a valid mined replacement uses depth proof while preserving the original h
   assert.ok(confirmed.signedTransaction === original!.signedTransaction, "replacement preserves original signed bytes");
   assert.equal(confirmed.relayerNonce, original!.relayerNonce);
   assert.equal(confirmed.replacementHash, discovered.replacementHash);
+});
+
+test("an owned revert behind another valid registration waits for depth then reconciles", async () => {
+  const fixture = await createFixture();
+  const accounts = await hardhatRpc("eth_accounts") as Address[];
+  assert.ok(accounts[1] && accounts[1].toLowerCase() !== relayer.address.toLowerCase());
+  const external = createWalletClient({ account: accounts[1], chain, transport: http(rpcUrl) });
+  await hardhatRpc("evm_setAutomine", [false]);
+  let original: Awaited<ReturnType<typeof state>>;
+  try {
+    await service().processPendingIntents();
+    original = await state(fixture.agreementId);
+    const tx = await chainClient.getTransaction({ hash: original.transactionHash as `0x${string}` });
+    const hash = await external.writeContract({ address: registryAddress!, abi: agreementRegistryAbi, functionName: "registerAgreement", args: [fixture.typedData.message, await buyer.signTypedData(fixture.typedData), await supplier.signTypedData(fixture.typedData)], gas: 300_000n, gasPrice: tx.gasPrice! * 2n });
+    await mine();
+    assert.equal((await chainClient.getTransactionReceipt({ hash })).status, "success");
+    assert.equal((await chainClient.getTransactionReceipt({ hash: original.transactionHash as `0x${string}` })).status, "reverted");
+  } finally { await hardhatRpc("evm_setAutomine", [true]); }
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
+  await mine(); await mine();
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  const reconciled = await durableState(fixture.agreementId);
+  assert.equal(reconciled.intent.status, "RECONCILIATION_REQUIRED");
+  assert.equal(reconciled.intent.lastError, "reverted_with_registration");
+  assert.equal(reconciled.agreement.status, "ANCHOR_PENDING");
+  assert.equal(reconciled.intent.transactionHash, original!.transactionHash);
+  assert.equal(reconciled.intent.relayerNonce, original!.relayerNonce);
+  assert.ok(reconciled.intent.signedTransaction === original!.signedTransaction, "conflicting registration preserves original signed bytes");
 });
