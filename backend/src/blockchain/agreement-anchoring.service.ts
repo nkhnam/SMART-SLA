@@ -8,6 +8,7 @@ import { agreementRegistryAbi } from "./agreement-registry.abi.js";
 import { BlockchainNetworkService } from "./blockchain-network.service.js";
 import { evaluateAgreementConfirmation, loadAgreementApproval } from "./agreement-confirmation.js";
 import { resolveAnchorRecovery } from "./anchor-recovery.js";
+import { workersEnabled } from "../config/worker-runtime.js";
 
 const leaseMs = 60_000;
 const pollMs = 15_000;
@@ -29,7 +30,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
   constructor(private readonly prisma: PrismaService, private readonly blockchain: BlockchainNetworkService) {}
 
   onModuleInit(): void {
-    if (!this.blockchain.isAnchorConfigured()) return;
+    if (!workersEnabled() || !this.blockchain.isAnchorConfigured()) return;
     this.timer = setInterval(() => void this.processPendingIntents(), pollMs);
     this.timer.unref();
     void this.processPendingIntents();
@@ -40,7 +41,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
   }
 
   async processPendingIntents(): Promise<void> {
-    if (this.running || !this.blockchain.isAnchorConfigured()) return;
+    if (!workersEnabled() || this.running || !this.blockchain.isAnchorConfigured()) return;
     this.running = true;
     try {
       const processedIntentIds: string[] = [];

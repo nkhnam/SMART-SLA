@@ -1,6 +1,7 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { MonitoringRunStatus, MonitoringSourceType, ObservationValidity, Prisma } from "../generated/prisma/client.js";
+import { workersEnabled } from "../config/worker-runtime.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { MonitoringAccessService } from "./monitoring-access.service.js";
 import { MONITORING_HTTP_PROBE, probeHttpEndpoint } from "./http-probe.js";
@@ -23,6 +24,7 @@ export class MonitoringWorkerService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
+    if (!workersEnabled()) return;
     this.timer = setInterval(() => void this.processDueSources(), workerPollMs);
     this.timer.unref();
     void this.processDueSources();
@@ -33,7 +35,7 @@ export class MonitoringWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processDueSources(): Promise<void> {
-    if (this.running) return;
+    if (!workersEnabled() || this.running) return;
     this.running = true;
     try {
       for (let index = 0; index < batchSize; index += 1) {

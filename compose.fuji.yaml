@@ -1,0 +1,26 @@
+name: sla-fuji
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sla-fuji-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=trust
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    entrypoint: [sh, -ec]
+    command:
+      - export POSTGRES_PASSWORD="$$(head -c 48 /dev/urandom | base64)"; exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  postgres-data:
+    name: sla-fuji-postgres-data

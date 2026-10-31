@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service.js";
+import { workersEnabled } from "../config/worker-runtime.js";
 
 const retentionSweepMs = 24 * 60 * 60 * 1000;
 
@@ -12,6 +13,7 @@ export class MonitoringRetentionService implements OnModuleInit, OnModuleDestroy
   constructor(private readonly prisma: PrismaService) {}
 
   onModuleInit(): void {
+    if (!workersEnabled()) return;
     this.timer = setInterval(() => void this.purgeExpired(), retentionSweepMs);
     this.timer.unref();
     void this.purgeExpired();
@@ -20,7 +22,7 @@ export class MonitoringRetentionService implements OnModuleInit, OnModuleDestroy
   onModuleDestroy(): void { if (this.timer) clearInterval(this.timer); }
 
   async purgeExpired(): Promise<number> {
-    if (this.running) return 0;
+    if (!workersEnabled() || this.running) return 0;
     this.running = true;
     try {
       const result = await this.prisma.monitoringObservation.deleteMany({

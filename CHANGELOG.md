@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Add a localhost-only, keyless backend launcher with private DB-password input, allowlisted child environment, safe startup diagnostics and an auto-stop verification mode; suppress monitoring, retention and both anchor workers in local safe mode.
+- Add a private-prompt Fuji database connection checker with read-only queries, keyless environment validation and credential-free result files.
+- Add a separate localhost-only PostgreSQL Compose configuration for the Fuji demo, with an isolated volume and no committed database password; document the initialized schema, restricted database roles and operator-managed vault provisioning.
 - Add Gate 4A keyless Fuji preflight for actual chain identity, pinned build metadata, public role separation, deployment gas/balance/nonce planning and optional post-deployment runtime/domain/owner/publisher read-back; missing prerequisites retain NO-GO status and no transactions are sent.
 - Add opt-in Gate 3D real public HTTPS acceptance through the default HTTP_PROBE worker, isolated PostgreSQL, sparse KPI evaluation, existing evidence export/local-EVM publishing, standalone tamper rejection, version isolation and explicit network-failure diagnostics; keep external-network checks outside deterministic CI.
 - Add deterministic HTTP-probe regressions for both pinned DNS callback modes, redirect DNS revalidation, HTTPS hostname preservation, HTTP/TLS/DNS errors, timeout and response-size limits.
@@ -20,6 +23,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Close N2 demo planning with owner-attested shared testnet custody and an approved 0.0418 AVAX planning envelope; retain identity, gas, secret-injection, fee-control and separate execution gates without authorizing key export, funding, deployment or workers.
 - Record verified Gate 4A.1 confirmation evidence, close Fuji prerequisite N1 after full hosted regression success, and synchronize the README, signing threat model and completed plan while retaining N2 custody/funding and N3 deployment approval as NO-GO prerequisites.
 - Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.
 - Replace stale README acceptance/browser-coverage statements with implemented gate references, trust limits, reproduction commands and remaining Fuji prerequisites.

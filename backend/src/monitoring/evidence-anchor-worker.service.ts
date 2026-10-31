@@ -7,6 +7,7 @@ import { EvidenceAnchorStatus, Prisma } from "../generated/prisma/client.js";
 import type { AppEnvironment } from "../config/env.schema.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { evidenceRegistryAbi } from "./evidence-registry.abi.js";
+import { workersEnabled } from "../config/worker-runtime.js";
 
 const pollMs = 15_000;
 const leaseMs = 60_000;
@@ -32,7 +33,7 @@ export class EvidenceAnchorWorkerService implements OnModuleInit, OnModuleDestro
   ) {}
 
   onModuleInit(): void {
-    if (!this.configured()) return;
+    if (!workersEnabled() || !this.configured()) return;
     this.timer = setInterval(() => void this.processPending(), pollMs);
     this.timer.unref();
     void this.processPending();
@@ -41,7 +42,7 @@ export class EvidenceAnchorWorkerService implements OnModuleInit, OnModuleDestro
   onModuleDestroy(): void { if (this.timer) clearInterval(this.timer); }
 
   async processPending(): Promise<void> {
-    if (this.running || !this.configured()) return;
+    if (!workersEnabled() || this.running || !this.configured()) return;
     this.running = true;
     try {
       const processed: string[] = [];
