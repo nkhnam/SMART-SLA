@@ -1,5 +1,7 @@
 # Gate 4A Fuji deployment preflight audit
 
+Status: amended 2026-10-31. The baseline findings below are historical; Gate 4A.1 implements the confirmation correction described in the closing amendment.
+
 ## Start time
 
 2026-10-31, Asia/Saigon. Baseline `8d6e4f5` on `feat/unihack-phase2c-oracle-evidence`; initially clean working tree.
@@ -90,3 +92,7 @@ Agreement creation bytecode hash: `0x9ba0a96a13a008c5b28f5117b822ac1b0c2efc13eab
 ## Decision
 
 **Action:** implement the [preflight plan](../plan/fuji-preflight.md) and use [the deployment runbook](../deployment/fuji.md) as the operational checklist. Keep Solidity/authorization/storage design and runtime relayer recovery unchanged. Rejected docs-only safety because it leaves the broadcast boundary unsafe; rejected a contract/relayer redesign because it broadens this gate. Attack on the selected approach: a script guard cannot authenticate a malicious RPC, so independent RPC/explorer verification and role custody remain mandatory. Failure inversion/pre-mortem: reused keys, stale artifacts, auto-started workers or an ambiguous retry could create irreversible writes despite a green local test. Second-order effect: stricter admission must preserve local CI output and leave Fuji activation an explicit separate operation. Reopen if new deployment entry points, changed compiler settings or a changed confirmation policy appear. Commercial positioning/pricing analysis is outside this operational gate.
+
+## Amendments
+
+- 2026-10-31 · Agreement confirmation finding: a separately authorized Gate 4A.1 implements the [shared confirmation evaluator and worker/API ownership policy](../ref/agreement-confirmation.md), preserving contracts, EIP-712 and database schema. The preflight baseline finding remains reproduced historical evidence, not current runtime behavior. The [execution record](../plan/agreement-confirmation.md) records RED and verification scope; exact-final-commit hosted CI and real N=3 integration evidence are required to close N1. Fuji custody/funding and separate deployment approval remain N2/N3 blockers; no public-chain transaction is authorized by this correction.

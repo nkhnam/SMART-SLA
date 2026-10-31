@@ -130,11 +130,11 @@ Leave these unfilled until independent real Fuji verification. No raw signed tra
 5. Under separate transaction-test approval, link two organization wallets, freeze/review the same snapshot and sign chain 43113 plus the actual registry domain. Compare successful receipt, approval calldata/signatures and stored key/hash/version/organization hashes/expiry/time independently. Signer addresses are in approval calldata, not stored `getAgreement` fields.
 6. Export a real authorized evidence batch; compare every commitment field, historical reporter, successful canonical receipt/block time and configured depth; verify the original export and reject a tampered copy. Integrity does not prove objective service availability, SLA breach or independent measurement.
 
-## Confirmation semantics and blocker
+## Confirmation semantics
 
 Avalanche accepted blocks have consensus finality; receipt/state availability follows execution. Missing/timeout receipts stay uncertain. Evidence additionally requires canonical block identity and `head - receiptBlock + 1 >= EVIDENCE_CONFIRMATIONS` for successful and reverted receipts, plus full commitment comparison. Rotation does not invalidate historical reporter identity.
 
-**Agreement policy is a blocker:** `BLOCKCHAIN_CONFIRMATIONS` is parsed but not used by worker recovery or API verification. Success may follow matching latest state or a receipt without configured depth/canonical checks. Setting it above 1 does not enforce that assurance. Before execution, separately fix/fault-test all confirmation paths or explicitly approve accepted-state semantics at 1 with this limitation recorded. Gate 4A does not silently change runtime recovery design.
+Agreement confirmation now enforces `BLOCKCHAIN_CONFIRMATIONS` through one worker/API proof evaluator: inclusive depth is `head - receiptBlock + 1`, with canonical transaction/receipt and exact frozen registry data required. API verification is read-only; only a live leased worker atomically commits the exact version. Matching external registration without trusted transaction proof requires reconciliation, including R10; it never triggers a duplicate broadcast. Original signed bytes/hash/nonce survive replacement recovery. See [the confirmation policy](../ref/agreement-confirmation.md) for pending/revert/RPC semantics, proof diagnostics and remaining deep-reorg/manual-reconciliation limits. Gate 4A.1 delivery still requires exact-commit green hosted CI; N2 custody/funding and N3 separate execution approval remain mandatory.
 
 ## Recovery and rollback limitations
 
@@ -153,7 +153,7 @@ Every unchecked item means **NO-GO**. This is an execution approval checklist, n
 - [ ] Trusted HTTPS RPC and independent source identify 43113 with fresh executed blocks; backend RPC settings agree.
 - [ ] Five distinct dedicated testnet roles have verified custody/key-derived identity; permanent owner and authorized publisher are understood.
 - [ ] Fresh gas estimates, separate deployment/relayer/publisher/rotation budgets, maximum spend and clear pending nonces are approved; no funding under Gate 4A.
-- [ ] Agreement confirmation blocker is fixed/tested or explicitly approved at accepted-state/one-confirmation semantics; evidence depth is explicit.
+- [ ] Gate 4A.1 confirmation implementation has exact-commit green hosted CI and N=3 local-EVM/PostgreSQL evidence; agreement/evidence depth is configured explicitly.
 - [ ] Secrets/frontend/public config/logging/staged diff are checked; no live key/seed/credential URL or raw signed operation is exposed.
 - [ ] Address/receipt placeholders remain unfilled until execution; exact artifact/source/runtime/domain/owner/publisher/receipt verification is scheduled.
 - [ ] PostgreSQL/migrations/backups/encryption key/pending intents/monitoring/recovery custody are ready before later backend activation.

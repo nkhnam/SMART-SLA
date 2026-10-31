@@ -20,7 +20,7 @@
 
 ## Separately scoped deployment blockers
 
-- [ ] Reconcile agreement confirmation policy: `BLOCKCHAIN_CONFIRMATIONS` is parsed/exposed but not used in worker receipt/recovery/API verification. Either implement and fault-test a consistent policy in a separately approved runtime task, or explicitly approve Fuji accepted-state semantics with configuration restricted to one confirmation; a higher number is not currently enforced.
+- [ ] N1: verify Gate 4A.1 delivery of the [implemented agreement confirmation policy](../ref/agreement-confirmation.md), including exact-commit hosted CI and actual N=3 PostgreSQL/local-EVM evidence. Implementation is authorized separately by this gate; do not close N1 from unit tests alone. See [the execution record](agreement-confirmation.md).
 - [ ] Supply five distinct nonzero dedicated testnet role addresses, verify custody/key-derived identity privately, run fresh RPC/preflight checks and approve an itemized gas/funding budget. Do not supply secrets in the repository or chat.
 - [ ] Complete exact-feature-commit CI and independently approve the Fuji execution window. This preflight does not authorize any on-chain action.
 - [ ] Review the 11 moderate backend ESLint/minimatch dependency advisories in a separately scoped tooling update; current high-severity audit passes, and a forced breaking dependency change is not part of Gate 4A.

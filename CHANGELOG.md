@@ -20,7 +20,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
-- Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the unresolved agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.
+- Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.
 - Replace stale README acceptance/browser-coverage statements with implemented gate references, trust limits, reproduction commands and remaining Fuji prerequisites.
 - Document monitoring-worker and evidence-publisher recovery states, authenticated monitoring browser diagnostics and separate opt-in real HTTPS acceptance; the current checks do not establish full Phase 2C or production readiness.
 - Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
@@ -36,6 +36,7 @@
 - Remove the legacy NestJS/PostgreSQL backend, Polygon contracts, backend-connected frontend flows, and AISC demo assets from the Phase 1 branch.
 
 ### Fixed
+- Enforce AgreementRegistry confirmation depth through one canonical receipt/transaction/snapshot evaluator shared by the worker and read-only verification API; preserve original identity through replacement recovery, fail closed on unattributed external registrations and fence atomic agreement/intent updates with PostgreSQL lease and version checks. Add N=3, R10, RPC, replacement, concurrency and rollback regressions without changing contracts or schema.
 - Return a one-element validated address list when Node requests `all: true` from the pinned DNS callback, fixing real HTTPS probes that previously failed with `ERR_INVALID_IP_ADDRESS` while preserving public-IP checks and TLS hostname validation.
 - Convert monitoring observation pagination query strings before validation, persist source pause/resume while preserving the concurrent active-source quota, align management controls with source ownership, return HTTP 400 for rejected endpoints, and contain agreement selectors and one-time secret notices on narrow screens.
 - Fence evidence transaction preparation, broadcast admission and state writes with per-claim leases; preserve and validate signed bytes across uncertain sends, wait for known pending transactions and reconcile consumed unknown nonces without creating replacement operations.
