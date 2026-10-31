@@ -1,6 +1,6 @@
 # SLA-DEX Phase 2B Avalanche Signing Design
 
-> updated 2026-10-31 · 34122fa
+> updated 2026-10-31 · 8766570
 
 ## Intent
 

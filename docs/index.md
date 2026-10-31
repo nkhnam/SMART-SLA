@@ -8,6 +8,7 @@
 - [Phase 2B implementation plan](plan/phase2b-avalanche.md) — work sequence, review focus, validation and delivery checklist.
 - [Canonical agreement hashing](protocol/agreement-hashing.md) — snapshot serialization, digest and EIP-712 message rules.
 - [Agreement confirmation policy](ref/agreement-confirmation.md) — Gate 4A.1 receipt/depth proof, read-only verification, durable worker fencing, replacement recovery and external-registration reconciliation.
+- [Completed Gate 4A.1 execution record](plan/done/agreement-confirmation.md) — baseline RED, CI corrections, measured regression counts and N=3 block/nonce evidence; N2/N3 remain NO-GO.
 - [Signing threat model](security/signing-threat-model.md) — assets, authorization boundaries, replay protection and operational limits.
 - [Fuji preflight and deployment runbook](deployment/fuji.md) — keyless chain/gas/role checks, separate approval, placeholders, confirmation policy and recovery limits.
 - [Gate 4A preflight audit](research/fuji-preflight.md) — readiness findings, historical acceptance boundaries and actual local/RPC results.

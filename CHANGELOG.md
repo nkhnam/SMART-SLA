@@ -20,6 +20,7 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Record verified Gate 4A.1 confirmation evidence, close Fuji prerequisite N1 after full hosted regression success, and synchronize the README, signing threat model and completed plan while retaining N2 custody/funding and N3 deployment approval as NO-GO prerequisites.
 - Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.
 - Replace stale README acceptance/browser-coverage statements with implemented gate references, trust limits, reproduction commands and remaining Fuji prerequisites.
 - Document monitoring-worker and evidence-publisher recovery states, authenticated monitoring browser diagnostics and separate opt-in real HTTPS acceptance; the current checks do not establish full Phase 2C or production readiness.

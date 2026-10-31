@@ -6,6 +6,8 @@
 
 **Baseline:** `34122fab919a1243556f041b55a801ef7aa426d1`, `feat/unihack-phase2c-oracle-evidence`.
 
+**Completed:** 2026-10-31 (Asia/Saigon). Implementation `876657012f479d5159d085ca500d7fc8198c92fc` passed [every hosted job](https://github.com/nkhnam/Shadow-Byte/actions/runs/41201478297). N1 is closed; Fuji N2/N3 remain NO-GO. This records the first fully green implementation; final delivery also requires green CI on any subsequent documentation commit.
+
 ## Execution
 
 1. Verify branch, clean tree and fetched remote; inspect anchoring, signing, monitoring, consumers and recovery.
@@ -42,3 +44,24 @@ Reach: agreement participants and background workers (observed code paths; deplo
 - The initial 24 RED failures preceded runtime edits. Replacement, database fencing and integration scenarios were expanded during implementation/review; they are not represented as baseline RED observations. Old unit mocks were updated to supply the real frozen snapshot and live-lease query contract; setup mismatches were not counted as production defects.
 - First hosted delivery `35509c7` failed Gate 2 at `ANCHOR_PENDING` after backend/frontend/contracts validation passed. A real local Hardhat probe reproduced the implementation defect: legacy RPC transactions omit `chainId`, although signed EIP-155 `v` identifies the chain. A new four-case RED run had one expected failure (valid EIP-155) and three fail-closed passes. Deriving only from signed `v`, using viem's existing parser rule, fixes this without a configured-chain fallback. Closing review also added stable-head checks before code/domain reconciliation; reorg uncertainty remains recoverable.
 - R01/R09 originally simulated retry by changing only the intent from FAILED to SUBMISSION_UNCERTAIN while leaving its agreement ANCHOR_FAILED. That fixture violates the approved atomic two-row state invariant; the live-lease fence correctly rejects it. The scenarios now call the existing authorized `retry()` entry point, assert the agreement returns to ANCHOR_PENDING and retain every transaction/hash/nonce/duplicate assertion. Cleanup removes only audit events belonging to those owned fixture agreements. This is a fixture correction, not a reproduced production defect.
+
+## Hosted verification
+
+| Check at 8766570 | Observed result |
+| --- | --- |
+| Backend lint, build, production and anchor-integration typechecks | Pass |
+| Backend unit / API integration / migration upgrade | 85/85, 5/5, upgrade/constraints/rollback pass |
+| Agreement PostgreSQL/Hardhat fault matrix | 26/26, including R10, N=3, replacements, conflicting registration, leases, version fencing, API concurrency and atomic rollback |
+| Gate 2 | 7/7 in each of two fresh PostgreSQL/EVM runs |
+| Gate 3A | 24/24 in each of two fresh PostgreSQL runs |
+| Gate 3B | 49/49 in each of two fresh PostgreSQL/EVM runs |
+| Gate 3C / inherited live signing / expired authorization | 4/4, 1/1, 1/1 browser tests |
+| Responsive monitoring browser cases | 3/3 at the existing viewport scenarios |
+| Frontend lint, TypeScript, build, API and production smoke | Pass; 7/7 API tests and 12 route checks |
+| Contracts compile, typecheck, tests and audit | Pass; 17/17 tests, no contract change |
+| Skips, cancellations and retries | Zero skipped/cancelled test cases; no retry/flaky result observed. Only the two failure-only diagnostic/upload steps were conditionally skipped. |
+| Dependency limits | High-severity thresholds pass. Full backend/frontend audits retain 11/16 moderate advisories; backend production-only audit reports zero vulnerabilities. No lockfile change. |
+
+Actual N=3 evidence from that hosted local EVM: receipt block **15**, nonce **14**, transaction `0x8b7960a6158929fef851519e8519a4b180a0fd161f5b4ae163804cdfd35168e8`. At heads **15/16/17**, depths **1/2/3** produced **SUBMITTED/SUBMITTED/CONFIRMED**. The test asserted identical original hash/bytes/nonce throughout, exactly one registration event and one relayer nonce consumed, API nonmutation and blocked monitoring before the worker commit. Fresh reruns generate different agreement IDs/transaction hashes; this hash belongs specifically to the linked run.
+
+Delivery history: `35509c7` implemented the gate; its first CI failed on the real legacy-RPC chain-field omission. `a87d592` fixed that omission and head rechecks; Gate 2/3A/3B passed, with 23/25 agreement cases passing and only the inconsistent R01/R09 fixtures failing. `8766570` corrected those fixtures, added the conflicting-registration scenario and passed the full workflow. No failure is represented as a green run, no assertion or timeout was weakened, and no public-chain transaction, funding, deployment, merge, release, tag, schema or Solidity change occurred.

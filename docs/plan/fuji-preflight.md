@@ -2,7 +2,7 @@
 
 **Goal:** Prepare a reproducible Fuji deployment without broadcasting, funding, publicly deploying the backend or merging main.
 
-**Architecture:** Retain Hardhat 3, viem, Solidity Cancun, both existing registries and PostgreSQL relayers. Put deployment admission before wallet access and provide a separate keyless read-only preflight. Runtime recovery changes are separately scoped blockers.
+**Architecture:** Retain Hardhat 3, viem, Solidity Cancun, both existing registries and PostgreSQL relayers. Put deployment admission before wallet access and provide a separate keyless read-only preflight. Separately authorized runtime confirmation work is delivered by Gate 4A.1 below.
 
 **Baseline:** `8d6e4f5`, branch `feat/unihack-phase2c-oracle-evidence`.
 
@@ -20,7 +20,7 @@
 
 ## Separately scoped deployment blockers
 
-- [ ] N1: verify Gate 4A.1 delivery of the [implemented agreement confirmation policy](../ref/agreement-confirmation.md), including exact-commit hosted CI and actual N=3 PostgreSQL/local-EVM evidence. Implementation is authorized separately by this gate; do not close N1 from unit tests alone. See [the execution record](agreement-confirmation.md).
+- [x] N1: Gate 4A.1 implementation verified at `876657012f479d5159d085ca500d7fc8198c92fc` with [green hosted CI](https://github.com/nkhnam/Shadow-Byte/actions/runs/41201478297), 26 agreement recovery cases and actual N=3 PostgreSQL/local-EVM evidence. See [the confirmation policy](../ref/agreement-confirmation.md) and [completed execution record](done/agreement-confirmation.md). Final delivery still requires exact-final-commit CI; N2/N3 remain separate blockers.
 - [ ] Supply five distinct nonzero dedicated testnet role addresses, verify custody/key-derived identity privately, run fresh RPC/preflight checks and approve an itemized gas/funding budget. Do not supply secrets in the repository or chat.
 - [ ] Complete exact-feature-commit CI and independently approve the Fuji execution window. This preflight does not authorize any on-chain action.
 - [ ] Review the 11 moderate backend ESLint/minimatch dependency advisories in a separately scoped tooling update; current high-severity audit passes, and a forced breaking dependency change is not part of Gate 4A.
