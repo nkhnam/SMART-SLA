@@ -16,6 +16,10 @@ const replacementSearchDepth = 128n;
 type WorkerIntent = Prisma.AnchorIntentGetPayload<{ include: { snapshot: { include: { signatures: true } } } }>;
 const recoverableStatuses = [AnchorTransactionStatus.QUEUED, AnchorTransactionStatus.SUBMISSION_UNCERTAIN, AnchorTransactionStatus.SUBMITTED, AnchorTransactionStatus.REPLACED];
 
+class AnchorBroadcastRejection extends Error {
+  constructor(readonly original: unknown) { super("anchor_broadcast_rejected"); }
+}
+
 @Injectable()
 export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AgreementAnchoringService.name);
@@ -47,8 +51,9 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
         try {
           await this.processIntent(claimed.id, claimed.leaseOwner);
         } catch (error) {
-          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(error)}; errorTypes=${this.errorTypeChain(error)}${this.errorCode(error)}${this.databaseErrorCode(error)}).`);
-          await this.releaseAfterFailure(claimed.id, claimed.leaseOwner, error);
+          const original = error instanceof AnchorBroadcastRejection ? error.original : error;
+          this.logger.warn(`Agreement anchor processing failed (${this.errorClass(original)}; errorTypes=${this.errorTypeChain(original)}${this.errorCode(original)}${this.databaseErrorCode(original)}).`);
+          await this.releaseAfterFailure(claimed.id, claimed.leaseOwner, original, error instanceof AnchorBroadcastRejection);
           break;
         }
       }
@@ -148,16 +153,17 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       include: { anchorIntent: true, signatures: true }
     });
     if (!snapshot || snapshot.invalidatedAt) return { agreementId, version: agreement.version, verified: false, durableConfirmed: false, reason: "no_active_snapshot" };
+    const durableConfirmed = agreement.status === AgreementStatus.ANCHOR_CONFIRMED && agreement.blockchainStatus === AnchorTransactionStatus.CONFIRMED && snapshot.anchorIntent?.status === AnchorTransactionStatus.CONFIRMED;
     let proof;
     try {
       const { client, chainId, registryAddress } = await this.blockchain.getSigningContext();
       proof = await evaluateAgreementConfirmation(client, chainId, registryAddress, this.blockchain.getConfirmationCount(), snapshot, snapshot.anchorIntent);
     } catch {
-      return { agreementId, version: agreement.version, verified: false, durableConfirmed: false, reason: "rpc_unavailable", proofStatus: "RETRYABLE_RPC_ERROR" };
+      return { agreementId, version: agreement.version, verified: false, durableConfirmed, reason: "rpc_unavailable", proofStatus: "RETRYABLE_RPC_ERROR" };
     }
     return {
       agreementId, version: agreement.version, verified: proof.outcome === "CONFIRMABLE",
-      durableConfirmed: agreement.status === AgreementStatus.ANCHOR_CONFIRMED && agreement.blockchainStatus === AnchorTransactionStatus.CONFIRMED && snapshot.anchorIntent?.status === AnchorTransactionStatus.CONFIRMED,
+      durableConfirmed,
       reason: proof.reason, proofStatus: proof.outcome, confirmations: proof.confirmations,
       requiredConfirmations: proof.requiredConfirmations, receiptBlock: proof.receiptBlock, evaluatedHead: proof.evaluatedHead,
       transactionHash: proof.transactionHash ?? snapshot.anchorIntent?.transactionHash ?? null
@@ -229,7 +235,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
       }
       const admitted = await this.prisma.$transaction(async (tx) => Boolean(await this.lockOwned(tx, intent, leaseOwner)));
       if (!admitted) return;
-      const hash = await client.sendRawTransaction({ serializedTransaction: intent.signedTransaction as `0x${string}` });
+      const hash = await this.broadcast(client, intent.signedTransaction as `0x${string}`);
       if (hash.toLowerCase() !== intent.transactionHash!.toLowerCase()) return this.transition(intent, leaseOwner, AnchorTransactionStatus.RECONCILIATION_REQUIRED, "rpc_transaction_hash_mismatch");
       return this.transition(intent, leaseOwner, AnchorTransactionStatus.SUBMITTED, null);
     }
@@ -294,7 +300,7 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     const preparedIntent = { ...intent, ...prepared };
     const admitted = await this.prisma.$transaction(async (tx) => Boolean(await this.lockOwned(tx, preparedIntent, leaseOwner)));
     if (!admitted) return;
-    const broadcastHash = await client.sendRawTransaction({ serializedTransaction: prepared.signedTransaction as `0x${string}` });
+    const broadcastHash = await this.broadcast(client, prepared.signedTransaction as `0x${string}`);
     if (broadcastHash.toLowerCase() !== prepared.transactionHash.toLowerCase()) {
       return this.transition(preparedIntent, leaseOwner, AnchorTransactionStatus.RECONCILIATION_REQUIRED, "rpc_transaction_hash_mismatch");
     }
@@ -343,8 +349,17 @@ export class AgreementAnchoringService implements OnModuleInit, OnModuleDestroy 
     });
   }
 
-  private async releaseAfterFailure(intentId: string, leaseOwner: string, error: unknown): Promise<void> {
-    const reason = this.errorClass(error);
+  private async broadcast(client: Awaited<ReturnType<BlockchainNetworkService["getSigningContext"]>>["client"], signedTransaction: `0x${string}`) {
+    try { return await client.sendRawTransaction({ serializedTransaction: signedTransaction }); }
+    catch (error) {
+      if (this.errorClass(error) === "rpc_rejected") throw new AnchorBroadcastRejection(error);
+      throw error;
+    }
+  }
+
+  private async releaseAfterFailure(intentId: string, leaseOwner: string, error: unknown, broadcastRejected: boolean): Promise<void> {
+    const classified = this.errorClass(error);
+    const reason = classified === "rpc_rejected" && !broadcastRejected ? "rpc_unavailable" : classified;
     const current = await this.prisma.anchorIntent.findUnique({ where: { id: intentId }, include: { snapshot: { include: { signatures: true } } } });
     if (!current) return;
     const retryable = reason === "rpc_unavailable" || reason === "timeout" || reason === "wrong_chain_id";

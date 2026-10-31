@@ -197,6 +197,40 @@ test("snapshot mismatch verification never writes reconciliation state", async (
   assert.equal(fixture.writes(), 0);
 });
 
+test("RPC context outage preserves the observed durable confirmation without writes", async () => {
+  const fixture = await proofFixture();
+  Object.assign(fixture.agreement, { status: "ANCHOR_CONFIRMED", blockchainStatus: "CONFIRMED" });
+  fixture.snapshot.anchorIntent.status = "CONFIRMED";
+  fixture.blockchain.getSigningContext = async () => { throw new Error("RPC unavailable"); };
+  const result = await fixture.verify();
+  assert.equal(result.verified, false);
+  assert.equal(result.durableConfirmed, true);
+  assert.equal(result.reason, "rpc_unavailable");
+  assert.equal(fixture.writes(), 0);
+});
+
+for (const prepared of [true, false]) test(`a ${prepared ? "recovery" : "preparation"} nonce-read RPC error cannot be mistaken for a rejected broadcast`, async () => {
+  const fixture = await proofFixture();
+  if (!prepared) Object.assign(fixture.intent, { status: "QUEUED", signedTransaction: null, transactionHash: null, relayerNonce: null, transactionChainId: null, relayerAddress: null });
+  const originalHash = fixture.intent.transactionHash;
+  const originalBytes = fixture.intent.signedTransaction;
+  const originalNonce = fixture.intent.relayerNonce;
+  let sends = 0;
+  fixture.client.sendRawTransaction = async () => { sends++; throw new Error("unexpected broadcast"); };
+  fixture.record.registeredAt = 0n;
+  fixture.client.getTransactionReceipt = async () => { throw Object.assign(new Error(), { name: "TransactionReceiptNotFoundError" }); };
+  fixture.client.getTransaction = async () => { throw Object.assign(new Error(), { name: "TransactionNotFoundError" }); };
+  fixture.client.getTransactionCount = async () => { throw new Error("RPC invalid transaction format"); };
+  Object.assign(fixture.service, { logger: { warn: () => undefined, error: () => undefined } });
+  await fixture.service.processPendingIntents();
+  assert.equal(fixture.intent.status, prepared ? "SUBMITTED" : "QUEUED");
+  assert.equal((fixture.intent as unknown as { lastError: string }).lastError, "rpc_unavailable");
+  assert.equal(fixture.intent.transactionHash, originalHash);
+  assert.equal(fixture.intent.relayerNonce, originalNonce);
+  assert.ok(fixture.intent.signedTransaction === originalBytes, "RPC failure preserves signed bytes");
+  assert.equal(sends, 0);
+});
+
 for (const scenario of [
   {
     name: "an unprepared contract revert fails even when its diagnostic message contains an HTTP link",

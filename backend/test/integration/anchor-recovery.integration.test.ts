@@ -675,3 +675,28 @@ test("an owned revert behind another valid registration waits for depth then rec
   assert.equal(reconciled.intent.relayerNonce, original!.relayerNonce);
   assert.ok(reconciled.intent.signedTransaction === original!.signedTransaction, "conflicting registration preserves original signed bytes");
 });
+
+test("recovery RPC rejection wording cannot finalize failure without a rejected broadcast", async () => {
+  const fixture = await createFixture();
+  await service().processPendingIntents();
+  const original = await state(fixture.agreementId);
+  let broadcasts = 0;
+  const client = controlledClient({
+    getTransactionReceipt: (async () => { throw Object.assign(new Error(), { name: "TransactionReceiptNotFoundError" }); }) as never,
+    getTransaction: (async () => { throw Object.assign(new Error(), { name: "TransactionNotFoundError" }); }) as never,
+    getTransactionCount: (async () => { throw new Error("RPC invalid transaction format"); }) as never,
+    sendRawTransaction: (async () => { broadcasts++; throw new Error("unexpected broadcast"); }) as never
+  });
+  await service(client).processPendingIntents();
+  const uncertain = await durableState(fixture.agreementId);
+  assert.equal(uncertain.intent.status, "SUBMITTED");
+  assert.equal(uncertain.agreement.status, "ANCHOR_PENDING");
+  assert.equal(uncertain.intent.lastError, "rpc_unavailable");
+  assert.equal(broadcasts, 0);
+  await service().processPendingIntents();
+  const recovered = await state(fixture.agreementId);
+  assert.equal(recovered.status, "CONFIRMED");
+  assert.equal(recovered.transactionHash, original.transactionHash);
+  assert.equal(recovered.relayerNonce, original.relayerNonce);
+  assert.ok(recovered.signedTransaction === original.signedTransaction, "RPC uncertainty preserves original bytes");
+});

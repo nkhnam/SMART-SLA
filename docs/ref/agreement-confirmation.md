@@ -23,6 +23,8 @@ The authenticated verification endpoint retains participant/organization checks 
 | Matching external record without trusted transaction identity (policy X, R10) | Reconciliation with null transaction hash/nonce/bytes; no transaction preparation or duplicate broadcast. |
 | Matching record with owned hash but missing receipt | Remain uncertain. This is not classified as an external registration. |
 
+Only a rejection observed at the actual raw-transaction broadcast boundary can finalize the existing `rpc_rejected` state. Rejection-like wording from receipt, nonce or block reads is RPC uncertainty and cannot turn an owned operation into FAILED. Existing deterministic unprepared contract-revert handling remains separate. RPC setup failure also leaves the API's observed `durableConfirmed` value intact while current chain verification reports false.
+
 A missing original transaction can trigger the existing bounded 128-block sender/nonce replacement search, including when the registry already matches. A discovered replacement is stored only in `replacementHash` and independently checked for chain, sender, nonce, destination, value, exact calldata, receipt and depth. The original `signedTransaction`, `transactionHash` and `relayerNonce` remain unchanged. A registry match never authorizes rebroadcast. When registry and transaction are absent and the nonce is unused, recovery rebroadcasts only the original bytes; waiting for depth never allocates another nonce or signature.
 
 ## Reproduce
