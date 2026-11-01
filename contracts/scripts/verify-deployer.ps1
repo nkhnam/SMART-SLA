@@ -21,6 +21,8 @@ try {
     $start.WorkingDirectory = (Get-Location).Path
     $start.UseShellExecute = $false
     $start.RedirectStandardInput = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
     $start.EnvironmentVariables.Clear()
     foreach ($name in @('PATH','SystemRoot','WINDIR','TEMP','TMP')) {
         $value = [Environment]::GetEnvironmentVariable($name)
@@ -34,9 +36,19 @@ try {
     $pointer = [IntPtr]::Zero
     $secret.Dispose()
     $secret = $null
+    $output = $child.StandardOutput.ReadToEnd()
+    $null = $child.StandardError.ReadToEnd()
     $child.WaitForExit()
     $status = $child.ExitCode
+    if ($status -eq 0) {
+        $data = $output | ConvertFrom-Json
+        if ($data.result -ne 'PASS' -or $data.identityOnly -ne $true -or $data.signatureProduced -ne $false -or $data.transactionProduced -ne $false) { throw 'Unexpected identity result.' }
+        [ordered]@{result='PASS';address=$data.address;identityOnly=$true;signatureProduced=$false;transactionProduced=$false} | ConvertTo-Json -Compress | Write-Output
+    } else {
+        Write-Host 'FAIL: deployer identity does not match or private input is invalid.'
+    }
 } catch {
+    $status = 1
     Write-Host 'FAIL: private deployer identity check could not complete.'
 } finally {
     $plain = $null
