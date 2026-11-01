@@ -1,4 +1,6 @@
-import { encodeDeployData, getAddress, getContractAddress, keccak256, type Hex } from "viem";
+import { custom, encodeDeployData, getAddress, getContractAddress, keccak256, type Hex } from "viem";
+import { avalancheFuji } from "viem/chains";
+import { readPrivateDeployerWallet } from "./private-deployer.js";
 import { artifacts, network } from "hardhat";
 import { assertDeployerIdentity, assertDeploymentTarget, FUJI_CHAIN_ID, getFujiRoles, getFujiExecutionPolicy, getFujiTransactionLimits, matchesRuntimeBytecode } from "./deployment-policy.js";
 
@@ -7,7 +9,9 @@ try {
   const publicClient = await connection.viem.getPublicClient();
   const chainId = await publicClient.getChainId();
   assertDeploymentTarget(connection.networkName, chainId);
-  const [deployer] = await connection.viem.getWalletClients();
+  const deployer = chainId === FUJI_CHAIN_ID
+    ? await readPrivateDeployerWallet(process.stdin, getFujiRoles(process.env).deployer, avalancheFuji, custom(publicClient))
+    : (await connection.viem.getWalletClients())[0];
   assertDeployerIdentity(chainId, deployer.account.address);
   const configuredPublisher = process.env.EVIDENCE_PUBLISHER_ADDRESS;
   const publisher = chainId === FUJI_CHAIN_ID ? getFujiRoles(process.env).evidencePublisher : configuredPublisher ? getAddress(configuredPublisher) : deployer.account.address;

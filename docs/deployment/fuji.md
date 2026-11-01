@@ -8,7 +8,7 @@ Use five distinct nonzero dedicated testnet EOAs. Never use production wallets o
 
 | Role | Public variable | Secret custody / authority | Gas |
 | --- | --- | --- | --- |
-| Deployer / evidence owner | `FUJI_DEPLOYER_ADDRESS` | Offline-controlled `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY`, supplied only to the approved contracts process. Retains permanent evidence-publisher rotation authority; no owner transfer exists. | Two deployments plus a separately approved rotation reserve. |
+| Deployer / evidence owner | `FUJI_DEPLOYER_ADDRESS` | Private prompt through `deploy-private.ps1`, supplied through stdin only to the approved contracts process. Retains permanent evidence-publisher rotation authority; no owner transfer exists. | Two deployments plus a separately approved rotation reserve. |
 | Agreement relayer | `AGREEMENT_RELAYER_ADDRESS` | Backend-only `BLOCKCHAIN_RELAYER_PRIVATE_KEY`; relays two valid signatures but cannot forge them. | Approved agreement registrations plus reserve. |
 | Evidence publisher | `EVIDENCE_PUBLISHER_ADDRESS` | Separate backend-only `EVIDENCE_RELAYER_PRIVATE_KEY`; must equal `publisher()`. | Approved evidence commitments plus reserve. |
 | Buyer signer | `BUYER_SIGNER_ADDRESS` | Buyer-controlled wallet, linked/authorized through the authenticated application. Key never enters backend/frontend/contracts configuration. | Existing typed-data signing is gasless. |
@@ -18,7 +18,7 @@ AgreementRegistry has no owner or relayer allowlist: any sender can relay two va
 
 ## Secure environment
 
-Hardhat `configVariable` reads process variables or its configured variable source. This repository does **not** automatically load a contracts `.env`; `.env.example` is a template. Inject secrets through an approved secret manager/private process environment. Never put a key/seed phrase in chat, shell command/history, command argument, screenshot, ticket or CI deployment variable. Avoid environment dumps, transcripts and verbose RPC/debug output. RPC URLs can contain provider credentials and must also be redacted.
+Hardhat reads public RPC configuration through `configVariable`. Fuji accounts are empty in Hardhat configuration: deploy scripts read the key from stdin and ignore the legacy private-key environment variable. This repository does **not** automatically load a contracts `.env`; `.env.example` is a template. Never put a key/seed phrase in chat, shell command/history, command argument, screenshot, ticket or CI deployment variable. Avoid environment dumps, transcripts and verbose RPC/debug output. RPC URLs can contain provider credentials and must also be redacted.
 
 For Gate 4A, leave all private keys and `FUJI_DEPLOYMENT_APPROVED` unset. Replace these placeholders only with public addresses; placeholders deliberately fail validation:
 
@@ -109,7 +109,9 @@ From `contracts/`, run `npx hardhat run scripts/preview-fuji-deploy.ts --network
 
 Draft gas ceilings are 1,200,000 for AgreementRegistry and 800,000 for EvidenceRegistry. Preview proposes a fixed legacy gas price of twice the observed RPC price, rejecting a proposal above the draft 1 gwei ceiling. The pair's hard fee-envelope ceiling is 0.002 AVAX, excluding the separately reserved 0.0002 AVAX for rotation. These draft inputs are not execution approval. Re-read and approve the actual preview just before each transaction.
 
-`powershell -NoProfile -File scripts/verify-deployer.ps1` stops without prompting. Only after separate authorization for private key export/input, adding `-IdentityCheckApproved` prompts without echo and passes the input via stdin to an environment-isolated identity checker. It derives and compares the address against the public draft; it never signs a message or transaction, creates a wallet client or contacts RPC. No key, signature or signed transaction is written to disk/output. Immutable strings still exist in process memory until collection/exit; local administrators can inspect memory. This identity tool is not a private-key injector for the deployment scripts; secure execution-time provisioning must still be arranged separately. Do not invoke it with a real key during preparation.
+`powershell -NoProfile -File scripts/verify-deployer.ps1` stops without prompting. Only after separate authorization for private key export/input, adding `-IdentityCheckApproved` prompts without echo and passes the input via stdin to an environment-isolated identity checker. It derives and compares the address against the public draft; it never signs a message or transaction, creates a wallet client or contacts RPC. No key, signature or signed transaction is written to disk/output. Immutable strings still exist in process memory until collection/exit; local administrators can inspect memory. This identity tool does not deploy. Do not invoke it with a real key during preparation.
+
+`scripts/deploy-private.ps1` provides execution-time provisioning after separate key-input and per-contract deployment approval. Its default invocation stops before prompting. `-DeploymentApproved -Contract AgreementRegistry` (or separately `EvidenceRegistry`) also requires the exact public approval and all limits below. It copies only OS essentials and named public approval fields, fixes the public Avalanche RPC, excludes inherited keys and `NODE_OPTIONS`, uses `--no-compile`, and sends hidden input through stdin. The deploy script checks chain/admission before reading the key, bounds input to 128 bytes, checks the derived public identity and signs locally. Existing nonce/initcode/fee/receipt checks remain. No backend or worker is launched. The launcher clears its unmanaged key buffer and terminates the child on failure or a five-minute timeout. Termination cannot undo a submitted transaction; reconcile sender/nonce/hash before any retry. JavaScript strings and the signing account remain in memory until collection/exit and cannot be guaranteed zeroed. This is private process input, not vault integration or protection from a compromised host.
 
 In addition to the five public roles and `FUJI_DEPLOYMENT_APPROVED=43113`, execution requires these public values, reviewed for the one contract being sent:
 
@@ -132,15 +134,14 @@ Only after the GO checklist and separate owner approval naming Fuji funding/depl
 ````powershell
 try {
     $env:FUJI_DEPLOYMENT_APPROVED = '43113'
-    npm run deploy:fuji
+    powershell -NoProfile -File scripts/deploy-private.ps1 -DeploymentApproved -Contract AgreementRegistry
     if ($LASTEXITCODE -ne 0) { throw 'Stop: reconcile AgreementRegistry sender/nonce/hash before proceeding.' }
 } finally {
     Remove-Item Env:FUJI_DEPLOYMENT_APPROVED -ErrorAction SilentlyContinue
-    Remove-Item Env:AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY -ErrorAction SilentlyContinue
 }
 ````
 
-Stop and independently verify the AgreementRegistry receipt/runtime/domain. Only then obtain a separate EvidenceRegistry approval, set its specific contract/initcode hash with the same pair starting nonce, refresh all checks and run `npm run deploy:evidence:fuji` under the same approval/key cleanup discipline. Never chain the two commands automatically or reuse the first contract's hash/approval for the second.
+Stop and independently verify the AgreementRegistry receipt/runtime/domain. Only then obtain a separate EvidenceRegistry approval, set its specific contract/initcode hash with the same pair starting nonce, refresh all checks and invoke the private launcher with `-DeploymentApproved -Contract EvidenceRegistry`. Never chain the two commands automatically or reuse the first contract's hash/approval for the second. Do not pipe a real key from shell text or use direct npm deployment commands as a private-input interface.
 
 Retain the submitted hash immediately when printed. Scripts wait for a successful receipt at one confirmation and matching contract address; evidence deployment additionally checks owner/publisher. Timeout/nonzero exit after submission is uncertainty. If the RPC fails before a hash is printed, recover from sender/nonce and chain history. Scripts are not a deployment journal; blind retries can deploy additional immutable registries.
 

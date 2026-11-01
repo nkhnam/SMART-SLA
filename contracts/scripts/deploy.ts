@@ -1,5 +1,8 @@
 import { artifacts, network } from "hardhat";
-import { encodeDeployData, getContractAddress, keccak256, type Hex } from "viem";
+import { custom, encodeDeployData, getContractAddress, keccak256, type Hex } from "viem";
+import { avalancheFuji } from "viem/chains";
+import { readPrivateDeployerWallet } from "./private-deployer.js";
+import { getFujiRoles } from "./deployment-policy.js";
 import { assertDeployerIdentity, assertDeploymentTarget, FUJI_CHAIN_ID, getFujiTransactionLimits } from "./deployment-policy.js";
 
 try {
@@ -7,7 +10,9 @@ try {
   const publicClient = await connection.viem.getPublicClient();
   const chainId = await publicClient.getChainId();
   assertDeploymentTarget(connection.networkName, chainId);
-  const [deployer] = await connection.viem.getWalletClients();
+  const deployer = chainId === FUJI_CHAIN_ID
+    ? await readPrivateDeployerWallet(process.stdin, getFujiRoles(process.env).deployer, avalancheFuji, custom(publicClient))
+    : (await connection.viem.getWalletClients())[0];
   assertDeployerIdentity(chainId, deployer.account.address);
   const { contract: registry, deploymentTransaction } = await (async () => {
     if (chainId !== FUJI_CHAIN_ID) return connection.viem.sendDeploymentTransaction("AgreementRegistry");

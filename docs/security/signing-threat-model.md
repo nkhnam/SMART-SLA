@@ -52,7 +52,7 @@ The contract enforces cryptographic EOA approval for the two addresses in the ty
 
 ## Operational controls
 
-- Keep `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` and backend relayer secrets in local environment configuration or a secret manager; never commit or paste them into chat.
+- Supply the Fuji deployer key only through the separately approved private prompt in `contracts/scripts/deploy-private.ps1`; Hardhat no longer loads it from environment configuration. Keep backend relayer secrets in an approved private runtime environment or secret manager; never commit or paste any key into chat.
 - CI uses PostgreSQL service state and a deterministic local EVM only. It has no Fuji deploy job or network credentials.
 - Fuji deployment is a separate approved action. Confirm chain ID 43113 and deployment account funding before sending a transaction.
 - Monitor pending intents, retry classifications, mismatched read-back and relayer balance. A transaction hash alone is not proof of anchoring.

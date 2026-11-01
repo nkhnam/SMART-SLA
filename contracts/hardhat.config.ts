@@ -27,7 +27,7 @@ export default defineConfig({
       chainType: "l1",
       chainId: 43113,
       url: configVariable("AVALANCHE_FUJI_RPC_URL"),
-      accounts: [configVariable("AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY")]
+      accounts: []
     }
   }
 });

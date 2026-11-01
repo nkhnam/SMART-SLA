@@ -8,6 +8,12 @@
 
 **DevFlow:** UNDERSTAND → REASON → DECIDE → IMPLEMENT → VERIFY → TEACH BACK.
 
+### Private deployer launcher preparation — 2026-11-01
+
+Implemented `contracts/scripts/deploy-private.ps1` for a separately approved single-contract deployment. Default and missing-approval paths stop before prompting. An approved invocation supplies hidden input through stdin with an allowlisted child environment, public RPC, no compile and a five-minute child deadline. Fuji Hardhat configuration no longer reads a deployer key from the environment; both deploy scripts derive and compare the stdin key's public identity before signing and retain existing transaction limits. No actual wallet key, funding, Fuji transaction or worker activation is authorized by this implementation.
+
+Verification uses a published Hardhat fixture key on the isolated simulated EVM: the valid-input deployment test first failed at the unimplemented signer, then passed with real local signing, explicit nonce/fees and both registry deployments. Malformed, oversized and mismatched inputs produce a generic error without echoing the key. Contracts typecheck and all 23 tests passed. Both default and missing-approval PowerShell paths stopped before prompting; parser validation passed. Both existing local deployment commands retained their JSON output on chain 31337. A subsequent isolated probe copied the unchanged PowerShell launcher with a fixture-only child, verified stdin transport for both contracts, filtered inherited secret/NODE_OPTIONS variables, fixed RPC selection and exact child failure-exit propagation, then removed its temporary directory. It made no RPC call, signature or transaction. Independent read-only code review found no blocking code issue; stale environment-key guidance in the signing threat model was corrected. Real-key private input, Fuji signing/broadcast and vault integration remain untested and unperformed. The launcher is subject to local administrator access to process memory; clearing a BSTR does not guarantee erasure of JavaScript strings/account closures. Hosted CI must be checked against the delivery commit; these local checks do not authorize execution.
+
 ## Work sequence
 
 1. [x] UNDERSTAND: inspect both deployment scripts/configuration, contracts, backend relayers/configuration, deployment docs and existing Gate 2/3 records. Record findings in [the preflight audit](../research/fuji-preflight.md) before code changes.

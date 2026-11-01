@@ -3,6 +3,9 @@ import { describe, it } from "node:test";
 import { assertDeployerIdentity, assertDeploymentTarget, getFujiRoles, getFujiExecutionPolicy, getFujiTransactionLimits, matchesRuntimeBytecode } from "../scripts/deployment-policy.js";
 import { verifyDeployerIdentity } from "../scripts/deployer-identity.mjs";
 import { artifacts, network } from "hardhat";
+import { Readable } from "node:stream";
+import { custom } from "viem";
+import { readPrivateDeployerWallet } from "../scripts/private-deployer.js";
 import { encodeDeployData, keccak256, type Hex } from "viem";
 
 const roles = {
@@ -84,10 +87,19 @@ describe("deployment admission", () => {
     assert.equal(getFujiTransactionLimits("EvidenceRegistry", { ...observed, gasEstimate: 484447n, latestNonce: 1, pendingNonce: 1, previousFee: 1000000000000000n }, { ...execution, FUJI_APPROVED_CONTRACT: "EvidenceRegistry" }).nonce, 1);
   });
 
+  it("rejects invalid or mismatched stdin keys without echoing their value", async () => {
+    const connection = await network.create();
+    const client = await connection.viem.getPublicClient();
+    for (const secret of ["not-a-key", "a".repeat(129), "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]) {
+      await assert.rejects(readPrivateDeployerWallet(Readable.from([secret]), "0x0000000000000000000000000000000000000001", client.chain, custom(client)), (error: Error) => error.message === "Private deployer input rejected.");
+    }
+  });
+
   it("sends explicit nonce and fixed fee fields on an isolated local EVM", async () => {
     const connection = await network.create();
     const client = await connection.viem.getPublicClient();
-    const [wallet] = await connection.viem.getWalletClients();
+    const [fixture] = await connection.viem.getWalletClients();
+    const wallet = await readPrivateDeployerWallet(Readable.from(["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]), fixture.account.address, client.chain, custom(client));
     const start = await client.getTransactionCount({ address: wallet.account.address });
     let feePaid = 0n;
     for (const [offset, contract] of (["AgreementRegistry", "EvidenceRegistry"] as const).entries()) {
