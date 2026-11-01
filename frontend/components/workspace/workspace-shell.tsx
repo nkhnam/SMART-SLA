@@ -33,6 +33,7 @@ function WorkspaceFrame({ children }: { children: React.ReactNode }) {
           <Link href="/workspace/agreements" className="text-sm font-bold tracking-wide">SLA-DEX <span className="font-medium text-muted">Live workspace</span></Link>
           <nav aria-label="Live workspace navigation" className="flex items-center gap-4 text-xs font-semibold">
             <Link href="/workspace/agreements" className="text-ink hover:text-brand">Agreements</Link>
+            <Link href="/workspace/monitoring" className="text-ink hover:text-brand">Monitoring</Link>
             <Link href="/overview" className="text-muted hover:text-brand">Demo Mode</Link>
           </nav>
         </div>

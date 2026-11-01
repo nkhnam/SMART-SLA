@@ -67,6 +67,55 @@ enum AgreementSignatureParty {
   SUPPLIER
 }
 
+enum MonitoringSourceType {
+  HTTP_PROBE
+  SIGNED_WEBHOOK
+}
+
+enum MonitoringTrustCategory {
+  OPERATOR_COLLECTED
+  PROVIDER_REPORTED
+  SYNTHETIC_TEST
+}
+
+enum MonitoringRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum MonitoringErrorCategory {
+  TIMEOUT
+  DNS
+  CONNECTION
+  TLS
+  HTTP
+  RESPONSE_TOO_LARGE
+  INVALID_RESPONSE
+}
+
+enum ObservationValidity {
+  VALID
+  INVALID
+  UNKNOWN
+}
+
+enum KpiState {
+  HEALTHY
+  DEGRADED
+  BREACH_CANDIDATE
+  UNKNOWN
+  INSUFFICIENT_DATA
+}
+
+enum EvidenceAnchorStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  RECONCILIATION_REQUIRED
+}
+
 model User {
   id                 String                @id @default(uuid()) @db.Uuid
   email              String                @unique @db.VarChar(320)
@@ -83,6 +132,7 @@ model User {
   invitationsDecided AgreementInvitation[] @relation("InvitationDecidedBy")
   authorizedSigners  AuthorizedSigner[]
   signerChallenges   SignerChallenge[]
+  monitoringSources  MonitoringSource[]
 }
 
 model Organization {
@@ -101,6 +151,11 @@ model Organization {
   signerChallenges    SignerChallenge[]
   buyerSnapshots      SigningSnapshot[]      @relation("SigningSnapshotBuyerOrganization")
   supplierSnapshots   SigningSnapshot[]      @relation("SigningSnapshotSupplierOrganization")
+  monitoringSources   MonitoringSource[]
+  monitoringObservations MonitoringObservation[]
+  kpiEvaluations      KpiEvaluation[]
+  breachCandidates    BreachCandidate[]
+  evidenceBatches     EvidenceBatch[]
 
   @@index([createdAt])
 }
@@ -171,6 +226,11 @@ model AgreementVersion {
   agreement               Agreement         @relation(fields: [agreementId], references: [id], onDelete: Cascade)
   actor                   User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
   snapshots               SigningSnapshot[]
+  monitoringSources       MonitoringSource[]
+  monitoringObservations  MonitoringObservation[]
+  kpiEvaluations          KpiEvaluation[]
+  breachCandidates        BreachCandidate[]
+  evidenceBatches         EvidenceBatch[]
 
   @@unique([agreementId, version])
   @@index([agreementId, version(sort: Desc)])
@@ -340,4 +400,201 @@ model AuditEvent {
   @@index([organizationId, createdAt])
   @@index([resourceType, resourceId, createdAt])
   @@index([actorUserId, createdAt])
+}
+
+model MonitoringSource {
+  id                     String                   @id @default(uuid()) @db.Uuid
+  organizationId         String                   @db.Uuid
+  agreementId            String                   @db.Uuid
+  agreementVersion       Int
+  createdByUserId        String                   @db.Uuid
+  type                   MonitoringSourceType
+  trustCategory          MonitoringTrustCategory
+  name                   String                   @db.VarChar(120)
+  endpointUrl            String?                  @db.VarChar(2048)
+  encryptedWebhookSecret String?                  @db.Text
+  intervalSeconds        Int
+  retentionDays          Int                      @default(90)
+  enabled                Boolean                  @default(true)
+  nextRunAt              DateTime?
+  leaseOwner             String?                  @db.VarChar(120)
+  leaseUntil             DateTime?
+  lastRunAt              DateTime?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreementVersionRecord AgreementVersion         @relation(fields: [agreementId, agreementVersion], references: [agreementId, version], onDelete: Restrict)
+  createdBy              User                     @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  runs                   MonitoringRun[]
+  observations           MonitoringObservation[]
+  evaluations            KpiEvaluation[]
+
+  @@unique([id, agreementId, agreementVersion, organizationId])
+  @@index([organizationId, agreementId, agreementVersion, enabled])
+  @@index([enabled, nextRunAt, leaseUntil])
+}
+
+model MonitoringRun {
+  id            String                   @id @default(uuid()) @db.Uuid
+  sourceId      String                   @db.Uuid
+  scheduledFor  DateTime
+  startedAt     DateTime?
+  completedAt   DateTime?
+  status        MonitoringRunStatus     @default(RUNNING)
+  errorCategory MonitoringErrorCategory?
+  errorCode     String?                  @db.VarChar(80)
+  createdAt     DateTime                 @default(now())
+  source        MonitoringSource         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  observation   MonitoringObservation?
+
+  @@unique([sourceId, scheduledFor])
+  @@index([status, createdAt])
+}
+
+model MonitoringObservation {
+  id                     String                    @id @default(uuid()) @db.Uuid
+  organizationId         String                    @db.Uuid
+  agreementId            String                    @db.Uuid
+  agreementVersion       Int
+  sourceId               String                    @db.Uuid
+  runId                  String?                   @unique @db.Uuid
+  idempotencyKey         String                    @db.VarChar(128)
+  webhookNonce           String?                   @db.VarChar(128)
+  trustCategory          MonitoringTrustCategory
+  observedAt             DateTime
+  ingestedAt             DateTime                  @default(now())
+  scheduledFor           DateTime
+  method                 MonitoringSourceType
+  httpStatus             Int?
+  latencyMs              Int?
+  reachable              Boolean?
+  errorCategory          MonitoringErrorCategory?
+  probeDurationMs        Int?
+  collectionRegion       String?                   @db.VarChar(80)
+  agentIdentity          String?                   @db.VarChar(120)
+  validity               ObservationValidity       @default(VALID)
+  validityReason         String?                   @db.VarChar(160)
+  retentionUntil         DateTime
+  provenance             Json                      @default("{}")
+  rawMetadata            Json                      @default("{}")
+  source                 MonitoringSource          @relation(fields: [sourceId, agreementId, agreementVersion, organizationId], references: [id, agreementId, agreementVersion, organizationId], onDelete: Restrict)
+  organization           Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreementVersionRecord AgreementVersion          @relation(fields: [agreementId, agreementVersion], references: [agreementId, version], onDelete: Restrict)
+  run                    MonitoringRun?            @relation(fields: [runId], references: [id], onDelete: Restrict)
+  evidenceRecords        EvidenceRecord[]
+
+  @@unique([sourceId, idempotencyKey])
+  @@unique([sourceId, webhookNonce])
+  @@index([agreementId, agreementVersion, observedAt])
+  @@index([organizationId, agreementId, observedAt])
+}
+
+model KpiEvaluation {
+  id                     String            @id @default(uuid()) @db.Uuid
+  organizationId         String            @db.Uuid
+  agreementId            String            @db.Uuid
+  agreementVersion       Int
+  sourceId               String            @db.Uuid
+  windowStart            DateTime
+  windowEnd              DateTime
+  algorithmVersion       String            @db.VarChar(40)
+  latencyStatistic       String            @db.VarChar(16)
+  expectedSamples        Int
+  healthyObservations    Int
+  failedObservations     Int
+  unknownObservations    Int
+  coveragePercent        Decimal           @db.Decimal(5, 2)
+  uptimePercent          Decimal?          @db.Decimal(5, 2)
+  meanLatencyMs          Decimal?          @db.Decimal(12, 2)
+  state                  KpiState
+  createdAt              DateTime          @default(now())
+  organization           Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreementVersionRecord AgreementVersion  @relation(fields: [agreementId, agreementVersion], references: [agreementId, version], onDelete: Restrict)
+  source                 MonitoringSource  @relation(fields: [sourceId, agreementId, agreementVersion, organizationId], references: [id, agreementId, agreementVersion, organizationId], onDelete: Restrict)
+  breachCandidate        BreachCandidate?
+
+  @@unique([sourceId, windowStart, windowEnd, algorithmVersion])
+  @@index([agreementId, agreementVersion, windowStart, windowEnd])
+  @@index([organizationId, createdAt])
+}
+
+model BreachCandidate {
+  id                     String            @id @default(uuid()) @db.Uuid
+  organizationId         String            @db.Uuid
+  agreementId            String            @db.Uuid
+  agreementVersion       Int
+  evaluationId           String            @unique @db.Uuid
+  state                  KpiState
+  summary                String            @db.VarChar(240)
+  createdAt              DateTime          @default(now())
+  organization           Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreementVersionRecord AgreementVersion  @relation(fields: [agreementId, agreementVersion], references: [agreementId, version], onDelete: Restrict)
+  evaluation             KpiEvaluation     @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
+
+  @@index([agreementId, agreementVersion, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model EvidenceBatch {
+  id                     String                 @id @default(uuid()) @db.Uuid
+  organizationId         String                 @db.Uuid
+  agreementId            String                 @db.Uuid
+  agreementVersion       Int
+  windowStart            DateTime
+  windowEnd              DateTime
+  schemaVersion          String                 @db.VarChar(48)
+  algorithmVersion       String                 @db.VarChar(40)
+  merkleRoot             String                 @db.Char(66)
+  batchDigest            String                 @db.Char(66)
+  observationCount       Int
+  canonicalManifest      Json
+  createdAt              DateTime               @default(now())
+  organization           Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  agreementVersionRecord AgreementVersion       @relation(fields: [agreementId, agreementVersion], references: [agreementId, version], onDelete: Restrict)
+  records                EvidenceRecord[]
+  anchorIntent           EvidenceAnchorIntent?
+
+  @@unique([agreementId, agreementVersion, windowStart, windowEnd])
+  @@index([organizationId, agreementId, agreementVersion, createdAt])
+}
+
+model EvidenceRecord {
+  id              String                 @id @default(uuid()) @db.Uuid
+  batchId         String                 @db.Uuid
+  observationId   String                 @db.Uuid
+  leafIndex       Int
+  leafDigest      String                 @db.Char(66)
+  canonicalRecord Json
+  inclusionProof  Json
+  createdAt       DateTime               @default(now())
+  batch           EvidenceBatch          @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  observation     MonitoringObservation  @relation(fields: [observationId], references: [id], onDelete: Restrict)
+
+  @@unique([batchId, leafIndex])
+  @@unique([batchId, observationId])
+  @@index([observationId])
+}
+
+model EvidenceAnchorIntent {
+  id                 String               @id @default(uuid()) @db.Uuid
+  batchId            String               @unique @db.Uuid
+  anchorKey          String               @unique @db.Char(66)
+  status             EvidenceAnchorStatus @default(PENDING)
+  attemptCount       Int                  @default(0)
+  transactionChainId Int?
+  relayerAddress     String?              @db.VarChar(42)
+  relayerNonce       BigInt?
+  signedTransaction  String?              @db.Text
+  transactionHash    String?              @unique @db.VarChar(66)
+  lastError          String?              @db.VarChar(160)
+  leaseOwner         String?              @db.VarChar(120)
+  leaseUntil         DateTime?
+  submittedAt        DateTime?
+  confirmedAt        DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  batch              EvidenceBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@unique([transactionChainId, relayerAddress, relayerNonce])
+  @@index([status, leaseUntil, createdAt])
 }

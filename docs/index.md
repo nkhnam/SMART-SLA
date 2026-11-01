@@ -7,5 +7,19 @@
 - [Phase 2B signing architecture](arch/phase2b-avalanche.md) — invitation, immutable bilateral signing, relayer and Fuji registry boundaries.
 - [Phase 2B implementation plan](plan/phase2b-avalanche.md) — work sequence, review focus, validation and delivery checklist.
 - [Canonical agreement hashing](protocol/agreement-hashing.md) — snapshot serialization, digest and EIP-712 message rules.
+- [Agreement confirmation policy](ref/agreement-confirmation.md) — Gate 4A.1 receipt/depth proof, read-only verification, durable worker fencing, replacement recovery and external-registration reconciliation.
+- [Completed Gate 4A.1 execution record](plan/done/agreement-confirmation.md) — baseline RED, CI corrections, measured regression counts and N=3 block/nonce evidence; N2/N3 remain NO-GO.
 - [Signing threat model](security/signing-threat-model.md) — assets, authorization boundaries, replay protection and operational limits.
-- [Fuji deployment guide](deployment/fuji.md) — secure manual deployment and independent verification steps.
+- [Fuji preflight and deployment runbook](deployment/fuji.md) — keyless chain/gas/role checks, separate approval, placeholders, confirmation policy and recovery limits.
+- [Gate 4A preflight audit](research/fuji-preflight.md) — readiness findings, historical acceptance boundaries and actual local/RPC results.
+- [Gate 4A implementation and blockers](plan/fuji-preflight.md) — preflight work sequence and separately approved deployment prerequisites.
+- [Phase 2C monitoring architecture](arch/phase2c-monitoring.md) — collection, KPI policy, evidence commitments, retention and relayer separation.
+- [Evidence format v1](protocol/evidence-format.md) — canonical serialization, Merkle construction and standalone verification.
+- [Oracle threat model](security/oracle-threat-model.md) — source trust boundaries and residual risks.
+- [EvidenceRegistry deployment](deployment/evidence-registry.md) — local deployment and separate publisher configuration.
+- [Phase 2C full-stack acceptance](ref/phase2c-acceptance.md) — two fresh PostgreSQL/local-EVM runs, synthetic observations, evidence verification, tamper rejection and cleanup.
+- [Monitoring worker reliability](ref/monitoring-worker-reliability.md) — Gate 3A recovery states, PostgreSQL fault matrix, lease fencing, diagnostics and remaining Gate 3B work.
+- [Evidence publisher reliability](ref/evidence-publisher-reliability.md) — Gate 3B durable transaction recovery, local-EVM fault matrix, finality checks and safe diagnostics.
+- [Authenticated monitoring browser flows](ref/monitoring-browser-flows.md) — Gate 3C real-session source management, role/version boundaries, responsive coverage and isolated reproduction.
+- [Real public HTTPS acceptance](ref/public-https-acceptance.md) — opt-in Gate 3D production probe, real PostgreSQL observations, missing coverage, local-EVM evidence and network diagnostics.
+- [Public HTTPS acceptance implementation record](plan/done/public-https-acceptance.md) — design, rejected alternatives, regression findings and local validation results.

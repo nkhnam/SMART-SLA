@@ -1,7 +1,8 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { after, before, test } from "node:test";
+import { isDeepStrictEqual } from "node:util";
+import { after, afterEach, before, test } from "node:test";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../src/generated/prisma/client.js";
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, stringToHex, type Address, type PublicClient } from "viem";
@@ -10,6 +11,7 @@ import { AgreementAnchoringService } from "../../src/blockchain/agreement-anchor
 import { AgreementSigningService } from "../../src/agreements/agreement-signing.service.js";
 import { agreementApprovalTypedData, canonicalizeAgreementSnapshot } from "../../src/blockchain/agreement-hash.service.js";
 import { agreementRegistryAbi } from "../../src/blockchain/agreement-registry.abi.js";
+import { MonitoringAccessService } from "../../src/monitoring/monitoring-access.service.js";
 
 const databaseUrl = process.env.DATABASE_URL ?? "";
 const rpcUrl = process.env.ANCHOR_TEST_RPC_URL ?? "";
@@ -22,10 +24,12 @@ const signerPasswordHash = "test-only-not-a-credential";
 
 assert.match(new URL(databaseUrl).pathname.replace(/^\//, ""), /_test$/, "anchor integration tests require a dedicated _test database");
 assert.ok(rpcUrl && chainId > 0 && registryAddress && relayerKey, "anchor integration tests require a local EVM and deployed registry");
+assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(new URL(rpcUrl).hostname), "anchor tests only permit loopback EVMs");
+assert.equal(chainId, 31337, "anchor tests only permit the isolated Hardhat chain");
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
 const chain = defineChain({ id: chainId, name: "SLA-DEX local EVM", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [rpcUrl] } } });
-const chainClient = createPublicClient({ chain, transport: http(rpcUrl) });
+const chainClient = createPublicClient({ chain, transport: http(rpcUrl), cacheTime: 0 });
 const relayer = privateKeyToAccount(relayerKey!);
 const relayerWallet = createWalletClient({ account: relayer, chain, transport: http(rpcUrl) });
 const fixtures: Array<{ agreementId: string; organizationIds: string[]; userIds: string[] }> = [];
@@ -41,7 +45,7 @@ function controlledClient(overrides: RpcOverrides = {}) {
   }) as PublicClient;
 }
 
-function service(client: PublicClient = chainClient, database: PrismaClient = prisma, contextChainId = chainId) {
+function service(client: PublicClient = chainClient, database: PrismaClient = prisma, contextChainId = chainId, confirmations = 1) {
   const blockchain = {
     isAnchorConfigured: () => true,
     getSigningContext: async () => {
@@ -50,7 +54,7 @@ function service(client: PublicClient = chainClient, database: PrismaClient = pr
       return { client, chainId: contextChainId, registryAddress: registryAddress!, rpcUrl };
     },
     getRelayerAccount: () => relayer,
-    getConfirmationCount: () => 1
+    getConfirmationCount: () => confirmations
   };
   return new AgreementAnchoringService(database as never, blockchain as never);
 }
@@ -165,16 +169,17 @@ before(async () => {
   assert.notEqual(await chainClient.getCode({ address: registryAddress! }), "0x", "the local registry must be deployed");
 });
 
-after(async () => {
-  for (const fixture of fixtures) {
+afterEach(async () => {
+  for (const fixture of fixtures.splice(0)) {
+    await prisma.auditEvent.deleteMany({ where: { resourceType: "agreement", resourceId: fixture.agreementId } });
     await prisma.anchorIntent.deleteMany({ where: { snapshot: { agreementId: fixture.agreementId } } });
     await prisma.signingSnapshot.deleteMany({ where: { agreementId: fixture.agreementId } });
     await prisma.agreement.deleteMany({ where: { id: fixture.agreementId } });
     await prisma.organization.deleteMany({ where: { id: { in: fixture.organizationIds } } });
     await prisma.user.deleteMany({ where: { id: { in: fixture.userIds } } });
   }
-  await prisma.$disconnect();
 });
+after(() => prisma.$disconnect());
 
 test("R02 RPC timeout after broadcast keeps the persisted transaction and restart confirms it", async () => {
   const fixture = await createFixture();
@@ -299,7 +304,8 @@ test("R09 dropped transactions rebroadcast identical bytes while replacements st
   const rejectBeforeSend = controlledClient({ sendRawTransaction: (async () => { throw new Error("invalid sender"); }) as never });
   await service(rejectBeforeSend).processPendingIntents();
   const stored = await state(dropped.agreementId);
-  await prisma.anchorIntent.update({ where: { id: stored.id }, data: { status: "SUBMISSION_UNCERTAIN", lastError: null } });
+  await service().retry(context(dropped), dropped.agreementId);
+  assert.equal((await prisma.agreement.findUniqueOrThrow({ where: { id: dropped.agreementId } })).status, "ANCHOR_PENDING");
   await service().processPendingIntents();
   const rebroadcast = await state(dropped.agreementId);
   assert.equal(rebroadcast.transactionHash, stored.transactionHash);
@@ -358,7 +364,7 @@ test("R08 an EVM revert is recorded as failed with a reverted receipt", async ()
   assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).registeredAt, 0n);
 });
 
-test("R10 an expected registry record is confirmed without a duplicate transaction", async () => {
+test("R10 an external matching record requires reconciliation without a duplicate transaction", async () => {
   const fixture = await createFixture();
   const before = await chainClient.getTransactionCount({ address: relayer.address });
   const registrationHash = await relayerWallet.writeContract({ address: registryAddress!, abi: agreementRegistryAbi, functionName: "registerAgreement", args: [fixture.typedData.message, (await buyer.signTypedData(fixture.typedData)), (await supplier.signTypedData(fixture.typedData))] });
@@ -366,8 +372,12 @@ test("R10 an expected registry record is confirmed without a duplicate transacti
   assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).agreementHash, fixture.canonical.hash);
   await service().processPendingIntents();
   const intent = await state(fixture.agreementId);
-  assert.equal(intent.status, "CONFIRMED");
+  assert.equal(intent.status, "RECONCILIATION_REQUIRED");
+  assert.equal(intent.lastError, "external_registration_without_proof");
   assert.equal(intent.transactionHash, null);
+  assert.equal(intent.relayerNonce, null);
+  assert.equal(intent.signedTransaction, null);
+  assert.equal((await prisma.agreement.findUniqueOrThrow({ where: { id: fixture.agreementId } })).status, "ANCHOR_PENDING");
   assert.equal(await chainClient.getTransactionCount({ address: relayer.address }), before + 1);
 });
 
@@ -403,11 +413,290 @@ test("R01 RPC rejection persists a failed signed intent without on-chain registr
   assert.equal(intent.attemptCount, 1);
   assert.ok(intent.signedTransaction);
   assert.equal((await registryRecord(fixture.canonical.key as `0x${string}`)).registeredAt, 0n);
-  await prisma.anchorIntent.update({ where: { id: intent.id }, data: { status: "SUBMISSION_UNCERTAIN", lastError: null } });
+  await service().retry(context(fixture), fixture.agreementId);
+  assert.equal((await prisma.agreement.findUniqueOrThrow({ where: { id: fixture.agreementId } })).status, "ANCHOR_PENDING");
   await service().processPendingIntents();
   const rebroadcast = await state(fixture.agreementId);
   assert.equal(rebroadcast.status, "SUBMITTED");
   assert.equal(rebroadcast.transactionHash, intent.transactionHash);
   await service().processPendingIntents();
   assert.equal((await state(fixture.agreementId)).status, "CONFIRMED");
+});
+
+function context(fixture: Awaited<ReturnType<typeof createFixture>>) {
+  return { user: { id: fixture.buyerUserId }, organization: { id: fixture.snapshot.buyerOrganizationId, role: "OWNER" } } as never;
+}
+
+async function durableState(agreementId: string) {
+  return { intent: await state(agreementId), agreement: await prisma.agreement.findUniqueOrThrow({ where: { id: agreementId } }) };
+}
+
+test("N=3 confirms only at H+2 with stable identity and read-only concurrent verification", async (t) => {
+  const fixture = await createFixture();
+  const worker = () => service(chainClient, prisma, chainId, 3);
+  const monitoring = new MonitoringAccessService(prisma as never, { get: () => chainId } as never);
+  const nonceBefore = await chainClient.getTransactionCount({ address: relayer.address });
+  await worker().processPendingIntents();
+  const submitted = await state(fixture.agreementId);
+  const receipt = await chainClient.getTransactionReceipt({ hash: submitted.transactionHash as `0x${string}` });
+  const observations: unknown[] = [];
+  for (const depth of [1, 2, 3]) {
+    const head = await chainClient.getBlockNumber({ cacheTime: 0 });
+    assert.equal(head, receipt.blockNumber + BigInt(depth - 1));
+    const before = await durableState(fixture.agreementId);
+    const results = await Promise.all([worker().verifyAgreement(context(fixture), fixture.agreementId), worker().verifyAgreement(context(fixture), fixture.agreementId)]);
+    for (const proof of results) {
+      assert.equal(proof.verified, depth === 3);
+      assert.equal(proof.durableConfirmed, false);
+      assert.equal(proof.confirmations, depth);
+      assert.equal(proof.requiredConfirmations, 3);
+    }
+    assert.ok(isDeepStrictEqual(await durableState(fixture.agreementId), before), "API verification must not update any durable field");
+    await assert.rejects(monitoring.requireActiveAgreement(context(fixture), fixture.agreementId));
+    await Promise.all([worker().processPendingIntents(), worker().processPendingIntents()]);
+    const current = await state(fixture.agreementId);
+    assert.equal(current.status, depth === 3 ? "CONFIRMED" : "SUBMITTED");
+    assert.equal(current.transactionHash, submitted.transactionHash);
+    assert.ok(current.signedTransaction === submitted.signedTransaction, "original signed bytes remain identical");
+    assert.equal(current.relayerNonce, submitted.relayerNonce);
+    observations.push({ receiptBlock: receipt.blockNumber.toString(), head: head.toString(), depth, status: current.status, transactionHash: current.transactionHash, nonce: current.relayerNonce?.toString() });
+    if (depth < 3) await mine();
+  }
+  await monitoring.requireActiveAgreement(context(fixture), fixture.agreementId);
+  assert.equal((await worker().verifyAgreement(context(fixture), fixture.agreementId)).durableConfirmed, true);
+  assert.equal(await chainClient.getTransactionCount({ address: relayer.address }), nonceBefore + 1);
+  const events = await chainClient.getContractEvents({ address: registryAddress!, abi: agreementRegistryAbi, eventName: "AgreementRegistered", args: { agreementKey: fixture.canonical.key }, fromBlock: 0n, toBlock: "latest" });
+  assert.equal(events.length, 1);
+  t.diagnostic(`N3_BLOCK_EVIDENCE ${JSON.stringify(observations)}`);
+});
+
+test("N=3 waits for canonical revert depth before atomically failing", async () => {
+  const fixture = await createFixture({ expiresAt: Math.floor(Date.now() / 1000) - 30 });
+  const client = controlledClient({ estimateContractGas: async () => 100_000n as never });
+  const worker = () => service(client, prisma, chainId, 3);
+  await worker().processPendingIntents();
+  const original = await state(fixture.agreementId);
+  assert.equal((await chainClient.getTransactionReceipt({ hash: original.transactionHash as `0x${string}` })).status, "reverted");
+  assert.ok(["SUBMITTED", "SUBMISSION_UNCERTAIN"].includes(original.status));
+  for (const depth of [1, 2, 3]) {
+    await worker().processPendingIntents();
+    const current = await durableState(fixture.agreementId);
+    assert.equal(current.intent.status, depth === 3 ? "FAILED" : original.status);
+    assert.equal(current.agreement.status, depth === 3 ? "ANCHOR_FAILED" : "ANCHOR_PENDING");
+    assert.equal(current.intent.transactionHash, original.transactionHash);
+    if (depth < 3) await mine();
+  }
+});
+
+test("API verification held across worker confirmation cannot overwrite its durable result", async () => {
+  const fixture = await createFixture();
+  await service().processPendingIntents();
+  let enter!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>((resolve) => { enter = resolve; });
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const client = controlledClient({ getTransactionReceipt: (async (args: { hash: `0x${string}` }) => {
+    const receipt = await chainClient.getTransactionReceipt(args);
+    enter(); await gate; return receipt;
+  }) as never });
+  const verification = service(client).verifyAgreement(context(fixture), fixture.agreementId);
+  try {
+    await entered;
+    await service().processPendingIntents();
+    const committed = await durableState(fixture.agreementId);
+    assert.equal(committed.intent.status, "CONFIRMED");
+    assert.ok(committed.intent.confirmedAt);
+    release();
+    const result = await verification;
+    assert.equal(result.verified, true);
+    assert.equal(result.durableConfirmed, false, "the response separates its earlier DB observation from sufficient chain proof");
+    assert.ok(isDeepStrictEqual(await durableState(fixture.agreementId), committed), "API verification cannot alter the worker commit");
+  } finally { release(); await verification; }
+});
+
+for (const fault of ["missing", "timeout", "unavailable", "noncanonical", "head_changed"] as const) {
+  test(`included owned transaction survives ${fault} and a worker restart`, async () => {
+    const fixture = await createFixture();
+    await service().processPendingIntents();
+    const original = await state(fixture.agreementId);
+    let reads = 0;
+    const client = controlledClient(fault === "head_changed" ? {
+      getBlock: (async (args: Parameters<PublicClient["getBlock"]>[0]) => {
+        const block = await chainClient.getBlock(args);
+        return { ...block, hash: ++reads >= 3 ? `0x${"ff".repeat(32)}` : block.hash };
+      }) as never
+    } : {
+      getTransactionReceipt: (async (args: { hash: `0x${string}` }) => {
+        if (fault === "missing") throw Object.assign(new Error("controlled missing receipt"), { name: "TransactionReceiptNotFoundError" });
+        if (fault === "timeout") throw new Error("controlled RPC timeout");
+        if (fault === "unavailable") throw new Error("controlled HTTP service unavailable");
+        return { ...await chainClient.getTransactionReceipt(args), blockHash: `0x${"ff".repeat(32)}` };
+      }) as never
+    });
+    const before = await durableState(fixture.agreementId);
+    assert.equal((await service(client).verifyAgreement(context(fixture), fixture.agreementId)).verified, false);
+    assert.ok(isDeepStrictEqual(await durableState(fixture.agreementId), before), "fault verification is read-only");
+    reads = 0;
+    await service(client).processPendingIntents();
+    assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
+    await service().processPendingIntents();
+    const recovered = await state(fixture.agreementId);
+    assert.equal(recovered.status, "CONFIRMED");
+    assert.equal(recovered.transactionHash, original.transactionHash);
+    assert.equal(recovered.relayerNonce, original.relayerNonce);
+  });
+}
+
+for (const takeover of [false, true]) {
+  test(`stale finalization is rejected after lease ${takeover ? "takeover" : "expiry"}`, async () => {
+    const fixture = await createFixture();
+    await service().processPendingIntents();
+    let enter!: () => void;
+    let release!: () => void;
+    const entered = new Promise<void>((resolve) => { enter = resolve; });
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const client = controlledClient({ getTransactionReceipt: (async (args: { hash: `0x${string}` }) => {
+      const receipt = await chainClient.getTransactionReceipt(args);
+      enter(); await gate; return receipt;
+    }) as never });
+    const pending = service(client).processPendingIntents();
+    try {
+      await entered;
+      const leased = await state(fixture.agreementId);
+      await prisma.$executeRaw`UPDATE "AnchorIntent" SET "leaseUntil" = clock_timestamp() - interval '1 second' WHERE "id" = ${leased.id}::uuid`;
+      if (takeover) await service().processPendingIntents();
+      const before = await durableState(fixture.agreementId);
+      assert.equal(before.intent.status, takeover ? "CONFIRMED" : "SUBMITTED");
+      release(); await pending;
+      assert.ok(isDeepStrictEqual(await durableState(fixture.agreementId), before), "stale worker cannot clear a lease or partially update the agreement");
+    } finally { release(); await pending; }
+    if (!takeover) await service().processPendingIntents();
+    assert.equal((await state(fixture.agreementId)).status, "CONFIRMED");
+  });
+}
+
+test("an agreement version changed while proof is read cannot be finalized by the old worker", async () => {
+  const fixture = await createFixture();
+  await service().processPendingIntents();
+  let changed = false;
+  const client = controlledClient({ getTransactionReceipt: (async (args: { hash: `0x${string}` }) => {
+    if (!changed) {
+      changed = true;
+      await prisma.agreement.update({ where: { id: fixture.agreementId }, data: { version: 2, status: "DRAFT", blockchainStatus: "NOT_QUEUED" } });
+    }
+    return chainClient.getTransactionReceipt(args);
+  }) as never });
+  await service(client).processPendingIntents();
+  assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
+  const agreement = await prisma.agreement.findUniqueOrThrow({ where: { id: fixture.agreementId } });
+  assert.equal(agreement.version, 2);
+  assert.equal(agreement.status, "DRAFT");
+  assert.equal(agreement.blockchainStatus, "NOT_QUEUED");
+});
+
+test("a database error between finalization writes rolls back both rows and restart recovers", async () => {
+  const fixture = await createFixture();
+  await service().processPendingIntents();
+  let fail = true;
+  const database = new Proxy(prisma, { get(target, property, receiver) {
+    if (property !== "$transaction") return Reflect.get(target, property, receiver) as unknown;
+    return async (callback: (tx: unknown) => Promise<unknown>) => target.$transaction(async (tx) => callback(new Proxy(tx, { get(transaction, member, txReceiver) {
+      if (member !== "agreement") return Reflect.get(transaction, member, txReceiver) as unknown;
+      return new Proxy(transaction.agreement, { get(delegate, method, delegateReceiver) {
+        if (method !== "updateMany") return Reflect.get(delegate, method, delegateReceiver) as unknown;
+        return async (args: { data?: { status?: string } }) => {
+          if (fail && args.data?.status === "ANCHOR_CONFIRMED") { fail = false; throw new Error("controlled database failure"); }
+          return delegate.updateMany(args as never);
+        };
+      } });
+    } })));
+  } });
+  await service(chainClient, database).processPendingIntents();
+  const rolledBack = await durableState(fixture.agreementId);
+  assert.equal(rolledBack.intent.status, "SUBMITTED");
+  assert.equal(rolledBack.agreement.status, "ANCHOR_PENDING");
+  await service().processPendingIntents();
+  assert.equal((await state(fixture.agreementId)).status, "CONFIRMED");
+});
+
+test("a valid mined replacement uses depth proof while preserving the original hash and bytes", async () => {
+  const fixture = await createFixture();
+  await hardhatRpc("evm_setAutomine", [false]);
+  let original: Awaited<ReturnType<typeof state>>;
+  try {
+    await service().processPendingIntents();
+    original = await state(fixture.agreementId);
+    const tx = await chainClient.getTransaction({ hash: original.transactionHash as `0x${string}` });
+    const replacement = await relayer.signTransaction({ chainId, nonce: tx.nonce, to: registryAddress!, value: 0n, data: tx.input, gas: tx.gas, gasPrice: tx.gasPrice! * 2n });
+    await chainClient.sendRawTransaction({ serializedTransaction: replacement });
+    await mine();
+  } finally { await hardhatRpc("evm_setAutomine", [true]); }
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  const discovered = await state(fixture.agreementId);
+  assert.equal(discovered.status, "REPLACED");
+  assert.ok(discovered.replacementHash);
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  assert.equal((await state(fixture.agreementId)).status, "REPLACED");
+  await mine(); await mine();
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  const confirmed = await state(fixture.agreementId);
+  assert.equal(confirmed.status, "CONFIRMED");
+  assert.equal(confirmed.transactionHash, original!.transactionHash);
+  assert.ok(confirmed.signedTransaction === original!.signedTransaction, "replacement preserves original signed bytes");
+  assert.equal(confirmed.relayerNonce, original!.relayerNonce);
+  assert.equal(confirmed.replacementHash, discovered.replacementHash);
+});
+
+test("an owned revert behind another valid registration waits for depth then reconciles", async () => {
+  const fixture = await createFixture();
+  const accounts = await hardhatRpc("eth_accounts") as Address[];
+  assert.ok(accounts[1] && accounts[1].toLowerCase() !== relayer.address.toLowerCase());
+  const external = createWalletClient({ account: accounts[1], chain, transport: http(rpcUrl) });
+  await hardhatRpc("evm_setAutomine", [false]);
+  let original: Awaited<ReturnType<typeof state>>;
+  try {
+    await service().processPendingIntents();
+    original = await state(fixture.agreementId);
+    const tx = await chainClient.getTransaction({ hash: original.transactionHash as `0x${string}` });
+    const hash = await external.writeContract({ address: registryAddress!, abi: agreementRegistryAbi, functionName: "registerAgreement", args: [fixture.typedData.message, await buyer.signTypedData(fixture.typedData), await supplier.signTypedData(fixture.typedData)], gas: 300_000n, gasPrice: tx.gasPrice! * 2n });
+    await mine();
+    assert.equal((await chainClient.getTransactionReceipt({ hash })).status, "success");
+    assert.equal((await chainClient.getTransactionReceipt({ hash: original.transactionHash as `0x${string}` })).status, "reverted");
+  } finally { await hardhatRpc("evm_setAutomine", [true]); }
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
+  await mine(); await mine();
+  await service(chainClient, prisma, chainId, 3).processPendingIntents();
+  const reconciled = await durableState(fixture.agreementId);
+  assert.equal(reconciled.intent.status, "RECONCILIATION_REQUIRED");
+  assert.equal(reconciled.intent.lastError, "reverted_with_registration");
+  assert.equal(reconciled.agreement.status, "ANCHOR_PENDING");
+  assert.equal(reconciled.intent.transactionHash, original!.transactionHash);
+  assert.equal(reconciled.intent.relayerNonce, original!.relayerNonce);
+  assert.ok(reconciled.intent.signedTransaction === original!.signedTransaction, "conflicting registration preserves original signed bytes");
+});
+
+test("recovery RPC rejection wording cannot finalize failure without a rejected broadcast", async () => {
+  const fixture = await createFixture();
+  await service().processPendingIntents();
+  const original = await state(fixture.agreementId);
+  let broadcasts = 0;
+  const client = controlledClient({
+    getTransactionReceipt: (async () => { throw Object.assign(new Error(), { name: "TransactionReceiptNotFoundError" }); }) as never,
+    getTransaction: (async () => { throw Object.assign(new Error(), { name: "TransactionNotFoundError" }); }) as never,
+    getTransactionCount: (async () => { throw new Error("RPC invalid transaction format"); }) as never,
+    sendRawTransaction: (async () => { broadcasts++; throw new Error("unexpected broadcast"); }) as never
+  });
+  await service(client).processPendingIntents();
+  const uncertain = await durableState(fixture.agreementId);
+  assert.equal(uncertain.intent.status, "SUBMITTED");
+  assert.equal(uncertain.agreement.status, "ANCHOR_PENDING");
+  assert.equal(uncertain.intent.lastError, "rpc_unavailable");
+  assert.equal(broadcasts, 0);
+  await service().processPendingIntents();
+  const recovered = await state(fixture.agreementId);
+  assert.equal(recovered.status, "CONFIRMED");
+  assert.equal(recovered.transactionHash, original.transactionHash);
+  assert.equal(recovered.relayerNonce, original.relayerNonce);
+  assert.ok(recovered.signedTransaction === original.signedTransaction, "RPC uncertainty preserves original bytes");
 });

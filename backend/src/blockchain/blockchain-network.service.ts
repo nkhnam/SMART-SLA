@@ -25,7 +25,7 @@ export class BlockchainNetworkService {
       throw new ServiceUnavailableException("Blockchain signing is not configured.");
     }
     const { chainId: expectedChainId, registryAddress } = this.getConfiguredDomain();
-    const client = createPublicClient({ transport: http(rpcUrl) });
+    const client = createPublicClient({ transport: http(rpcUrl), cacheTime: 0 });
     let connectedChainId: number;
     try {
       connectedChainId = await client.getChainId();

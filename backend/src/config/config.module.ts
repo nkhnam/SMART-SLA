@@ -4,6 +4,6 @@ import { validateEnvironment } from "./env.schema.js";
 
 @Global()
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment })]
+  imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: process.env.LOCAL_SAFE_MODE === "true", validate: validateEnvironment })]
 })
 export class AppConfigModule {}

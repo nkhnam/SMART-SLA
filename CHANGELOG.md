@@ -3,6 +3,21 @@
 ## [Unreleased]
 
 ### Added
+- Add a gated private-prompt Fuji deployer launcher with stdin-only key provisioning, an allowlisted child environment and local fixture signing checks; real-key input and each deployment still require separate approval.
+- Add a keyless unsigned Fuji deployment preview and an explicitly gated private-prompt deployer identity checker; neither signs or broadcasts.
+- Add a localhost-only, keyless backend launcher with private DB-password input, allowlisted child environment, safe startup diagnostics and an auto-stop verification mode; suppress monitoring, retention and both anchor workers in local safe mode.
+- Add a private-prompt Fuji database connection checker with read-only queries, keyless environment validation and credential-free result files.
+- Add a separate localhost-only PostgreSQL Compose configuration for the Fuji demo, with an isolated volume and no committed database password; document the initialized schema, restricted database roles and operator-managed vault provisioning.
+- Add Gate 4A keyless Fuji preflight for actual chain identity, pinned build metadata, public role separation, deployment gas/balance/nonce planning and optional post-deployment runtime/domain/owner/publisher read-back; missing prerequisites retain NO-GO status and no transactions are sent.
+- Add opt-in Gate 3D real public HTTPS acceptance through the default HTTP_PROBE worker, isolated PostgreSQL, sparse KPI evaluation, existing evidence export/local-EVM publishing, standalone tamper rejection, version isolation and explicit network-failure diagnostics; keep external-network checks outside deterministic CI.
+- Add deterministic HTTP-probe regressions for both pinned DNS callback modes, redirect DNS revalidation, HTTPS hostname preservation, HTTP/TLS/DNS errors, timeout and response-size limits.
+- Add authenticated monitoring Playwright flows against isolated PostgreSQL/local EVMs for source lifecycle, secret rotation, role/organization/version boundaries, sparse KPI evaluation, evidence download, logout and responsive layouts.
+- Add the Gate 3B two-run isolated PostgreSQL/local-EVM publisher fault matrix, including process loss, RPC uncertainty, nonce contention/replacement, persisted-byte integrity, publisher rotation, receipt finality and PostgreSQL rollback; run it with Gate 2/3A in CI.
+- Add a two-run isolated PostgreSQL monitoring-worker reliability command and CI step covering concurrent claims, process termination, expired/missing leases, stale writers, schedule idempotency and PostgreSQL transaction failures through controlled probe-boundary fixtures.
+- Add a two-run full-stack Phase 2C acceptance command using isolated PostgreSQL and local EVMs, real bilateral signing and evidence relaying, labeled synthetic webhook reports, deterministic KPI/evidence checks, standalone tamper rejection and agreement-version isolation; retain safe artifacts in CI.
+- Add version-bound monitoring sources and observations, safe HTTP probes, authenticated provider webhooks, deterministic KPI evaluations, breach candidates, canonical evidence exports, and a separately authorized EvidenceRegistry with a durable publisher worker.
+- Add Live Workspace monitoring and source management with source trust labels, cross-source KPI comparison, observation history, evidence export, and verification status.
+- Document Phase 2C collection policy, KPI rules, evidence verification, threat boundaries, retention, and local EvidenceRegistry deployment.
 - Add a frontend-only SLA-DEX workspace with agreement, monitoring, dispute, verification, and settings previews backed by deterministic demo data.
 - Add an authenticated NestJS API, PostgreSQL persistence, immutable draft agreement versions, and a separate live workspace for agreement editing.
 - Add an isolated PostgreSQL integration test setup and a CI workflow for backend and frontend validation.
@@ -10,6 +25,13 @@
 - Add an isolated Solidity workspace with local-EVM signing tests and a manual Fuji deployment guide.
 
 ### Changed
+- Remove Fuji deployer-key environment loading from Hardhat and use identity-checked local signing through the private launcher while retaining chain, nonce, initcode and fee controls.
+- Require per-contract initcode approval, exact pair nonces, explicit gas/fixed-price limits and a bounded 0.002 AVAX deployment envelope on Fuji sends; validate the first deployment proof and actual paid fee before evidence deployment, and preserve local deployment output.
+- Close N2 demo planning with owner-attested shared testnet custody and an approved 0.0418 AVAX planning envelope; retain identity, gas, secret-injection, fee-control and separate execution gates without authorizing key export, funding, deployment or workers.
+- Record verified Gate 4A.1 confirmation evidence, close Fuji prerequisite N1 after full hosted regression success, and synchronize the README, signing threat model and completed plan while retaining N2 custody/funding and N3 deployment approval as NO-GO prerequisites.
+- Replace Fuji instructions with a separate-approval runbook covering five-role custody, secure process environment, receipt/address placeholders, funding assumptions, recovery limits and the agreement confirmation-depth policy; no Fuji deployment or production-readiness claim.
+- Replace stale README acceptance/browser-coverage statements with implemented gate references, trust limits, reproduction commands and remaining Fuji prerequisites.
+- Document monitoring-worker and evidence-publisher recovery states, authenticated monitoring browser diagnostics and separate opt-in real HTTPS acceptance; the current checks do not establish full Phase 2C or production readiness.
 - Persist signed relayer transactions before broadcast, reconcile uncertain submissions without allocating a new nonce, and add recovery, migration-upgrade and contract authorization-boundary coverage; the database-backed upgrade check and hosted CI run remain unverified in this environment.
 - Discover mined same-nonce replacements within a bounded 128-block scan, preserve uncertainty for unidentified pending replacements, and route consumed nonces without a match to manual reconciliation.
 - Add the PostgreSQL/local-EVM relayer fault matrix and Playwright wallet-flow suite to the existing hosted workflow; the new integration and browser suites still require a hosted run for verification.
@@ -23,9 +45,27 @@
 - Remove the legacy NestJS/PostgreSQL backend, Polygon contracts, backend-connected frontend flows, and AISC demo assets from the Phase 1 branch.
 
 ### Fixed
+- Capture and forward the identity checker's public JSON through the PowerShell pipeline so an enclosing private-input session does not misclassify successful checks as failures; verify with a published fixture key without signing or RPC.
+- Enforce AgreementRegistry confirmation depth through one canonical receipt/transaction/snapshot evaluator shared by the worker and read-only verification API; preserve the API's durable database observation during RPC outages, distinguish broadcast rejections from RPC read failures, retain original identity through replacement recovery, derive omitted legacy chain identity from EIP-155 signed metadata, fail closed on unattributed external registrations and fence atomic agreement/intent updates with PostgreSQL lease and version checks. Add N=3, R10, RPC, replacement, concurrency and rollback regressions without changing contracts or schema.
+- Return a one-element validated address list when Node requests `all: true` from the pinned DNS callback, fixing real HTTPS probes that previously failed with `ERR_INVALID_IP_ADDRESS` while preserving public-IP checks and TLS hostname validation.
+- Convert monitoring observation pagination query strings before validation, persist source pause/resume while preserving the concurrent active-source quota, align management controls with source ownership, return HTTP 400 for rejected endpoints, and contain agreement selectors and one-time secret notices on narrow screens.
+- Fence evidence transaction preparation, broadcast admission and state writes with per-claim leases; preserve and validate signed bytes across uncertain sends, wait for known pending transactions and reconcile consumed unknown nonces without creating replacement operations.
+- Bind evidence commitment/confirmed-nonce decisions to one canonical block snapshot and require confirmation depth for both successful and reverted receipts; compare all commitment fields and separate historical reporter identity from current publisher configuration.
+- Stop owned crash-fixture child processes when their test is cancelled, including the inherited Gate 3A probe fixture, without increasing its timeout.
+- Fence monitoring completion/failure writes with per-claim ownership, PostgreSQL lease time and the source lock; retain orphan runs as explicit failed collection attempts without inventing downtime or replaying historical slots.
+- Keep monitoring sources enabled after transient database errors during agreement validation; only explicit agreement authorization rejection disables a source.
+- Execute monitoring source/evidence advisory locks without deserializing PostgreSQL `void` results, fixing source and evidence creation failures on real PostgreSQL.
+- Reload the Customer agreement after Provider invitation acceptance and assert the signing-ready state before wallet verification in the expired-authorization browser regression.
+- Treat contract reverts before transaction preparation as failed anchors rather than retryable RPC outages, and refresh the Customer view after the final Provider signature before checking expired-approval rejection.
+- Scope monitoring loading state to the selected organization and agreement, remove synchronous effect updates, and ignore cancelled requests so late responses cannot replace current data or errors.
+- Stop requesting agreement signing data while an invitation is still awaiting counterparty acceptance; assert the duplicate-signature `409` response by request and verify signer selection only after wallet ownership verification.
+- Add deterministic matching-window source comparison with coverage, health-result, uptime and latency differences; low-coverage comparisons remain explicitly insufficient and are not interpreted as fraud.
+- Pin Playwright and viem as frontend development dependencies, remove CI's temporary installation step, and add separate inherited browser regression steps plus a responsive Phase 2C empty-state case.
+- Record that free-text exclusions are unsupported calculation inputs and distinguish measurement truth, source provenance, evidence integrity, chain commitment and agreement signing.
 - Register the static invitation inbox route before the agreement UUID route so `/agreements/invitations` reaches the authenticated invitation handler.
 
 ### Security
+- Check allowed network/actual chain, explicit Fuji approval, distinct public roles and deployer identity before either registry deployment; suppress raw RPC diagnostics and preserve local CI output compatibility.
 - Upgrade Next.js and its matching ESLint config to 16.4.3 and refresh the lockfile to clear reported dependency vulnerabilities.
 - Enforce server-checked membership scope, opaque HttpOnly sessions, CSRF origin checks, role-gated writes, and production HTTPS CORS origins.
 - Pin patched `solc`, `tmp` and Zod versions after dependency auditing found high-severity advisories in the initial contract toolchain.

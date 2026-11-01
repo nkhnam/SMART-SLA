@@ -108,6 +108,12 @@ export type AgreementList = {
   total: number;
 };
 
+export type MonitoringSource = { id: string; type: "HTTP_PROBE" | "SIGNED_WEBHOOK"; trustCategory: "OPERATOR_COLLECTED" | "PROVIDER_REPORTED" | "SYNTHETIC_TEST"; name: string; endpointUrl: string | null; intervalSeconds: number; retentionDays: number; enabled: boolean; canManage: boolean; nextRunAt: string | null; lastRunAt: string | null; createdAt: string; webhookSecret?: string | null };
+export type MonitoringObservation = { id: string; agreementVersion: number; trustCategory: string; observedAt: string; scheduledFor: string; method: string; httpStatus: number | null; latencyMs: number | null; reachable: boolean | null; errorCategory: string | null; probeDurationMs: number | null; collectionRegion: string | null; agentIdentity: string | null; validity: string; source: { id: string; name: string; type: string; trustCategory: string } };
+export type MonitoringEvaluation = { id: string; sourceId: string; agreementVersion: number; windowStart: string; windowEnd: string; expectedSamples: number; healthyObservations: number; failedObservations: number; unknownObservations: number; coveragePercent: string | number; uptimePercent: string | number | null; meanLatencyMs: string | number | null; state: string; algorithmVersion: string; source: { id: string; name: string; trustCategory: string } };
+export type MonitoringBreach = { id: string; summary: string; state: string; createdAt: string; evaluation: MonitoringEvaluation };
+export type EvidenceBatch = { id: string; agreementVersion: number; windowStart: string; windowEnd: string; schemaVersion: string; algorithmVersion: string; merkleRoot: string; batchDigest: string; observationCount: number; anchorIntent: { status: string; transactionChainId: number | null; transactionHash: string | null } | null; verification: { algorithm: string; root: string; independentlyVerifiable: boolean } };
+
 export type CurrentSession = {
   user: { id: string; email: string; displayName: string };
   expiresAt: string;
@@ -285,4 +291,40 @@ export function retryAgreementAnchor(organizationId: string, agreementId: string
 
 export function verifyAgreementOnChain(organizationId: string, agreementId: string) {
   return requestApi<{ agreementId: string; version: number; verified: boolean; reason?: string; transactionHash?: string | null }>(`/agreements/${encodeURIComponent(agreementId)}/verification`, { organizationId });
+}
+
+export function listMonitoringSources(organizationId: string, agreementId: string): Promise<MonitoringSource[]> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/sources`, { organizationId });
+}
+
+export function createMonitoringSource(organizationId: string, agreementId: string, body: { type: MonitoringSource["type"]; name: string; endpointUrl?: string; intervalSeconds: number; retentionDays: number }): Promise<MonitoringSource> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/sources`, { method: "POST", organizationId, body });
+}
+
+export function updateMonitoringSource(organizationId: string, agreementId: string, sourceId: string, body: { enabled?: boolean; rotateWebhookSecret?: boolean }): Promise<MonitoringSource> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/sources/${encodeURIComponent(sourceId)}`, { method: "PATCH", organizationId, body });
+}
+
+export function listMonitoringObservations(organizationId: string, agreementId: string): Promise<{ data: MonitoringObservation[]; total: number }> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/observations?page=1&pageSize=100`, { organizationId });
+}
+
+export function listMonitoringKpis(organizationId: string, agreementId: string): Promise<MonitoringEvaluation[]> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/kpis`, { organizationId });
+}
+
+export function evaluateMonitoringKpis(organizationId: string, agreementId: string, body: { windowStart: string; windowEnd: string }): Promise<{ data: MonitoringEvaluation[] }> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/kpis/evaluate`, { method: "POST", organizationId, body });
+}
+
+export function listMonitoringBreaches(organizationId: string, agreementId: string): Promise<MonitoringBreach[]> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/breaches`, { organizationId });
+}
+
+export function buildEvidenceBatch(organizationId: string, agreementId: string, body: { windowStart: string; windowEnd: string }): Promise<EvidenceBatch> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/evidence`, { method: "POST", organizationId, body });
+}
+
+export function exportEvidenceBatch(organizationId: string, agreementId: string, batchId: string): Promise<Record<string, unknown>> {
+  return requestApi(`/agreements/${encodeURIComponent(agreementId)}/monitoring/evidence/${encodeURIComponent(batchId)}`, { organizationId });
 }

@@ -13,6 +13,8 @@ export class CsrfGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     if (safeMethods.has(request.method)) return true;
 
+    if (request.method === "POST" && /^\/api\/v1\/monitoring\/webhooks\/[0-9a-f-]{36}$/i.test(request.path)) return true;
+
     const origin = request.headers.origin;
     const allowedOrigins = this.config.getOrThrow("CORS_ORIGINS", { infer: true });
     if (typeof origin !== "string" || !allowedOrigins.includes(origin) || request.headers["x-sla-csrf"] !== "1") {

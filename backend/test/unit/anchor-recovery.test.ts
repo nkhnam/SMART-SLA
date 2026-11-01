@@ -3,8 +3,8 @@ import { describe, it } from "node:test";
 import { resolveAnchorRecovery } from "../../src/blockchain/anchor-recovery.js";
 
 describe("anchor transaction recovery", () => {
-  it("confirms an exact agreement found during retry reconciliation", () => {
-    assert.equal(resolveAnchorRecovery({ registry: "matching", receipt: "missing", transaction: "missing", pendingNonce: 4n, relayerNonce: 3n }), "CONFIRM");
+  it("requires full proof evaluation for a matching registry record", () => {
+    assert.equal(resolveAnchorRecovery({ registry: "matching", receipt: "missing", transaction: "missing", pendingNonce: 4n, relayerNonce: 3n }), "EVALUATE_PROOF");
   });
 
   it("requires manual reconciliation when the registered agreement differs", () => {
@@ -23,11 +23,11 @@ describe("anchor transaction recovery", () => {
     assert.equal(resolveAnchorRecovery({ registry: "missing", receipt: "missing", transaction: "missing", pendingNonce: 4n, relayerNonce: 3n }), "MANUAL_RECONCILIATION");
   });
 
-  it("fails a transaction with a reverted receipt", () => {
-    assert.equal(resolveAnchorRecovery({ registry: "missing", receipt: "reverted", transaction: "present", pendingNonce: 4n, relayerNonce: 3n }), "FAILED");
+  it("requires canonical proof and depth for a reverted receipt", () => {
+    assert.equal(resolveAnchorRecovery({ registry: "missing", receipt: "reverted", transaction: "present", pendingNonce: 4n, relayerNonce: 3n }), "EVALUATE_PROOF");
   });
 
   it("requires registry read-back after a successful receipt", () => {
-    assert.equal(resolveAnchorRecovery({ registry: "missing", receipt: "success", transaction: "present", pendingNonce: 4n, relayerNonce: 3n }), "VERIFY_REGISTRY");
+    assert.equal(resolveAnchorRecovery({ registry: "missing", receipt: "success", transaction: "present", pendingNonce: 4n, relayerNonce: 3n }), "EVALUATE_PROOF");
   });
 });

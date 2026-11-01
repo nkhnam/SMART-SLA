@@ -1,6 +1,6 @@
 # SLA-DEX
 
-SLA-DEX pairs the Phase 1 fixture-backed demo with an opt-in live workspace. Phase 2A persists authenticated, organization-scoped agreement drafts in PostgreSQL. Phase 2B adds organization invitations, bilateral EIP-712 signing of immutable agreement versions, and a relayed Avalanche Fuji registry workflow. Monitoring, disputes, evidence, escrow and settlement remain out of scope.
+SLA-DEX pairs the Phase 1 fixture-backed demo with an opt-in live workspace. Phase 2A persists authenticated, organization-scoped agreement drafts in PostgreSQL. Phase 2B adds organization invitations, bilateral EIP-712 signing of immutable agreement versions, and a relayed Avalanche registry workflow. Phase 2C adds version-bound HTTP probes, signed provider webhooks, deterministic KPI evaluations, breach candidates, portable Merkle evidence packages, and a separately authorized EvidenceRegistry publisher. Disputes, arbitration, escrow, and settlement remain out of scope.
 
 ## Run the live workspace locally
 
@@ -24,7 +24,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000/register` to create a local account and organization, or use `/login`. `/workspace/agreements` uses live API data and reports backend failures without substituting demo fixtures. `/overview` and the existing Phase 1 routes stay in Demo Mode and need no backend. Local development database credentials are for local use only; configure production secrets and HTTPS origins separately.
+Open `http://localhost:3000/register` to create a local account and organization, or use `/login`. `/workspace/agreements` and `/workspace/monitoring` use live API data and report backend failures without substituting demo fixtures. Monitoring requires a confirmed, bilaterally signed agreement version. `/overview` and the existing Phase 1 routes stay in Demo Mode and need no backend. Local development database credentials are for local use only; configure production secrets and HTTPS origins separately.
 
 ## PostgreSQL integration tests
 
@@ -37,13 +37,15 @@ npm ci
 npm run test:integration
 ```
 
+Phase 2C has separate reproducible gates: [Gate 2 synthetic full-stack acceptance](docs/ref/phase2c-acceptance.md), [Gate 3A worker reliability](docs/ref/monitoring-worker-reliability.md), [Gate 3B evidence-publisher recovery](docs/ref/evidence-publisher-reliability.md), [Gate 3C authenticated browser flows](docs/ref/monitoring-browser-flows.md), and [Gate 3D real public HTTPS collection](docs/ref/public-https-acceptance.md). Each uses isolated PostgreSQL; the evidence gates also use a private local EVM. These checks do not establish full Phase 2C or production readiness.
+
 See [docs/arch/phase2a-backend.md](docs/arch/phase2a-backend.md) for API, data, security, and future-chain boundaries.
 
 ## Phase 2B signing and registry
 
 The Live Workspace uses the authenticated backend for invitation, wallet authorization, frozen snapshot review, signatures, anchoring and independent registry verification. Contract compilation and signing tests run on a local EVM; they do not need Fuji funds. See [the Phase 2B architecture](docs/arch/phase2b-avalanche.md), [signing threat model](docs/security/signing-threat-model.md), and [Fuji deployment guide](docs/deployment/fuji.md). Fuji deployment has not been performed and is not automatic in CI.
 
-The `contracts/` workspace has its own `npm ci`, `npm run compile` and `npm test` commands. Configure `AVALANCHE_FUJI_RPC_URL` and `AVALANCHE_FUJI_DEPLOYER_PRIVATE_KEY` securely only for an explicitly approved Fuji deployment; never commit private keys or put them in the frontend.
+The `contracts/` workspace has `npm ci`, `npm run compile`, `npm run typecheck` and `npm test` commands. `npm run preflight:fuji` reads Fuji, artifacts and public roles without loading keys, signing or broadcasting; missing prerequisites return `NO_GO`. Both Fuji deployment scripts require actual chain 43113, five distinct public roles, the matching dedicated deployer key and `FUJI_DEPLOYMENT_APPROVED=43113` in a separately approved session. The contracts `.env.example` does not automatically load variables; inject them securely into the process. See the [Gate 4A audit](docs/research/fuji-preflight.md), [Fuji runbook](docs/deployment/fuji.md), and [implemented agreement confirmation policy](docs/ref/agreement-confirmation.md). Gate 4A.1 requires exact-commit hosted verification; Fuji role custody/funding and separate deployment approval remain NO-GO prerequisites. `deploy:evidence:local` uses an ephemeral chain; use `--network localEvm` for a running node. Local CI uses public test-only accounts and private EVMs; synthetic outage values are controlled inputs, not real outages.
 
 `AnchorIntent` stores the signed transaction, transaction hash, chain, relayer and nonce before broadcast. Recovery checks registry state and receipt first, rebroadcasts only those same bytes while the nonce is unused, and stops for manual reconciliation if another transaction consumed the nonce. To test a Phase 2A draft upgrade plus Phase 2B constraints, set `TEST_DATABASE_URL` to an isolated database name ending in `_test`, then run `npm run test:migration-upgrade` from `backend/`; the test creates and drops a temporary sibling database.
 
@@ -66,8 +68,10 @@ npm audit --omit=dev
 
 Run `npm run build:turbopack` separately to reproduce the local Turbopack worker failure. The production smoke script checks the original 12 Phase 1 routes, page-specific content, demo labels, internal navigation targets and disabled preview actions against the built application. It does not execute browser JavaScript or inspect rendered layout.
 
-Browser automation was **NOT RUN** for the Phase 2B wallet and agreement flow. The browser tool was available, but PostgreSQL was unreachable and the frontend production build stopped with a filesystem `EPERM` error before the app could be exercised. Wallet account switching, Fuji network prompts, signature rejection, lifecycle refresh, console errors, keyboard behavior, real/Demo Mode separation and layouts at 375px, 768px and 1440px remain unverified. The HTTP smoke test is not a substitute for those browser checks.
+The Playwright suite covers Phase 2B wallet/signing regressions and Gate 3C authenticated source management, secret rotation, role/organization/version boundaries, sparse KPI evaluation and evidence download. Responsive cases run at 375px, 768px and 1440px. Use the GitHub Actions result for the exact commit as the hosted verdict. Gate 3D is an opt-in real-network command, excluded from deterministic CI; it retains DNS/network diagnostics and exits nonzero when no healthy HTTPS response was observed. See its reference for commands, provenance and limitations.
 
-Backend checks run from `backend/`: `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm run test:integration`, and `npm audit`. Integration tests require the isolated PostgreSQL test service. Browser-only behavior and responsive rendering remain unverified.
+Backend checks run from `backend/`: `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm run test:integration`, and `npm audit`. Integration tests require the isolated PostgreSQL test service. Browser and responsive verification are covered by the dedicated Playwright command and hosted workflow, with results tied to their tested commit.
 
 See [docs/index.md](docs/index.md) for architecture and legacy inventory.
+
+Phase 2C configuration adds `MONITORING_SECRET_ENCRYPTION_KEY` (32 random bytes encoded as 64 hex characters) and, when evidence anchoring is enabled, `EVIDENCE_RPC_URL`, `EVIDENCE_CHAIN_ID`, `EVIDENCE_REGISTRY_ADDRESS`, `EVIDENCE_RELAYER_PRIVATE_KEY`, and `EVIDENCE_CONFIRMATIONS`. Configuration rejects invalid relayer keys and rejects the publisher if its derived EVM address matches the Phase 2B agreement relayer address. See the [monitoring architecture](docs/arch/phase2c-monitoring.md), [evidence format](docs/protocol/evidence-format.md), [oracle threat model](docs/security/oracle-threat-model.md), and [registry deployment guide](docs/deployment/evidence-registry.md).

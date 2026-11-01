@@ -1,12 +1,12 @@
-name: Phase 2A
+name: Phase 2C Oracle Monitoring and Evidence
 
 on:
   push:
-    branches: [feat/unihack-phase2-backend, feat/unihack-phase2b-avalanche]
+    branches: [feat/unihack-phase2-backend, feat/unihack-phase2b-avalanche, feat/unihack-phase2c-oracle-evidence]
   pull_request:
 
 jobs:
-  validate:
+  phase2c-validation:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,10 +56,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Install pinned browser test tools
-        working-directory: frontend
-        run: npm install --no-save --package-lock=false @playwright/test@1.64.0 viem@2.57.11
-      - name: Validate frontend
+      - name: Validate Phase 2C frontend
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
@@ -73,6 +70,28 @@ jobs:
       - name: Install local EVM dependencies
         working-directory: contracts
         run: npm ci
+      - name: Run Phase 2C full-stack acceptance twice
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+        run: npm run test:phase2c-acceptance -- --output "$RUNNER_TEMP/phase2c-acceptance"
+      - name: Run monitoring worker reliability against isolated PostgreSQL
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+        run: npm run test:monitoring-reliability -- --output "$RUNNER_TEMP/phase2c-acceptance"
+      - name: Run evidence publisher reliability against isolated PostgreSQL and EVM
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+        run: npm run test:evidence-reliability -- --output "$RUNNER_TEMP/phase2c-acceptance"
+      - name: Upload Phase 2C acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2c-acceptance-evidence
+          path: ${{ runner.temp }}/phase2c-acceptance/
+          if-no-files-found: ignore
       - name: Start deterministic local EVM
         working-directory: contracts
         run: |
@@ -89,6 +108,13 @@ jobs:
         run: |
           npx hardhat run scripts/deploy.ts --network localEvm > "$RUNNER_TEMP/sladex-registry.json"
           node -e 'const fs=require("node:fs");const text=fs.readFileSync(process.env.RUNNER_TEMP+"/sladex-registry.json","utf8");const match=text.match(/\{"chainId":\d+,"registryAddress":"0x[0-9a-fA-F]{40}"\}/);if(!match)throw new Error("local registry deployment did not return its address");const deployed=JSON.parse(match[0]);fs.appendFileSync(process.env.GITHUB_ENV,`ANCHOR_TEST_CHAIN_ID=${deployed.chainId}\nANCHOR_TEST_REGISTRY_ADDRESS=${deployed.registryAddress}\n`);'
+      - name: Deploy evidence registry to local EVM
+        working-directory: contracts
+        env:
+          EVIDENCE_PUBLISHER_ADDRESS: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+        run: |
+          npx hardhat run scripts/deploy-evidence.ts --network localEvm > "$RUNNER_TEMP/sladex-evidence-registry.json"
+          node -e 'const fs=require("node:fs");const text=fs.readFileSync(process.env.RUNNER_TEMP+"/sladex-evidence-registry.json","utf8");const match=text.match(/\{"chainId":\d+,"registryAddress":"0x[0-9a-fA-F]{40}","publisher":"0x[0-9a-fA-F]{40}"\}/);if(!match)throw new Error("local evidence registry deployment did not return its address");const deployed=JSON.parse(match[0]);fs.appendFileSync(process.env.GITHUB_ENV,`EVIDENCE_TEST_CHAIN_ID=${deployed.chainId}\nEVIDENCE_TEST_REGISTRY_ADDRESS=${deployed.registryAddress}\n`);'
       - name: Run PostgreSQL and EVM relayer fault matrix
         working-directory: backend
         env:
@@ -111,7 +137,13 @@ jobs:
           BLOCKCHAIN_REGISTRY_ADDRESS: ${{ env.ANCHOR_TEST_REGISTRY_ADDRESS }}
           BLOCKCHAIN_RELAYER_PRIVATE_KEY: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
           BLOCKCHAIN_CONFIRMATIONS: "1"
+          EVIDENCE_RPC_URL: http://127.0.0.1:8545
+          EVIDENCE_CHAIN_ID: ${{ env.EVIDENCE_TEST_CHAIN_ID }}
+          EVIDENCE_REGISTRY_ADDRESS: ${{ env.EVIDENCE_TEST_REGISTRY_ADDRESS }}
+          EVIDENCE_RELAYER_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+          EVIDENCE_CONFIRMATIONS: "1"
         run: |
+          export MONITORING_SECRET_ENCRYPTION_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
           nohup npm start </dev/null > "$RUNNER_TEMP/sladex-backend.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/sladex-backend.pid"
           for attempt in $(seq 1 60); do
@@ -120,14 +152,37 @@ jobs:
             sleep 2
           done
           node -e 'const fs=require("node:fs");process.stderr.write(fs.readFileSync(process.env.RUNNER_TEMP+"/sladex-backend.log","utf8"));process.exit(1)'
-      - name: Run Playwright browser E2E
+      - name: Install Playwright Chromium
         working-directory: frontend
         env:
           CI: "true"
           NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
-        run: |
-          npx playwright install --with-deps chromium
-          npm run test:e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run inherited Phase 2B live signing regression
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+        run: npx playwright test --config=playwright.config.ts --grep "live SLA signing"
+      - name: Run authenticated monitoring and source management browser flows
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+          DATABASE_URL: postgresql://sladex_test:local-test-only@localhost:5433/sladex_test?schema=public
+        run: npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts --grep "Gate 3C" --retries=0
+      - name: Run inherited Phase 2B expired authorization regression
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+        run: npx playwright test --config=playwright.config.ts --grep "expired signing authorization"
+      - name: Run Phase 2C monitoring browser cases at 375, 768 and 1440 pixels
+        working-directory: frontend
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:4000/api/v1
+        run: npx playwright test --config=playwright.config.ts tests/e2e/phase2c.spec.ts --grep-invert "Gate 3C"
       - name: Print relayer failure diagnostics
         if: failure()
         run: |
@@ -149,6 +204,9 @@ jobs:
             frontend/playwright-report/
             frontend/test-results/
           if-no-files-found: ignore
+      - name: Check whitespace errors
+        if: always()
+        run: git diff --check
       - name: Stop local EVM and backend
         if: always()
         run: |
@@ -174,6 +232,7 @@ jobs:
         working-directory: contracts
         run: |
           npm run compile
+          npm run typecheck
           npm test
       - name: Audit contract dependencies
         working-directory: contracts
