@@ -2,7 +2,7 @@ name: Phase 2C Oracle Monitoring and Evidence
 
 on:
   push:
-    branches: [main, feat/unihack-phase2-backend, feat/unihack-phase2b-avalanche, feat/unihack-phase2c-oracle-evidence]
+    branches: [main, feat/unihack-phase2-backend, feat/unihack-phase2b-avalanche, feat/unihack-phase2c-oracle-evidence, fix/contest-readiness-20261111]
   pull_request:
 
 jobs:
