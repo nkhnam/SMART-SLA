@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { toAgreementListItem } from "../lib/agreement-mapping.ts";
-import { ApiError, apiErrorFromPayload, requestApi } from "../lib/live-api.ts";
+import { ApiError, apiErrorFromPayload, listAgreements, requestApi } from "../lib/live-api.ts";
+import * as liveApi from "../lib/live-api.ts";
 
 test("agreement mapping presents live fields without reading fixture data", () => {
   const item = toAgreementListItem({
@@ -52,6 +53,54 @@ test("API request reports an unavailable backend without substituting sample dat
       assert.equal(error.message, "The backend is unavailable. Check that PostgreSQL and the backend server are running.");
       return true;
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalBaseUrl === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    else process.env.NEXT_PUBLIC_API_BASE_URL = originalBaseUrl;
+  }
+});
+
+test("agreement list requests the selected page", async () => {
+  const originalBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const originalFetch = globalThis.fetch;
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:4000/api/v1";
+  let requestedUrl;
+  globalThis.fetch = async (url) => {
+    requestedUrl = new URL(url);
+    return Response.json({ data: [], page: 2, pageSize: 50, total: 51 });
+  };
+  try {
+    await listAgreements("organization-id", 2);
+    assert.equal(requestedUrl.searchParams.get("page"), "2");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalBaseUrl === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    else process.env.NEXT_PUBLIC_API_BASE_URL = originalBaseUrl;
+  }
+});
+
+test("monitoring can discover confirmed agreements beyond the first page", async () => {
+  const originalBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const originalFetch = globalThis.fetch;
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:4000/api/v1";
+  const requestedPages = [];
+  globalThis.fetch = async (url) => {
+    const page = Number(new URL(url).searchParams.get("page"));
+    requestedPages.push(page);
+    return Response.json({
+      data: page === 1
+        ? Array.from({ length: 50 }, (_, index) => ({ id: `draft-${index}`, status: "DRAFT" }))
+        : [{ id: "older-confirmed", status: "ANCHOR_CONFIRMED" }],
+      page,
+      pageSize: 50,
+      total: 51
+    });
+  };
+  try {
+    const agreements = await liveApi.listAllAgreements("organization-id");
+    assert.deepEqual(requestedPages, [1, 2]);
+    assert.equal(agreements.length, 51);
+    assert.equal(agreements.find((agreement) => agreement.status === "ANCHOR_CONFIRMED").id, "older-confirmed");
   } finally {
     globalThis.fetch = originalFetch;
     if (originalBaseUrl === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL;

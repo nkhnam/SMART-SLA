@@ -14,8 +14,7 @@ export class MonitoringKpiService {
     const end = new Date(windowEnd);
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) throw new BadRequestException("The KPI window must have a positive duration.");
     if (end > new Date()) throw new BadRequestException("The KPI window cannot end in the future.");
-    await this.access.requireActiveAgreement(context, agreementId);
-    const agreement = await this.prisma.agreement.findUniqueOrThrow({ where: { id: agreementId }, select: { version: true, ownerOrganizationId: true } });
+    const { agreement } = await this.access.requireActiveAgreement(context, agreementId);
     const terms = await this.prisma.agreementVersion.findUniqueOrThrow({
       where: { agreementId_version: { agreementId, version: agreement.version } },
       select: { uptimeTargetPercent: true, responseTimeTargetMs: true, measurementWindowHours: true }
@@ -31,7 +30,7 @@ export class MonitoringKpiService {
       const observations = await this.prisma.monitoringObservation.findMany({
         where: { sourceId: source.id, scheduledFor: { gt: start, lte: end } },
         select: { scheduledFor: true, validity: true, reachable: true, latencyMs: true },
-        orderBy: { scheduledFor: "asc" }
+        orderBy: [{ scheduledFor: "asc" }, { ingestedAt: "asc" }, { id: "asc" }]
       });
       const evaluation = evaluateKpis({
         windowStart: start,
@@ -69,7 +68,8 @@ export class MonitoringKpiService {
         },
         update: {}
       });
-      if (evaluation.state === "BREACH_CANDIDATE") {
+      // A stored window is immutable; late observations cannot change its breach decision.
+      if (record.state === KpiState.BREACH_CANDIDATE) {
         await this.prisma.breachCandidate.upsert({
           where: { evaluationId: record.id },
           create: {
@@ -78,7 +78,7 @@ export class MonitoringKpiService {
             agreementVersion: agreement.version,
             evaluationId: record.id,
             state: KpiState.BREACH_CANDIDATE,
-            summary: `Observed KPI values crossed the signed target in a window with ${evaluation.coveragePercent}% coverage.`
+            summary: `Observed KPI values crossed the signed target in a window with ${record.coveragePercent}% coverage.`
           },
           update: {}
         });

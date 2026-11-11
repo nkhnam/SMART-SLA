@@ -104,7 +104,7 @@ describe("deployment admission", () => {
     let feePaid = 0n;
     for (const [offset, contract] of (["AgreementRegistry", "EvidenceRegistry"] as const).entries()) {
       const artifact = await artifacts.readArtifact(contract);
-      const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode as Hex, args: contract === "EvidenceRegistry" ? [wallet.account.address] : [] });
+      const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode as Hex, args: [wallet.account.address] });
       const nonce = start + offset;
       const gasEstimate = await client.estimateGas({ account: wallet.account.address, data });
       const policy = { ...execution, FUJI_DEPLOYER_START_NONCE: String(start), FUJI_APPROVED_CONTRACT: contract, FUJI_APPROVED_INITCODE_HASH: keccak256(data) };

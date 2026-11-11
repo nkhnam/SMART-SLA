@@ -102,3 +102,15 @@ export function evaluateKpis(input: KpiEvaluationInput): KpiEvaluation {
 function roundToTwoDecimals(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
+
+/** Provider measurements in (slotStart, slotEnd] belong to the closing slot. */
+export function normalizeWebhookScheduledFor(observedAt: Date, scheduleAnchor: Date, intervalSeconds: number): Date {
+  const observed = observedAt.getTime();
+  const anchor = scheduleAnchor.getTime();
+  const intervalMs = intervalSeconds * 1000;
+  if (!Number.isFinite(observed) || !Number.isFinite(anchor) || observed < anchor) {
+    throw new RangeError("A webhook observation cannot predate its monitoring source.");
+  }
+  if (!Number.isSafeInteger(intervalMs) || intervalMs <= 0) throw new RangeError("Measurement interval must be positive.");
+  return new Date(anchor + Math.ceil((observed - anchor) / intervalMs) * intervalMs);
+}

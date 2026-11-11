@@ -12,7 +12,7 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" prisma.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
-    "test:unit": "node --import tsx --test test/unit/config-env.test.ts test/unit/agreement-hash.test.ts test/unit/agreement-party.test.ts test/unit/agreement-lifecycle.test.ts test/unit/wallet-link.test.ts test/unit/anchor-recovery.test.ts test/unit/agreement-anchoring.test.ts test/unit/monitoring-kpi.test.ts test/unit/monitoring-security.test.ts test/unit/monitoring-ssrf.test.ts test/unit/monitoring-http-probe.test.ts test/unit/evidence-protocol.test.ts",
+    "test:unit": "node --import tsx --test test/unit/config-env.test.ts test/unit/agreement-hash.test.ts test/unit/agreement-party.test.ts test/unit/agreement-lifecycle.test.ts test/unit/wallet-link.test.ts test/unit/anchor-recovery.test.ts test/unit/agreement-anchoring.test.ts test/unit/monitoring-kpi.test.ts test/unit/monitoring-security.test.ts test/unit/monitoring-ssrf.test.ts test/unit/monitoring-http-probe.test.ts test/unit/evidence-protocol.test.ts test/unit/monitoring-workflow.test.ts test/unit/authorized-signers.test.ts",
     "test:integration": "node scripts/run-integration.mjs",
     "test:anchor-integration": "node --import tsx --test test/integration/anchor-recovery.integration.test.ts",
     "test:phase2c-acceptance": "node scripts/run-phase2c-acceptance.mjs",

@@ -8,13 +8,17 @@ Use five distinct nonzero dedicated testnet EOAs. Never use production wallets o
 
 | Role | Public variable | Secret custody / authority | Gas |
 | --- | --- | --- | --- |
-| Deployer / evidence owner | `FUJI_DEPLOYER_ADDRESS` | Private prompt through `deploy-private.ps1`, supplied through stdin only to the approved contracts process. Retains permanent evidence-publisher rotation authority; no owner transfer exists. | Two deployments plus a separately approved rotation reserve. |
-| Agreement relayer | `AGREEMENT_RELAYER_ADDRESS` | Backend-only `BLOCKCHAIN_RELAYER_PRIVATE_KEY`; relays two valid signatures but cannot forge them. | Approved agreement registrations plus reserve. |
+| Deployer / registry owner | `FUJI_DEPLOYER_ADDRESS` | Private prompt through `deploy-private.ps1`, supplied through stdin only to the approved contracts process. Retains permanent publisher-rotation authority for both registries; no owner transfer exists. | Two deployments plus a separately approved rotation reserve. |
+| Agreement relayer | `AGREEMENT_RELAYER_ADDRESS` | Backend-only `BLOCKCHAIN_RELAYER_PRIVATE_KEY`; must equal AgreementRegistry `publisher()`. Relays two valid signatures but cannot forge them. | Approved agreement registrations plus reserve. |
 | Evidence publisher | `EVIDENCE_PUBLISHER_ADDRESS` | Separate backend-only `EVIDENCE_RELAYER_PRIVATE_KEY`; must equal `publisher()`. | Approved evidence commitments plus reserve. |
 | Buyer signer | `BUYER_SIGNER_ADDRESS` | Buyer-controlled wallet, linked/authorized through the authenticated application. Key never enters backend/frontend/contracts configuration. | Existing typed-data signing is gasless. |
 | Supplier signer | `SUPPLIER_SIGNER_ADDRESS` | Independent supplier-controlled wallet; reviews/signs the identical frozen version. Key stays in its wallet. | Existing typed-data signing is gasless. |
 
-AgreementRegistry has no owner or relayer allowlist: any sender can relay two valid EOA signatures. Backend organization authorization is essential. EvidenceRegistry accepts only its publisher but does not call AgreementRegistry, verify organization membership or certify measurement truth/independence.
+AgreementRegistry accepts registrations only from its configured publisher and still verifies both EOA signatures. Its constructor takes the public `AGREEMENT_RELAYER_ADDRESS`; the deployer permanently owns `setPublisher(nonzeroAddress)`, following the EvidenceRegistry pattern. This prevents an outsider from occupying a known agreement key using two attacker-controlled signers. The authorized publisher and owner remain trusted: organization authorization is enforced by the backend, not inferred by the contract. EvidenceRegistry accepts only its separate publisher but does not call AgreementRegistry, verify organization membership or certify measurement truth/independence.
+
+The 11 November 2026 authorization repair changes AgreementRegistry creation/runtime bytecode and constructor arguments. Historical preflight hashes, gas estimates and unsigned previews describe older source and are not valid approval inputs for this revision. Recompile, rerun the local checks and generate fresh read-only preflight/preview evidence before any separately approved deployment. No public deployment is performed by this repair.
+
+For a local chain, `scripts/deploy.ts` uses public `AGREEMENT_RELAYER_ADDRESS` when supplied, otherwise its local deployer. Set the address explicitly when the backend relayer differs from that deployer. The local JSON address output remains `{chainId, registryAddress}` for existing launchers; receipt, owner and publisher are verified before it is printed.
 
 ## Secure environment
 
@@ -105,7 +109,7 @@ Predicted CREATE addresses assume the deployer pending nonce, AgreementRegistry 
 
 ### N3 preparation tools — no key or broadcast by default
 
-From `contracts/`, run `npx hardhat run scripts/preview-fuji-deploy.ts --network hardhatMainnet --no-compile` to obtain an unsigned preview from `fuji-deployment-draft.json`. The wrapper uses a simulated network; the script uses public clients against Fuji and PublicNode, requires the same executed block hash, checks the deployer is an EOA with clear nonces and estimates both deployments. It never reads a key or signs/sends a transaction. Output includes full initcode hashes (including the EvidenceRegistry publisher argument), proposed gas/fees, starting nonce and conditional CREATE addresses; it explicitly leaves deployment authorization and signer verification false. The second deployment is hypothetical until the first succeeds. An unfunded/RPC-rejected estimate fails closed.
+From `contracts/`, run `npx hardhat run scripts/preview-fuji-deploy.ts --network hardhatMainnet --no-compile` to obtain an unsigned preview from `fuji-deployment-draft.json`. The wrapper uses a simulated network; the script uses public clients against Fuji and PublicNode, requires the same executed block hash, checks the deployer is an EOA with clear nonces and estimates both deployments. It never reads a key or signs/sends a transaction. Output includes full initcode hashes (including each registry's distinct publisher argument), proposed gas/fees, starting nonce and conditional CREATE addresses; it explicitly leaves deployment authorization and signer verification false. The second deployment is hypothetical until the first succeeds. An unfunded/RPC-rejected estimate fails closed.
 
 Draft gas ceilings are 1,200,000 for AgreementRegistry and 800,000 for EvidenceRegistry. Preview proposes a fixed legacy gas price of twice the observed RPC price, rejecting a proposal above the draft 1 gwei ceiling. The pair's hard fee-envelope ceiling is 0.002 AVAX, excluding the separately reserved 0.0002 AVAX for rotation. These draft inputs are not execution approval. Re-read and approve the actual preview just before each transaction.
 

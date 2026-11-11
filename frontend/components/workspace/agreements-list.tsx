@@ -17,6 +17,7 @@ export function LiveAgreementsList() {
 function LiveAgreementsListForOrganization({ organizationId, canWrite }: { organizationId: string; canWrite: boolean }) {
   const router = useRouter();
   const [result, setResult] = useState<AgreementList | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<AgreementInvitation[]>([]);
@@ -25,7 +26,7 @@ function LiveAgreementsListForOrganization({ organizationId, canWrite }: { organ
 
   useEffect(() => {
     let active = true;
-    listAgreements(organizationId).then((response) => {
+    listAgreements(organizationId, page).then((response) => {
       if (active) setResult(response);
     }).catch((cause) => {
       if (active) setError(cause instanceof ApiError ? cause.message : "Agreements could not be loaded.");
@@ -38,7 +39,13 @@ function LiveAgreementsListForOrganization({ organizationId, canWrite }: { organ
       if (active) setInvitationError(cause instanceof ApiError ? cause.message : "Invitations could not be loaded.");
     });
     return () => { active = false; };
-  }, [organizationId]);
+  }, [organizationId, page]);
+
+  function showPage(nextPage: number) {
+    setLoading(true);
+    setError(null);
+    setPage(nextPage);
+  }
 
   async function decide(invitation: AgreementInvitation, decision: "accept" | "reject") {
     setPendingInvitationId(invitation.id);
@@ -89,7 +96,14 @@ function LiveAgreementsListForOrganization({ organizationId, canWrite }: { organ
           </tr>;
         })}</tbody>
       </table>
-      <p className="border-t border-border px-5 py-3 text-xs text-muted">Showing {result.data.length} of {result.total} drafts</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs">
+        <p className="text-muted">Showing {(result.page - 1) * result.pageSize + 1}–{(result.page - 1) * result.pageSize + result.data.length} of {result.total} agreements</p>
+        <nav aria-label="Agreement pages" className="flex items-center gap-3">
+          <button type="button" disabled={result.page <= 1} onClick={() => showPage(result.page - 1)} className="rounded border border-border px-3 py-1.5 font-semibold disabled:opacity-50">Previous</button>
+          <span>Page {result.page}</span>
+          <button type="button" disabled={result.page * result.pageSize >= result.total} onClick={() => showPage(result.page + 1)} className="rounded border border-border px-3 py-1.5 font-semibold disabled:opacity-50">Next</button>
+        </nav>
+      </div>
     </div>}
   </>;
 }

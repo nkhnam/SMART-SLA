@@ -233,7 +233,7 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
       </div>}
     </div>}
 
-    {signing?.snapshot && agreement.status !== "ANCHOR_CONFIRMED" && <div className="mt-5 rounded-lg border border-border bg-slate-50 p-4">
+    {signing?.snapshot && <div className="mt-5 rounded-lg border border-border bg-slate-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Frozen version {signing.version}</h3><Status tone={signing.signatureStatus === "COMPLETE" ? "green" : "amber"}>{signing.signatureStatus}</Status></div>
       <p className="mt-2 break-all font-mono text-xs text-muted">Agreement hash: {signing.snapshot.hash}</p>
       <p className="mt-1 break-all font-mono text-xs text-muted">Agreement key: {signing.snapshot.agreementKey}</p>

@@ -139,7 +139,7 @@ async function runScenario(databaseUrl, index) {
     const client = createPublicClient({ chain, transport: http(rpcUrl, { retryCount: 0, timeout: 1_000 }) });
     await ready("Local EVM", async () => evmOutput.includes(`Started HTTP and WebSocket JSON-RPC server at ${rpcUrl}/`) && await client.getChainId() === 31337, evm);
     const wallet = createWalletClient({ chain, account: privateKeyToAccount(agreementKey), transport: http(rpcUrl) });
-    const agreementRegistry = await deploy(client, wallet, "AgreementRegistry");
+    const agreementRegistry = await deploy(client, wallet, "AgreementRegistry", [wallet.account.address]);
     const evidenceRegistry = await deploy(client, wallet, "EvidenceRegistry", [privateKeyToAccount(evidenceKey).address]);
     Object.assign(environment, {
       BLOCKCHAIN_RPC_URL: rpcUrl, BLOCKCHAIN_CHAIN_ID: "31337", BLOCKCHAIN_REGISTRY_ADDRESS: agreementRegistry,

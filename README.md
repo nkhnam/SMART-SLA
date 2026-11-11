@@ -2,6 +2,12 @@
 
 SLA-DEX pairs the Phase 1 fixture-backed demo with an opt-in live workspace. Phase 2A persists authenticated, organization-scoped agreement drafts in PostgreSQL. Phase 2B adds organization invitations, bilateral EIP-712 signing of immutable agreement versions, and a relayed Avalanche registry workflow. Phase 2C adds version-bound HTTP probes, signed provider webhooks, deterministic KPI evaluations, breach candidates, portable Merkle evidence packages, and a separately authorized EvidenceRegistry publisher. Disputes, arbitration, escrow, and settlement remain out of scope.
 
+## Try the demo
+
+For a UI walkthrough without a database or wallet, run `npm ci` then `npm run dev` from `frontend/` and open `http://localhost:3000/overview`. These routes use labeled fixtures. Use the Live Workspace below to exercise authenticated persistence, signing and monitoring; its API failures are never replaced with fixture data.
+
+The [competition submission guide](docs/competition/submission-guide.md) maps the organizer rubric to a 2–3 minute demo and required submission materials. Local EVM verification and a Fuji deployment are distinct milestones; record public transaction receipts before claiming that the application is deployed on Avalanche.
+
 ## Run the live workspace locally
 
 Requirements: Node.js 24.15+ and Docker Compose.
@@ -25,6 +31,8 @@ npm run dev
 ```
 
 Open `http://localhost:3000/register` to create a local account and organization, or use `/login`. `/workspace/agreements` and `/workspace/monitoring` use live API data and report backend failures without substituting demo fixtures. Monitoring requires a confirmed, bilaterally signed agreement version. `/overview` and the existing Phase 1 routes stay in Demo Mode and need no backend. Local development database credentials are for local use only; configure production secrets and HTTPS origins separately.
+
+Both local services should use the same hostname (`localhost` in these instructions) so session cookies and the configured CORS origin agree. To invite a second organization, share the organization ID displayed in the workspace header. Complete the agreement and evidence registry configuration described below before attempting live anchoring; creating local accounts and drafts does not require blockchain keys.
 
 ## PostgreSQL integration tests
 

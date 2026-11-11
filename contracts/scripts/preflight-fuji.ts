@@ -69,7 +69,7 @@ try {
       let estimatesComplete = true;
       const estimates: Record<string, unknown> = {};
       for (const artifact of [agreement, evidence]) {
-        const args = artifact.contractName === "EvidenceRegistry" ? [roles.evidencePublisher] : [];
+        const args = [artifact.contractName === "EvidenceRegistry" ? roles.evidencePublisher : roles.agreementRelayer];
         const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode as Hex, args });
         try {
           const gas = await client.estimateGas({ account: roles.deployer, data });
@@ -102,10 +102,13 @@ try {
     if (domain[1] !== "SLA-DEX Agreement Registry" || domain[2] !== "1" || domain[3] !== BigInt(FUJI_CHAIN_ID) || getAddress(domain[4]) !== getAddress(addresses[0]!)) throw new Error("Agreement EIP-712 domain mismatch.");
     const address = getAddress(addresses[1]!);
     const ownershipAbi = parseAbi(["function owner() view returns (address)", "function publisher() view returns (address)"]);
+    const agreementOwner = await client.readContract({ address: getAddress(addresses[0]!), abi: ownershipAbi, functionName: "owner", blockNumber: head.number });
+    const agreementPublisher = await client.readContract({ address: getAddress(addresses[0]!), abi: ownershipAbi, functionName: "publisher", blockNumber: head.number });
+    if (getAddress(agreementOwner) !== roles.deployer || getAddress(agreementPublisher) !== roles.agreementRelayer) throw new Error("Agreement owner/publisher mismatch.");
     const owner = await client.readContract({ address, abi: ownershipAbi, functionName: "owner", blockNumber: head.number });
     const publisher = await client.readContract({ address, abi: ownershipAbi, functionName: "publisher", blockNumber: head.number });
     if (getAddress(owner) !== roles.deployer || getAddress(publisher) !== roles.evidencePublisher) throw new Error("Evidence owner/publisher mismatch.");
-    report.registries = { ...checked, owner, publisher, domain: { name: domain[1], version: domain[2], chainId: String(domain[3]), verifyingContract: domain[4] } };
+    report.registries = { ...checked, agreementOwner, agreementPublisher, owner, publisher, domain: { name: domain[1], version: domain[2], chainId: String(domain[3]), verifyingContract: domain[4] } };
   } else report.registries = "NOT_DEPLOYED_OR_NOT_CONFIGURED: no deployment or ownership claim.";
   if ((await client.getBlock({ blockNumber: head.number })).hash !== head.hash) blockers.push("RPC block identity changed during preflight; repeat against a trusted endpoint.");
   report.result = blockers.length ? "NO_GO" : "READ_ONLY_CHECKS_PASS_SEPARATE_APPROVAL_REQUIRED";

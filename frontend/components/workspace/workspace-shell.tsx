@@ -14,6 +14,18 @@ function WorkspaceFrame({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const workspace = useWorkspace();
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [copyNotice, setCopyNotice] = useState<{ organizationId: string; message: string } | null>(null);
+
+  async function copyOrganizationId() {
+    const organizationId = workspace.selectedOrganization?.id;
+    if (!organizationId) return;
+    try {
+      await navigator.clipboard.writeText(organizationId);
+      setCopyNotice({ organizationId, message: "Organization ID copied." });
+    } catch {
+      setCopyNotice({ organizationId, message: "Select and copy the organization ID shown above." });
+    }
+  }
 
   async function signOut() {
     setLogoutError(null);
@@ -47,6 +59,12 @@ function WorkspaceFrame({ children }: { children: React.ReactNode }) {
           <button type="button" onClick={signOut} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-canvas">Sign out</button>
         </div>}
       </div>
+      {workspace.status === "ready" && workspace.selectedOrganization && <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-5 pb-4 text-xs sm:px-8">
+        <span className="text-muted">Your organization ID</span>
+        <code className="min-w-0 break-all select-all">{workspace.selectedOrganization.id}</code>
+        <button type="button" onClick={() => void copyOrganizationId()} className="rounded border border-border px-2 py-1 font-semibold">Copy organization ID</button>
+        <span aria-live="polite" className="text-muted">{copyNotice?.organizationId === workspace.selectedOrganization.id ? copyNotice.message : "Share this ID with a counterparty to receive an agreement invitation."}</span>
+      </div>}
     </header>
     {logoutError && <p role="alert" className="mx-auto max-w-7xl px-5 pt-4 text-sm text-danger sm:px-8">{logoutError}</p>}
     <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8">

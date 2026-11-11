@@ -1,5 +1,7 @@
 # Gate 4A Fuji preflight implementation plan
 
+> **Superseded source assumptions — 2026-11-11:** The publisher-authorization repair changes AgreementRegistry bytecode and constructor arguments. The permissionless-registration conclusions, bytecode/initcode hashes and gas estimates below are historical evidence, not current deployment approval inputs. Follow the [current Fuji runbook](../deployment/fuji.md) and rerun validation/preflight against the repaired source; this notice records no fresh checks.
+
 **Goal:** Prepare a reproducible Fuji deployment without broadcasting, funding, publicly deploying the backend or merging main.
 
 **Architecture:** Retain Hardhat 3, viem, Solidity Cancun, both existing registries and PostgreSQL relayers. Put deployment admission before wallet access and provide a separate keyless read-only preflight. Separately authorized runtime confirmation work is delivered by Gate 4A.1 below.

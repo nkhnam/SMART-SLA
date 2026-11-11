@@ -24,7 +24,7 @@ try {
   let maximumFee = 0n;
   for (const [offset, contract] of (["AgreementRegistry", "EvidenceRegistry"] as const).entries()) {
     const artifact = await artifacts.readArtifact(contract);
-    const args = contract === "EvidenceRegistry" ? [roles.evidencePublisher] : [];
+    const args = [contract === "EvidenceRegistry" ? roles.evidencePublisher : roles.agreementRelayer];
     const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode as Hex, args });
     const initcodeHash = keccak256(data);
     const environment = { ...draft, FUJI_GAS_PRICE_WEI: String(proposedGasPrice), FUJI_DEPLOYER_START_NONCE: String(nonce), FUJI_APPROVED_CONTRACT: contract, FUJI_APPROVED_INITCODE_HASH: initcodeHash };

@@ -204,8 +204,17 @@ export function logout(): Promise<{ success: true }> {
   return requestApi("/auth/logout", { method: "POST" });
 }
 
-export function listAgreements(organizationId: string): Promise<AgreementList> {
-  return requestApi("/agreements?page=1&pageSize=50&sort=updatedAt&order=desc", { organizationId });
+export function listAgreements(organizationId: string, page = 1): Promise<AgreementList> {
+  return requestApi(`/agreements?page=${page}&pageSize=50&sort=updatedAt&order=desc`, { organizationId });
+}
+
+export async function listAllAgreements(organizationId: string): Promise<LiveAgreement[]> {
+  const agreements: LiveAgreement[] = [];
+  for (let page = 1; ; page++) {
+    const result = await listAgreements(organizationId, page);
+    agreements.push(...result.data);
+    if (result.data.length === 0 || page * result.pageSize >= result.total) return agreements;
+  }
 }
 
 export function getAgreement(organizationId: string, id: string): Promise<LiveAgreement> {

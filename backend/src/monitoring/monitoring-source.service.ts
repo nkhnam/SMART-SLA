@@ -8,6 +8,7 @@ import { PrismaService } from "../database/prisma.service.js";
 import { createWebhookSecret, decryptWebhookSecret, encryptWebhookSecret, verifyWebhookSignature, type WebhookMetadata } from "./webhook-security.js";
 import { MonitoringAccessService } from "./monitoring-access.service.js";
 import { validateEndpointUrl } from "./ssrf.js";
+import { normalizeWebhookScheduledFor } from "./kpi-engine.js";
 import type { CreateMonitoringSourceDto, MonitoringObservationQueryDto, UpdateMonitoringSourceDto, WebhookObservationDto } from "./monitoring.dto.js";
 
 const maximumSourcesPerOrganization = 20;
@@ -212,6 +213,13 @@ export class MonitoringSourceService {
       throw new BadRequestException("Observation timestamp does not match the signed timestamp window.");
     }
 
+    let scheduledFor: Date;
+    try {
+      scheduledFor = normalizeWebhookScheduledFor(observedAt, source.createdAt, source.intervalSeconds);
+    } catch {
+      throw new BadRequestException("A webhook observation cannot predate its monitoring source.");
+    }
+
     const bodyDigest = createHash("sha256").update(rawBody).digest("hex");
     const existing = await this.prisma.monitoringObservation.findUnique({
       where: { sourceId_idempotencyKey: { sourceId, idempotencyKey: metadata.eventId } },
@@ -235,7 +243,7 @@ export class MonitoringSourceService {
             webhookNonce: metadata.nonce,
             trustCategory: MonitoringTrustCategory.PROVIDER_REPORTED,
             observedAt,
-            scheduledFor: observedAt,
+            scheduledFor,
             method: MonitoringSourceType.SIGNED_WEBHOOK,
             httpStatus: body.httpStatus ?? null,
             latencyMs: body.latencyMs ?? null,
