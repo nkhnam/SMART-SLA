@@ -32,7 +32,7 @@ npm run dev
 
 Open `http://localhost:3000/register` to create a local account and organization, or use `/login`. `/workspace/agreements` and `/workspace/monitoring` use live API data and report backend failures without substituting demo fixtures. Monitoring requires a confirmed, bilaterally signed agreement version. `/overview` and the existing Phase 1 routes stay in Demo Mode and need no backend. Local development database credentials are for local use only; configure production secrets and HTTPS origins separately.
 
-Both local services should use the same hostname (`localhost` in these instructions) so session cookies and the configured CORS origin agree. To invite a second organization, share the organization ID displayed in the workspace header. Complete the agreement and evidence registry configuration described below before attempting live anchoring; creating local accounts and drafts does not require blockchain keys.
+Both local services should use the same hostname (`localhost` in these instructions) so session cookies and the configured CORS origin agree. Docker Compose binds the development and test database ports to `127.0.0.1`. To invite a second organization, share the organization ID displayed in the workspace header. Complete the agreement and evidence registry configuration described below before attempting live anchoring; creating local accounts and drafts does not require blockchain keys.
 
 ## PostgreSQL integration tests
 
@@ -75,6 +75,17 @@ npm audit --omit=dev
 ```
 
 Run `npm run build:turbopack` separately to reproduce the local Turbopack worker failure. The production smoke script checks the original 12 Phase 1 routes, page-specific content, demo labels, internal navigation targets and disabled preview actions against the built application. It does not execute browser JavaScript or inspect rendered layout.
+
+The standalone UI regression spec uses mocked API responses for organization IDs, readable signed terms, pagination and responsive layout. Install Playwright's pinned Chromium before running it. From `frontend/` in PowerShell:
+
+```powershell
+$env:NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:4000/api/v1"
+npm run build
+npx playwright install chromium --only-shell
+npx playwright test tests/e2e/workspace-review.spec.ts --workers=1
+```
+
+These isolated UI cases need no backend or EVM. Use the live browser gates below to exercise authenticated persistence and signing.
 
 The Playwright suite covers Phase 2B wallet/signing regressions and Gate 3C authenticated source management, secret rotation, role/organization/version boundaries, sparse KPI evaluation and evidence download. Responsive cases run at 375px, 768px and 1440px. Use the GitHub Actions result for the exact commit as the hosted verdict. Gate 3D is an opt-in real-network command, excluded from deterministic CI; it retains DNS/network diagnostics and exits nonzero when no healthy HTTPS response was observed. See its reference for commands, provenance and limitations.
 

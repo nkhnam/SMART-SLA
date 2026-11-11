@@ -14,6 +14,14 @@ Sort records by `(observedAt, observationId)`. For each canonical record, comput
 
 The canonical manifest contains schema version, agreement ID, immutable agreement version, signing snapshot hash, window start/end, KPI algorithm version, evaluated KPI values and breach states, observation count, Merkle root, and the ordered `(index, observationId, leafDigest)` list. `batchDigest = keccak256(canonicalManifestBytes)`. The package includes each normalized record and its inclusion proof. A verifier recomputes every leaf, checks every proof against the root, recomputes the manifest digest, and compares root and digest with the `EvidenceRegistry` read-back. Run the API-independent package verifier with `npm run verify:evidence -- <evidence-export.json>` from `backend/`; compare its root and digest to the public `getCommitment(batchKey)` contract read separately.
 
+## Window membership and frozen KPI values
+
+Evidence selects records whose `scheduledFor` is in `(windowStart, windowEnd]` for the exact signed agreement version. A delayed HTTP probe can therefore have an `observedAt` after the window end; its original measurement timestamp is retained. Merkle ordering remains `(observedAt, observationId)`.
+
+The first saved KPI result for a source, window and algorithm is immutable. Before creating a new batch, the server recomputes every included evaluation from the selected records, the source's immutable timing configuration and the signed SLA targets. It rejects a batch if any stored metric, state or algorithm disagrees. Existing batches retain their original records and commitments. Later observations require another completed evaluation window when they change the frozen result.
+
+Historical evaluation input IDs are not stored. This consistency check establishes that the selected records reproduce the packaged numbers; it does not establish their exact original membership. The portable verifier checks hashes and inclusion proofs, rather than independently replaying numerical KPI calculations.
+
 ## Privacy and limits
 
 The commitment excludes endpoint URLs, webhook secrets, raw provider payloads, SLA prose, and personal information. Exported records include measurement provenance and normalized values. Verification establishes integrity relative to the publisher's commitment, not the truth, independence, or legal effect of the measurements.

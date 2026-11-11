@@ -69,4 +69,8 @@
 
 ## Validation record
 
-Append actual commands, results and unresolved limitations after implementation. A planned check is not a passing result.
+See [the dated validation record](../competition/validation-2026-11-11.md) for actual commands, results and limitations. Frontend build/API/HTTP/browser checks, backend build/lint/118 unit cases, 26 contract cases, 5 PostgreSQL API cases, 27 anchor recovery cases and two fresh full-stack acceptance runs passed. Frontend lint passed on all 10 changed code files; the whole-frontend lint run was stopped under host memory pressure.
+
+An additional configuration review found that fixed local-development/test database credentials were published on all host interfaces. Both Compose bindings were restricted to `127.0.0.1` and their normalized configuration was checked. Fuji Compose was already loopback-only.
+
+Read-only Fuji preflight returned `NO_GO` because the configured deployer was unfunded; relayers also had zero test AVAX. Anonymous repository access returned HTTP 404. Real Fuji deployment, secure runtime provisioning, judge access and hosted checks remain separate submission prerequisites. No push, user-secret-key loading or public-network transaction was performed. Isolated EVM tests used public test-only keys.
