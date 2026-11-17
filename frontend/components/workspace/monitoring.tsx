@@ -132,7 +132,9 @@ function MonitoringForAgreement({ organizationId, agreement, selector }: { organ
     try {
       if (!evaluationWindow) await evaluateMonitoringKpis(selectedOrganization.id, agreement.id, window);
       setEvaluationWindow(window);
-      setBatch(await buildEvidenceBatch(selectedOrganization.id, agreement.id, window));
+      const createdBatch = await buildEvidenceBatch(selectedOrganization.id, agreement.id, window);
+      setBatch(createdBatch);
+      setLoading(false);
     }
     catch (cause) { setError(cause instanceof ApiError ? cause.message : "Evidence could not be assembled."); }
     finally { setBusy(false); }
