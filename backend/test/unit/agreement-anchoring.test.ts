@@ -286,3 +286,19 @@ test("an RPC rejection before broadcast preserves the signed transaction and fai
   assert.match(warnings[0] ?? "", /databaseCode=42601/);
   assert.doesNotMatch(warnings[0] ?? "", /invalid sender|wallet internals/);
 });
+
+
+test("a depth-confirmed owned revert with another registration still requires reconciliation", async () => {
+  const fixture = await proofFixture(3, 102n);
+  const originalHash = fixture.intent.transactionHash;
+  const originalBytes = fixture.intent.signedTransaction;
+  const originalNonce = fixture.intent.relayerNonce;
+  fixture.receipt.status = "reverted";
+  await fixture.service.processPendingIntents();
+  assert.equal(fixture.intent.status, "RECONCILIATION_REQUIRED");
+  assert.equal((fixture.intent as unknown as { lastError: string }).lastError, "reverted_with_registration");
+  assert.equal(fixture.agreement.status, "ANCHOR_PENDING");
+  assert.equal(fixture.intent.transactionHash, originalHash);
+  assert.equal(fixture.intent.relayerNonce, originalNonce);
+  assert.equal(fixture.intent.signedTransaction, originalBytes);
+});

@@ -30,6 +30,8 @@ contract AgreementRegistry is EIP712 {
         uint64 registeredAt;
     }
 
+    address public owner;
+    address public publisher;
     mapping(bytes32 agreementKey => RegisteredAgreement agreement) private agreements;
 
     event AgreementRegistered(
@@ -46,14 +48,27 @@ contract AgreementRegistry is EIP712 {
     error AgreementAlreadyRegistered(bytes32 agreementKey);
     error InvalidBuyerSignature();
     error InvalidSupplierSignature();
+    error UnauthorizedPublisher();
+    error UnauthorizedOwner();
 
-    constructor() EIP712("SLA-DEX Agreement Registry", "1") {}
+    constructor(address initialPublisher) EIP712("SLA-DEX Agreement Registry", "1") {
+        if (initialPublisher == address(0)) revert InvalidApproval();
+        owner = msg.sender;
+        publisher = initialPublisher;
+    }
+
+    function setPublisher(address newPublisher) external {
+        if (msg.sender != owner) revert UnauthorizedOwner();
+        if (newPublisher == address(0)) revert InvalidApproval();
+        publisher = newPublisher;
+    }
 
     function registerAgreement(
         AgreementApproval calldata approval,
         bytes calldata buyerSignature,
         bytes calldata supplierSignature
     ) external {
+        if (msg.sender != publisher) revert UnauthorizedPublisher();
         if (
             approval.agreementKey == bytes32(0) || approval.agreementHash == bytes32(0) || approval.version == 0
                 || approval.buyerOrganization == bytes32(0) || approval.supplierOrganization == bytes32(0)

@@ -87,7 +87,19 @@ function LiveAgreementDetailForOrganization({ id, organizationId, organizationNa
     {agreement.ownerOrganizationId === organizationId && editingAmendment && <AgreementEditor key={`${agreement.id}-${agreement.version}-amendment`} agreement={agreement} readOnly={readOnly} submitLabel="Create new version" onSave={save} />}
     {agreement.ownerOrganizationId === organizationId && role !== "MEMBER" && !editingAmendment && ["AWAITING_COUNTERPARTY", "AWAITING_SIGNATURES", "ANCHOR_FAILED", "ANCHOR_CONFIRMED", "REJECTED"].includes(agreement.status) && <div className="mb-4 flex flex-wrap gap-2"><button type="button" onClick={() => setEditingAmendment(true)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold">Amend terms</button>{["AWAITING_COUNTERPARTY", "AWAITING_SIGNATURES", "ANCHOR_FAILED"].includes(agreement.status) && <button type="button" onClick={() => void cancelCurrentAgreement()} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-danger">Cancel agreement</button>}</div>}
     {agreement.ownerOrganizationId === organizationId && editingAmendment && <button type="button" onClick={() => setEditingAmendment(false)} className="mt-2 text-sm font-semibold text-muted">Discard amendment edits</button>}
-    <AgreementLifecyclePanel agreement={agreement} organizationId={organizationId} userId={userId} canApprove={role !== "MEMBER"} onRefreshAgreement={refreshAgreement} />
+    {agreement.status !== "DRAFT" && <section aria-label="Agreement terms" className="mt-6 rounded-xl border border-border bg-white p-5 sm:p-6">
+      <h2 className="text-base font-semibold">Agreement terms</h2>
+      <p className="mt-1 text-xs text-muted">Version {agreement.version}</p>
+      <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+        <div className="min-w-0 sm:col-span-3"><dt className="text-xs text-muted">Service description</dt><dd className="mt-1 whitespace-pre-wrap break-words">{agreement.serviceDescription}</dd></div>
+        <div><dt className="text-xs text-muted">Uptime target</dt><dd className="mt-1">{agreement.terms.uptimeTargetPercent}%</dd></div>
+        <div><dt className="text-xs text-muted">Response target</dt><dd className="mt-1">{agreement.terms.responseTimeTargetMs} ms</dd></div>
+        <div><dt className="text-xs text-muted">Measurement window</dt><dd className="mt-1">{agreement.terms.measurementWindowHours} hours</dd></div>
+        <div className="min-w-0 sm:col-span-3"><dt className="text-xs text-muted">Exclusions</dt><dd className="mt-1">{agreement.terms.exclusions.length > 0 ? <ul className="list-inside list-disc space-y-1 break-words">{agreement.terms.exclusions.map((exclusion, index) => <li key={index}>{exclusion}</li>)}</ul> : "None"}</dd></div>
+        {agreement.terms.notes && <div className="min-w-0 sm:col-span-3"><dt className="text-xs text-muted">Notes</dt><dd className="mt-1 whitespace-pre-wrap break-words">{agreement.terms.notes}</dd></div>}
+      </dl>
+    </section>}
+    <AgreementLifecyclePanel key={`${agreement.id}-${agreement.version}`} agreement={agreement} organizationId={organizationId} userId={userId} canApprove={role !== "MEMBER"} onRefreshAgreement={refreshAgreement} />
     <section className="mt-7 rounded-xl border border-border bg-white p-5 sm:p-6">
       <h2 className="text-base font-semibold">Version history</h2>
       {historyError && <p role="alert" className="mt-3 text-sm text-danger">{historyError}</p>}

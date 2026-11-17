@@ -1,6 +1,6 @@
 # Phase 2B signing threat model
 
-> updated 2026-10-31 · 8766570
+> updated 2026-11-11 · authorized-publisher repair; no public deployment claim
 
 ## Security boundary
 
@@ -17,7 +17,8 @@ The protocol proves that two authorized EOA wallets approved one canonical agree
 | Wallet authorization | PostgreSQL | OWNER/ADMIN proves wallet control with a short-lived one-use challenge |
 | Frozen snapshot and signatures | PostgreSQL | Snapshot is immutable; EIP-712 signs its digest and version-specific key |
 | Registry record | Avalanche C-Chain | Public immutable key, hash, version, organization hashes, validity deadline and registration time; signer addresses/signatures remain visible in transaction calldata |
-| Relayer key and AVAX | Backend environment/secret store and funded account | Relayer can submit valid signatures but cannot manufacture either party's approval |
+| Relayer key and AVAX | Backend environment/secret store and funded account | Only the configured registry publisher can submit; relayer cannot manufacture the frozen parties' approvals |
+| Registry owner key | Separate deployment custody | Permanently controls publisher rotation; cannot edit an existing commitment |
 
 Assumptions: TLS protects deployed API sessions; the database and its credentials are controlled by the operator; wallet software correctly displays and signs typed data; the selected RPC returns the configured chain; and each organization's OWNER/ADMIN authority is accurate in SLA-DEX. Public chain metadata is observable and linkable.
 
@@ -31,6 +32,7 @@ Assumptions: TLS protects deployed API sessions; the database and its credential
 | Wallet address substitution | Short-lived one-use wallet-link challenge binds organization, user and address; frozen snapshot binds selected authorized addresses | A user can approve a malicious wallet prompt if their wallet UI is compromised or misleading |
 | Terms change after one signature | Persisted immutable snapshot; amendment creates a new version and invalidates old unanchored signatures | Already signed content cannot be recalled from a user's memory or external records |
 | Forged or wrong-wallet signature | Recover signer server-side and compare with the frozen party wallet; contract independently verifies both EOA signatures | ERC-1271 contract wallets are unsupported; the contract only checks addresses named in the approval and does not know which organizations approved them |
+| Outsider preempts a known agreement key with two attacker-controlled signer addresses | AgreementRegistry checks `msg.sender == publisher()` before registration while retaining both signature checks | Publisher and owner remain trusted. A compromised publisher can submit its own signer pair; the contract does not resolve organization authorization. Existing keys remain immutable after rotation |
 | Replay across agreement/version, chain or registry | Version-specific agreement key, nonce/deadline and EIP-712 domain binds chain ID and verifying contract | A separately deployed contract with the same code has its own domain and state |
 | Duplicate request or relayer restart | Unique durable intent, DB lease, persisted signed bytes/hash/chain/relayer/nonce before broadcast, same-transaction rebroadcast and registry read-before-retry | Relayer can delay or censor transactions; an advanced nonce without matching registry state requires operator investigation |
 | RPC outage, wrong network or low relayer balance | Chain ID validation, explicit pending/failed/reconciliation state, retry from durable intent | Availability depends on RPC and relayer funding |
@@ -45,10 +47,10 @@ Assumptions: TLS protects deployed API sessions; the database and its credential
 3. Each party links an EOA using a short-lived typed challenge. The server stores the verified address and role.
 4. Preparation freezes the canonical snapshot, selected wallets, expiry and EIP-712 payload. Both parties review the exact stored snapshot before signing.
 5. The API verifies each signature against its frozen signer and records it once. A completed pair creates a durable anchor intent transactionally.
-6. The relayer submits both signatures. Only its live leased worker can durably confirm the exact version after shared proof evaluation: canonical successful receipt, inclusive configured depth and matching registry data at a rechecked chain head. API verification is read-only. See [the confirmation policy](../ref/agreement-confirmation.md) for replacement, RPC, external registration and reconciliation semantics.
+6. The configured registry publisher relays both signatures. Only its live leased worker can durably confirm the exact version after shared proof evaluation: canonical successful receipt, inclusive configured depth and matching registry data at a rechecked chain head. API verification is read-only. See [the confirmation policy](../ref/agreement-confirmation.md) for replacement, RPC, external registration and reconciliation semantics.
 7. Amendments use a new immutable AgreementVersion and restart invitation/signing. An anchored snapshot is never edited in place.
 
-The contract enforces cryptographic EOA approval for the two addresses in the typed message, version/hash/deadline binding, chain and verifying-contract domain separation, and one-time registration per agreement key. SLA-DEX alone enforces that those addresses were authorized by the participating organizations. The registry does not implement ERC-1271 and cannot establish legal identity, employment authority or legal-signature compliance.
+The contract enforces an authorized publisher, cryptographic EOA approval for the two addresses in the typed message, version/hash/deadline binding, chain and verifying-contract domain separation, and one-time registration per agreement key. SLA-DEX alone enforces that those addresses were authorized by the participating organizations. The deployer is the permanent owner and may rotate the nonzero publisher; there is no owner transfer, edit or deletion of existing records. A malicious owner can appoint a malicious publisher, and the contract cannot distinguish their self-named wallets from organization-authorized wallets. The registry does not implement ERC-1271 and cannot establish legal identity, employment authority or legal-signature compliance.
 
 ## Operational controls
 

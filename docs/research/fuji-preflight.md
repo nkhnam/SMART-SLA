@@ -1,5 +1,7 @@
 # Gate 4A Fuji deployment preflight audit
 
+> **Superseded source assumptions — 2026-11-11:** The publisher-authorization repair changes AgreementRegistry bytecode and constructor arguments. The permissionless-registration conclusions, bytecode/initcode hashes and gas estimates below are historical evidence, not current deployment approval inputs. Follow the [current Fuji runbook](../deployment/fuji.md) and rerun validation/preflight against the repaired source; this notice records no fresh checks.
+
 Status: amended 2026-10-31. The baseline findings below are historical; Gate 4A.1 implements the confirmation correction described in the closing amendment.
 
 ## Start time

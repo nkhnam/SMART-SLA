@@ -96,15 +96,18 @@ test(publicHttps ? "real public HTTPS observations persist, evaluate, export and
       const invitation = await api<{ id: string }>(customer, `${path}/invitations`, "POST", { organizationId: provider.organizationId });
       await api(provider, `${path}/invitations/${invitation.id}/accept`, "POST");
       assert.equal((await api<{ status: string }>(customer, path)).status, "AWAITING_SIGNATURES");
+      const selectedSigners: Array<{ actor: Actor; id: string }> = [];
       for (const [actor, key] of [[customer, `0x${"11".repeat(32)}`], [provider, `0x${"22".repeat(32)}`]] as const) {
         const account = privateKeyToAccount(key as Hex);
         const challenge = await api<{ challengeId: string; typedData: TypedDataDefinition }>(actor, "/organizations/signers/challenge", "POST", { address: account.address });
         const signature = await account.signTypedData(challenge.typedData);
         const signer = await api<{ id: string }>(actor, "/organizations/signers/verify", "POST", { challengeId: challenge.challengeId, signature });
         await api(actor, `${path}/signers`, "POST", { authorizedSignerId: signer.id });
+        selectedSigners.push({ actor, id: signer.id });
       }
       const snapshot = await api<{ typedData: TypedDataDefinition; snapshotHash: Hex }>(customer, `${path}/signing/prepare`, "POST");
       snapshotHash = snapshot.snapshotHash;
+      for (const { actor, id } of selectedSigners) await api(actor, `/organizations/signers/${id}/revoke`, "POST", undefined, 409);
       for (const [actor, key] of [[customer, `0x${"11".repeat(32)}`], [provider, `0x${"22".repeat(32)}`]] as const) {
         const signature = await privateKeyToAccount(key as Hex).signTypedData(snapshot.typedData);
         await api(actor, `${path}/signatures`, "POST", { signature });
@@ -136,7 +139,7 @@ test(publicHttps ? "real public HTTPS observations persist, evaluate, export and
     t.mock.timers.enable({ apis: ["Date"], now: start });
     const samples: boolean[] = [...Array(4).fill(true), ...Array(4).fill(false), ...Array(4).fill(true)];
     async function webhook(slot: number, signatureOverride?: string, expected = 201) {
-      const observedAt = new Date(start.getTime() + slot * 300_000);
+      const observedAt = new Date(start.getTime() + slot * 300_000 - 777);
       const phase = slot <= 4 ? "healthy" : slot <= 8 ? "outage" : "recovery";
       const body = JSON.stringify({ observedAt: observedAt.toISOString(), reachable: samples[slot - 1] ?? true, httpStatus: samples[slot - 1] === false ? 503 : 200, ...(samples[slot - 1] === false ? {} : { latencyMs: 100 }), agentIdentity: "synthetic-acceptance-fixture", providerMetadata: { synthetic: true, phase, independentMeasurement: false } });
       const timestamp = String(Math.floor(observedAt.getTime() / 1000));

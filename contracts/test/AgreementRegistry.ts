@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { network } from "hardhat";
-import { zeroHash, type Address } from "viem";
+import { zeroAddress, zeroHash, type Address } from "viem";
 
 const approvalTypes = {
   AgreementApproval: [
@@ -20,8 +20,8 @@ const approvalTypes = {
 describe("AgreementRegistry", async () => {
   const { viem } = await network.create();
   const publicClient = await viem.getPublicClient();
-  const [buyer, supplier, unrelated] = await viem.getWalletClients();
-  const registry = await viem.deployContract("AgreementRegistry");
+  const [buyer, supplier, unrelated, attackerSupplier] = await viem.getWalletClients();
+  const registry = await viem.deployContract("AgreementRegistry", [buyer.account.address]);
   const chainId = await publicClient.getChainId();
 
   function approvalFor(agreementKey: `0x${string}`, deadline: bigint) {
@@ -64,6 +64,46 @@ describe("AgreementRegistry", async () => {
     assert.equal(registered.supplierOrganization, approval.supplierOrganization);
     assert.equal(registered.validUntil, deadline);
     assert.equal((await publicClient.getContractEvents({ address: registry.address, abi: registry.abi, eventName: "AgreementRegistered", fromBlock: receipt.blockNumber, toBlock: receipt.blockNumber })).length, 1);
+  });
+
+  it("prevents an unauthorized signer pair from poisoning a known agreement key", async () => {
+    const agreementKey = `0x${"1b".repeat(32)}` as `0x${string}`;
+    const legitimate = approvalFor(agreementKey, BigInt(Math.floor(Date.now() / 1000) + 600));
+    const attackerApproval = { ...legitimate, agreementHash: `0x${"cd".repeat(32)}` as `0x${string}`,
+      buyerSigner: unrelated.account.address, supplierSigner: attackerSupplier.account.address };
+    await assert.rejects(registry.write.registerAgreement([
+      attackerApproval, await sign(attackerApproval, unrelated), await sign(attackerApproval, attackerSupplier)
+    ], { account: unrelated.account }), /UnauthorizedPublisher/);
+    const hash = await registry.write.registerAgreement([
+      legitimate, await sign(legitimate, buyer), await sign(legitimate, supplier)
+    ]);
+    assert.equal((await publicClient.waitForTransactionReceipt({ hash })).status, "success");
+    assert.equal((await registry.read.getAgreement([agreementKey])).agreementHash, legitimate.agreementHash);
+  });
+
+  it("rejects a zero publisher at construction", async () => {
+    await assert.rejects(viem.deployContract("AgreementRegistry", [zeroAddress]), /InvalidApproval/);
+  });
+
+  it("allows only the permanent owner to rotate the nonzero publisher without changing records", async () => {
+    const isolated = await viem.deployContract("AgreementRegistry", [supplier.account.address]);
+    assert.equal((await isolated.read.owner()).toLowerCase(), buyer.account.address.toLowerCase());
+    assert.equal((await isolated.read.publisher()).toLowerCase(), supplier.account.address.toLowerCase());
+    await assert.rejects(isolated.write.setPublisher([unrelated.account.address], { account: supplier.account }), /UnauthorizedOwner/);
+    await assert.rejects(isolated.write.setPublisher([zeroAddress]), /InvalidApproval/);
+    const first = approvalFor(`0x${"1c".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    const firstSignatures = [await sign(first, buyer, isolated.address), await sign(first, supplier, isolated.address)] as const;
+    await assert.rejects(isolated.write.registerAgreement([first, ...firstSignatures]), /UnauthorizedPublisher/);
+    await publicClient.waitForTransactionReceipt({ hash: await isolated.write.registerAgreement([first, ...firstSignatures], { account: supplier.account }) });
+    const stored = await isolated.read.getAgreement([first.agreementKey]);
+    await publicClient.waitForTransactionReceipt({ hash: await isolated.write.setPublisher([unrelated.account.address]) });
+    assert.equal((await isolated.read.publisher()).toLowerCase(), unrelated.account.address.toLowerCase());
+    const second = approvalFor(`0x${"1d".repeat(32)}`, BigInt(Math.floor(Date.now() / 1000) + 600));
+    const secondSignatures = [await sign(second, buyer, isolated.address), await sign(second, supplier, isolated.address)] as const;
+    await assert.rejects(isolated.write.registerAgreement([second, ...secondSignatures], { account: supplier.account }), /UnauthorizedPublisher/);
+    await publicClient.waitForTransactionReceipt({ hash: await isolated.write.registerAgreement([second, ...secondSignatures], { account: unrelated.account }) });
+    assert.deepEqual(await isolated.read.getAgreement([first.agreementKey]), stored);
+    await assert.rejects(isolated.write.registerAgreement([first, ...firstSignatures], { account: unrelated.account }), /AgreementAlreadyRegistered/);
   });
 
   it("rejects a forged party signature, expired approval, wrong verifying contract and replay", async () => {

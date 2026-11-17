@@ -25,7 +25,7 @@ try {
     const firstHash = process.env.FUJI_AGREEMENT_DEPLOYMENT_TX_HASH as Hex;
     const firstReceipt = await publicClient.getTransactionReceipt({ hash: firstHash });
     const firstTransaction = await publicClient.getTransaction({ hash: firstHash });
-    const firstData = encodeDeployData({ abi: agreementArtifact.abi, bytecode: agreementArtifact.bytecode as Hex });
+    const firstData = encodeDeployData({ abi: agreementArtifact.abi, bytecode: agreementArtifact.bytecode as Hex, args: [getFujiRoles(process.env).agreementRelayer] });
     if (firstReceipt.status !== "success" || firstReceipt.contractAddress?.toLowerCase() !== agreementAddress.toLowerCase()
       || firstTransaction.from.toLowerCase() !== deployer.account.address.toLowerCase() || firstTransaction.nonce !== policy.startNonce
       || firstTransaction.chainId !== FUJI_CHAIN_ID || firstTransaction.to !== null || firstTransaction.value !== 0n
@@ -34,6 +34,9 @@ try {
     const previousFee = firstReceipt.gasUsed * firstReceipt.effectiveGasPrice;
     const agreementCode = await publicClient.getCode({ address: agreementAddress });
     if (!agreementCode || !matchesRuntimeBytecode(agreementCode, agreementArtifact.deployedBytecode, agreementArtifact.immutableReferences ?? {})) throw new Error("Verify the first deployment before proceeding.");
+    const agreementOwner = await publicClient.readContract({ address: agreementAddress, abi: agreementArtifact.abi, functionName: "owner" });
+    const agreementPublisher = await publicClient.readContract({ address: agreementAddress, abi: agreementArtifact.abi, functionName: "publisher" });
+    if (getAddress(String(agreementOwner)) !== getAddress(deployer.account.address) || getAddress(String(agreementPublisher)) !== getFujiRoles(process.env).agreementRelayer) throw new Error("Agreement owner/publisher mismatch.");
     const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode as Hex, args: [publisher] });
     const latestNonce = await publicClient.getTransactionCount({ address: deployer.account.address, blockTag: "latest" });
     const pendingNonce = await publicClient.getTransactionCount({ address: deployer.account.address, blockTag: "pending" });

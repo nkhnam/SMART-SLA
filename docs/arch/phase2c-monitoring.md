@@ -1,6 +1,6 @@
 # Phase 2C Oracle Monitoring and Evidence
 
-> updated 2026-10-30 · 5a03b56
+> updated 2026-11-11
 
 ## Scope
 
@@ -16,11 +16,13 @@ Each claim uses a fresh ownership token. Terminal writes lock the source and ver
 
 Signed webhooks authenticate HMAC-SHA256 over the raw JSON body and the timestamp, nonce, and event ID headers. HMAC comparison is constant-time. The server encrypts generated secrets with AES-256-GCM and the configured 32-byte `MONITORING_SECRET_ENCRYPTION_KEY`; a secret is returned only when created or rotated. Events are freshness-limited to five minutes, size-limited to 64 KiB, throttled to 30 requests per minute, and protected by unique nonce and idempotency keys. Provider reports are labeled `PROVIDER_REPORTED`; they are not described as independent measurements.
 
+Provider timestamps are assigned to the closing slot on the source-created measurement grid using ceiling division. Reports before source creation are rejected; the original `observedAt` remains in the record. Each slot uses the earliest ingested observation, with observation ID as the tie-breaker, so repeated reports cannot inflate coverage.
+
 ## Evaluation
 
 `sla-dex-kpi/1` constructs the expected sample grid from the measurement interval and window. A scheduled slot without a valid observation is `unknown`; it is never turned into uptime or downtime. Coverage is valid slots divided by expected slots. Uptime is healthy divided by valid healthy-plus-failed slots, but is exposed only at 80% coverage. Lower coverage produces `INSUFFICIENT_DATA`. Latency is the arithmetic mean of available valid latency values; the signed SLA does not specify a percentile. A crossed target produces `BREACH_CANDIDATE`, not an adjudicated breach. Free-text exclusions are not interpreted automatically.
 
-Evaluations are idempotent per source, window, and algorithm version. The UI compares only evaluations from the selected agreement version with identical window boundaries. It shows per-source coverage, trust category and health result, along with coverage, uptime and arithmetic-mean latency differences. Fewer than two overlapping sources, coverage below 80%, or unavailable health results produces `INSUFFICIENT_COMPARISON`. Otherwise equal values produce `AGREEMENT` and differing values produce `DISAGREEMENT`. A disagreement is for review and does not imply manipulation or fraud.
+Evaluations are idempotent and immutable per source, window, and algorithm version. Breach decisions use the saved result, including when later observations arrive. Select a different completed window to evaluate later data. The UI compares only evaluations from the selected agreement version with identical window boundaries. It shows per-source coverage, trust category and health result, along with coverage, uptime and arithmetic-mean latency differences. Fewer than two overlapping sources, coverage below 80%, or unavailable health results produces `INSUFFICIENT_COMPARISON`. Otherwise equal values produce `AGREEMENT` and differing values produce `DISAGREEMENT`. A disagreement is for review and does not imply manipulation or fraud.
 
 Free-text exclusions are unsupported calculation inputs. The KPI engine does not interpret them as maintenance windows. Any future structured exclusion must be authorized for the exact signed agreement version, preserve an immutable audit trail and cannot retroactively change an anchored snapshot.
 

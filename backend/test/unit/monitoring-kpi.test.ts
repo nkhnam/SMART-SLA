@@ -120,3 +120,37 @@ test("anchors expected slots to source creation rather than the requested window
   assert.equal(result.coveragePercent, 66.67);
   assert.equal(result.state, "INSUFFICIENT_DATA");
 });
+
+
+test("assigns provider timestamps to closing sampling slots without requiring exact millisecond alignment", async () => {
+  const engine = await enginePromise;
+  assert.ok(engine);
+  const anchor = new Date("2026-01-01T00:00:00.123Z");
+  const observations = Array.from({ length: 60 }, (_, index) => ({
+    scheduledFor: engine.normalizeWebhookScheduledFor(new Date(anchor.getTime() + index * 60_000 + 777), anchor, 60),
+    valid: true, reachable: true, latencyMs: 100
+  }));
+  const result = engine.evaluateKpis({ windowStart: anchor, windowEnd: new Date(anchor.getTime() + 3_600_000), scheduleAnchor: anchor,
+    measurementIntervalSeconds: 60, uptimeTargetPercent: 99, responseTimeTargetMs: 200, observations });
+  assert.equal(result.expectedSamples, 60);
+  assert.equal(result.healthyObservations, 60);
+  assert.equal(result.coveragePercent, 100);
+  assert.equal(result.state, "HEALTHY");
+  assert.equal(engine.normalizeWebhookScheduledFor(new Date(anchor.getTime() + 60_000), anchor, 60).getTime(), anchor.getTime() + 60_000);
+  assert.equal(engine.normalizeWebhookScheduledFor(new Date(anchor.getTime() + 3_600_001), anchor, 60).getTime(), anchor.getTime() + 3_660_000);
+  assert.throws(() => engine.normalizeWebhookScheduledFor(new Date(anchor.getTime() - 1), anchor, 60), RangeError);
+});
+
+test("duplicate provider events cannot increase coverage or replace the first observation in a slot", async () => {
+  const engine = await enginePromise;
+  assert.ok(engine);
+  const anchor = new Date("2026-01-01T00:00:00.123Z");
+  const scheduledFor = engine.normalizeWebhookScheduledFor(new Date(anchor.getTime() + 777), anchor, 60);
+  const result = engine.evaluateKpis({ windowStart: anchor, windowEnd: new Date(anchor.getTime() + 60_000), scheduleAnchor: anchor,
+    measurementIntervalSeconds: 60, uptimeTargetPercent: 99, responseTimeTargetMs: 200,
+    observations: [ { scheduledFor, valid: true, reachable: false, latencyMs: null }, { scheduledFor, valid: true, reachable: true, latencyMs: 100 } ] });
+  assert.equal(result.healthyObservations, 0);
+  assert.equal(result.failedObservations, 1);
+  assert.equal(result.coveragePercent, 100);
+  assert.equal(result.state, "BREACH_CANDIDATE");
+});

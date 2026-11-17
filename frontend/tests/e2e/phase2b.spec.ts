@@ -84,6 +84,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
     captureClientFailures(target);
   }
   const customer = await register(page, "buyer", "CUSTOMER");
+  await expect(page.getByText(customer.organizationId, { exact: true })).toBeVisible();
   const providerContext = await browser.newContext({ baseURL: "http://127.0.0.1:3000" });
   const providerPage = await providerContext.newPage();
   providerPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
@@ -129,6 +130,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await expect(providerPage.getByText("E2E frozen uptime agreement")).toHaveCount(0);
   await providerPage.getByRole("button", { name: "Accept" }).click();
   await expect(providerPage.getByRole("heading", { name: "E2E frozen uptime agreement" })).toBeVisible();
+  await expect(providerPage.getByRole("region", { name: "Agreement terms" })).toContainText("Browser-driven local SLA for a test organization");
   await expect(providerPage.getByText("Review the complete frozen SLA terms")).toHaveCount(0);
   await expect(providerPage.getByRole("heading", { name: "Agreement workflow" })).toBeVisible();
 
@@ -162,7 +164,7 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await providerPage.reload();
   await expect(providerPage.getByRole("heading", { name: "Frozen version 2" })).toBeVisible();
   await providerPage.getByText("Review the complete frozen SLA terms").click();
-  await expect(providerPage.getByText("Browser-driven local SLA for a test organization")).toBeVisible();
+  await expect(providerPage.locator("details pre")).toContainText("Browser-driven local SLA for a test organization");
 
   await page.evaluate(() => (window as unknown as { __configureTestWallet: (options: { rejectNextSignature?: boolean }) => void }).__configureTestWallet({ rejectNextSignature: true }));
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
@@ -207,6 +209,8 @@ test("live SLA signing, wallet recovery, isolation, and responsive layouts", asy
   await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 2, method: "evm_mine", params: [] } });
   await expect(page.getByText("CONFIRMED", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Frozen version 2" })).toBeVisible();
+  await expect(page.getByText("Review the complete frozen SLA terms")).toBeVisible();
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 3, method: "evm_setAutomine", params: [true] } });
 
   for (const width of [375, 768, 1440]) {

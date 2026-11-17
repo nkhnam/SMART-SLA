@@ -647,7 +647,7 @@ test("a valid mined replacement uses depth proof while preserving the original h
   assert.equal(confirmed.replacementHash, discovered.replacementHash);
 });
 
-test("an owned revert behind another valid registration waits for depth then reconciles", async () => {
+test("an unauthorized front-run reverts while the owned registration waits for confirmation depth", async () => {
   const fixture = await createFixture();
   const accounts = await hardhatRpc("eth_accounts") as Address[];
   assert.ok(accounts[1] && accounts[1].toLowerCase() !== relayer.address.toLowerCase());
@@ -660,20 +660,19 @@ test("an owned revert behind another valid registration waits for depth then rec
     const tx = await chainClient.getTransaction({ hash: original.transactionHash as `0x${string}` });
     const hash = await external.writeContract({ address: registryAddress!, abi: agreementRegistryAbi, functionName: "registerAgreement", args: [fixture.typedData.message, await buyer.signTypedData(fixture.typedData), await supplier.signTypedData(fixture.typedData)], gas: 300_000n, gasPrice: tx.gasPrice! * 2n });
     await mine();
-    assert.equal((await chainClient.getTransactionReceipt({ hash })).status, "success");
-    assert.equal((await chainClient.getTransactionReceipt({ hash: original.transactionHash as `0x${string}` })).status, "reverted");
+    assert.equal((await chainClient.getTransactionReceipt({ hash })).status, "reverted");
+    assert.equal((await chainClient.getTransactionReceipt({ hash: original.transactionHash as `0x${string}` })).status, "success");
   } finally { await hardhatRpc("evm_setAutomine", [true]); }
   await service(chainClient, prisma, chainId, 3).processPendingIntents();
   assert.equal((await state(fixture.agreementId)).status, "SUBMITTED");
   await mine(); await mine();
   await service(chainClient, prisma, chainId, 3).processPendingIntents();
-  const reconciled = await durableState(fixture.agreementId);
-  assert.equal(reconciled.intent.status, "RECONCILIATION_REQUIRED");
-  assert.equal(reconciled.intent.lastError, "reverted_with_registration");
-  assert.equal(reconciled.agreement.status, "ANCHOR_PENDING");
-  assert.equal(reconciled.intent.transactionHash, original!.transactionHash);
-  assert.equal(reconciled.intent.relayerNonce, original!.relayerNonce);
-  assert.ok(reconciled.intent.signedTransaction === original!.signedTransaction, "conflicting registration preserves original signed bytes");
+  const confirmed = await durableState(fixture.agreementId);
+  assert.equal(confirmed.intent.status, "CONFIRMED");
+  assert.equal(confirmed.agreement.status, "ANCHOR_CONFIRMED");
+  assert.equal(confirmed.intent.transactionHash, original!.transactionHash);
+  assert.equal(confirmed.intent.relayerNonce, original!.relayerNonce);
+  assert.ok(confirmed.intent.signedTransaction === original!.signedTransaction, "blocked front-run preserves original signed bytes");
 });
 
 test("recovery RPC rejection wording cannot finalize failure without a rejected broadcast", async () => {

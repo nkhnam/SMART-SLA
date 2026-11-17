@@ -149,10 +149,9 @@ export class AuthorizedSignersService {
       const inUse = await transaction.signingSnapshot.findFirst({
         where: {
           agreement: {
-            ownerOrganizationId: context.organization.id,
             status: { in: [AgreementStatus.AWAITING_SIGNATURES, AgreementStatus.ANCHOR_PENDING] }
           },
-          OR: [{ buyerSigner: signer.address }, { supplierSigner: signer.address }],
+          OR: [{ buyerAuthorizedSignerId: signer.id }, { supplierAuthorizedSignerId: signer.id }],
           invalidatedAt: null
         },
         select: { id: true }

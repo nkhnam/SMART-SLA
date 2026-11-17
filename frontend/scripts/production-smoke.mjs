@@ -83,6 +83,7 @@ try {
   }
 } catch (error) {
   failures.push(error.message);
+  console.error(`FAIL startup: ${error.message}`);
 } finally {
   if (server.exitCode === null) {
     const closed = new Promise(resolve => server.once("close", resolve));
