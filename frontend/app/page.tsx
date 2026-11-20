@@ -58,7 +58,7 @@ export default function HomePage() {
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-[clamp(40px,6vw,84px)] font-extrabold leading-[1.05] tracking-[-0.03em] text-white">
               Xin chào, {user?.fullName ?? "Khách tham quan"}
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-sm font-semibold leading-6 text-slate-300">Chọn khu vực bạn muốn truy cập trong hệ thống SLA-DEX.</p>
+            <p className="mx-auto mt-4 max-w-xl text-sm font-semibold leading-6 text-slate-300">Chọn khu vực bạn muốn truy cập trong hệ thống SMART-SLA.</p>
             <div className="mx-auto mt-7 grid max-w-3xl grid-cols-1 divide-y divide-slate-700/50 rounded-2xl border border-slate-500/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {statItems.map((s) => (
                 <div key={s.label} className="px-5 py-3 text-left">

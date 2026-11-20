@@ -41,7 +41,7 @@ export function MarketingHero() {
           SLA <span className="text-blue-300">tự giám sát, tự tính phạt</span>, bất biến dữ liệu
         </h1>
         <p className="mt-5 max-w-xl text-[17px] leading-8 text-slate-300">
-          SLA-DEX tự giám sát dịch vụ của nhà cung cấp, tự tính hoàn phí khi vi phạm và ghi bằng chứng lên blockchain. Bên mua và nhà cung cấp cùng nhìn một con số.
+          SMART-SLA tự giám sát dịch vụ của nhà cung cấp, tự tính hoàn phí khi vi phạm và ghi bằng chứng lên blockchain. Bên mua và nhà cung cấp cùng nhìn một con số.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link href="/register" className="inline-flex h-12 items-center gap-2 rounded-xl bg-blue-600 px-5 text-[15px] font-bold text-white hover:bg-blue-500">
@@ -62,10 +62,10 @@ export function MarketingHero() {
           <i className="h-2.5 w-2.5 rounded-full bg-slate-700" />
           <i className="h-2.5 w-2.5 rounded-full bg-slate-700" />
           <i className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-          <figcaption className="ml-2 text-[11px] text-slate-500">Dashboard SLA-DEX</figcaption>
+          <figcaption className="ml-2 text-[11px] text-slate-500">Dashboard SMART-SLA</figcaption>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/home/dashboard.webp" alt="Dashboard SLA-DEX: số hợp đồng theo trạng thái và biểu đồ Gantt sự cố, thời hạn phản đối" className="block w-full rounded-xl" />
+        <img src="/home/dashboard.webp" alt="Dashboard SMART-SLA: số hợp đồng theo trạng thái và biểu đồ Gantt sự cố, thời hạn phản đối" className="block w-full rounded-xl grayscale contrast-[1.04]" />
       </figure>
     </section>
   )
@@ -107,7 +107,7 @@ function VideoDemo() {
   return (
     <section id="video-demo" className="scroll-mt-24">
       <Head
-        tag="Xem SLA-DEX hoạt động"
+        tag="Xem SMART-SLA hoạt động"
         title="Từ ký hợp đồng đến tự tính phạt trong vài phút"
         desc="Video quay trên hệ thống thật: tạo SLA, hai bên ký, giả lập sự cố, hệ thống phát hiện vi phạm, ghi bằng chứng lên Polygon và chốt hoàn phí."
       />
@@ -117,7 +117,7 @@ function VideoDemo() {
             <iframe
               key={start ?? 0}
               src={`https://www.youtube-nocookie.com/embed/${yt}?rel=0${start !== null ? `&start=${start}&autoplay=1` : ""}`}
-              title="Video demo SLA-DEX"
+              title="Video demo SMART-SLA"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="absolute inset-0 h-full w-full"
@@ -127,7 +127,7 @@ function VideoDemo() {
           ) : (
             <div className="absolute inset-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/home/dashboard-full.webp" alt="" className="h-full w-full object-cover opacity-30" />
+              <img src="/home/dashboard-full.webp" alt="" className="h-full w-full object-cover opacity-30 grayscale contrast-[1.04]" />
               <div className="absolute inset-0 grid place-items-center">
                 <div className="text-center">
                   <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-blue-600 text-white shadow-xl"><Play className="ml-1 h-8 w-8" /></span>
@@ -163,7 +163,7 @@ function VideoDemo() {
 // ④ Giải pháp
 function Solutions() {
   const items = [
-    { icon: Radar, t: "Đo độc lập", d: "Oracle của SLA-DEX tự gọi dịch vụ, nhận thêm dữ liệu từ UptimeRobot, Datadog, Jira của hai bên và đối chiếu chéo.", href: "/create-sla" },
+    { icon: Radar, t: "Đo độc lập", d: "Oracle của SMART-SLA tự gọi dịch vụ, nhận thêm dữ liệu từ UptimeRobot, Datadog, Jira của hai bên và đối chiếu chéo.", href: "/create-sla" },
     { icon: Percent, t: "Tự tính phạt", d: "Xếp bậc Minor / Moderate / Severe, quy ra tiền hoàn phí, có thời hạn phản đối và admin phân xử.", href: "/dashboard" },
     { icon: FileBarChart2, t: "Báo cáo đối soát", d: "Biên bản theo kỳ: KPI cam kết so với đo được, số tiền phải thanh toán, xuất PDF một chạm.", href: "/contracts" },
     { icon: Blocks, t: "Kiểm chứng blockchain", d: "Hash điều khoản và bằng chứng nằm trên Polygon. Ai cũng tự kiểm tra được.", href: "/contracts" },
@@ -191,7 +191,7 @@ function Solutions() {
 const KPIS = [
   {
     cat: "Hạ tầng", name: "Uptime", target: "≥ 99,9%",
-    how: "SLA-DEX gửi request tới URL health check của nhà cung cấp theo chu kỳ (1–15 phút tuỳ gói). Mã HTTP dưới 400 là UP; từ 400 trở lên, quá 5 giây hoặc lỗi kết nối là DOWN.",
+    how: "SMART-SLA gửi request tới URL health check của nhà cung cấp theo chu kỳ (1–15 phút tuỳ gói). Mã HTTP dưới 400 là UP; từ 400 trở lên, quá 5 giây hoặc lỗi kết nối là DOWN.",
     calc: "Số lần UP ÷ tổng số lần đo × 100% trong kỳ 30 ngày, không tính khung bảo trì đã thoả thuận.",
     pen: "Hụt dưới 0,91 điểm → hoàn 5% · dưới 4,91 điểm → 10% · nặng hơn → 25% phí tháng (mẫu Cloud Hosting).",
     ex: "Cam kết 99,9% = được sập tối đa khoảng 43 phút / 30 ngày. Sập 2 giờ → uptime 99,72%, hụt 0,18 điểm → hoàn 5%.",
@@ -205,7 +205,7 @@ const KPIS = [
   },
   {
     cat: "Hỗ trợ", name: "Thời gian phản hồi ticket", target: "≤ 15 phút · ≥ 95% ticket",
-    how: "Đồng hồ chạy từ lúc khách mở ticket (chat hỗ trợ SLA-DEX hoặc Jira / Zendesk) đến lúc nhà cung cấp trả lời lần đầu.",
+    how: "Đồng hồ chạy từ lúc khách mở ticket (chat hỗ trợ SMART-SLA hoặc Jira / Zendesk) đến lúc nhà cung cấp trả lời lần đầu.",
     calc: "Mỗi ticket đạt nếu được trả lời trong 15 phút; quá hạn chưa trả lời là không đạt. KPI = % ticket đạt, cần tối thiểu 3 ticket.",
     pen: "Thiếu dưới 5 điểm so với 95% → hoàn 3% · dưới 15 điểm → 7% · nặng hơn → 15%.",
     ex: "20 ticket, 18 đạt → 90% → thiếu 5 điểm → hoàn 7%.",
@@ -232,7 +232,7 @@ function Kpis() {
       <Head
         tag="Phần lõi"
         title="5 KPI được đo và tính phạt tự động"
-        desc="Mỗi KPI có cách đo rõ ràng, mức cam kết và bậc phạt Minor / Moderate / Severe do hai bên thống nhất. Nguồn dữ liệu: SLA-DEX tự đo, hoặc webhook từ công cụ của hai bên (UptimeRobot, Datadog, Jira…), SLA-DEX vẫn đo song song để đối chiếu."
+        desc="Mỗi KPI có cách đo rõ ràng, mức cam kết và bậc phạt Minor / Moderate / Severe do hai bên thống nhất. Nguồn dữ liệu: SMART-SLA tự đo, hoặc webhook từ công cụ của hai bên (UptimeRobot, Datadog, Jira…), SMART-SLA vẫn đo song song để đối chiếu."
       />
       <div className="space-y-3.5">
         {KPIS.map((k) => (
@@ -317,7 +317,7 @@ function Pricing() {
       <Head tag="Bảng giá" title="Chọn gói phù hợp quy mô" />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {plans.map((p) => (
-          <Link key={p.n} href="/pricing" className={`rounded-2xl border border-slate-700/80 bg-[#0b1424]/85 p-6 ${p.hot ? "shadow-xl" : ""}`} style={p.hot ? { borderColor: "#b8232f", borderWidth: 2 } : undefined}>
+          <Link key={p.n} href="/pricing" className={`rounded-2xl border border-slate-700/80 bg-[#0b1424]/85 p-6 ${p.hot ? "shadow-xl" : ""}`} style={p.hot ? { borderColor: "#111113", borderWidth: 2 } : undefined}>
             {p.hot && <span className="mb-2 inline-block rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-300">Phổ biến</span>}
             <h3 className="text-lg font-bold text-white">{p.n}</h3>
             <p className="mt-2 font-mono text-2xl text-blue-300">{p.p}</p>
@@ -333,12 +333,12 @@ function Pricing() {
 // ⑨ Kêu gọi hành động
 function Cta({ loggedIn }: { loggedIn: boolean }) {
   return (
-    <section className="flex flex-col items-start justify-between gap-5 rounded-3xl px-8 py-10 sm:flex-row sm:items-center sm:px-12" style={{ background: "linear-gradient(135deg,#b8232f,#8f1a24)", color: "#fff" }}>
+    <section className="flex flex-col items-start justify-between gap-5 rounded-3xl px-8 py-10 sm:flex-row sm:items-center sm:px-12" style={{ background: "linear-gradient(135deg, rgba(24,24,27,0.96) 0%, rgba(9,9,11,0.98) 55%, rgba(0,0,0,1) 100%)", color: "#fff", border: "1px solid rgba(255,255,255,0.16)", boxShadow: "0 24px 60px -12px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.22)" }}>
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold" style={{ color: "#fff" }}>Đưa hợp đồng SLA của bạn lên SLA-DEX</h2>
+        <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold" style={{ color: "#fff" }}>Đưa hợp đồng SLA của bạn lên SMART-SLA</h2>
         <p className="mt-2" style={{ color: "rgba(255,255,255,.85)" }}>Dùng thử miễn phí 30 ngày với gói Pilot.</p>
       </div>
-      <Link href={loggedIn ? "/create-sla" : "/register"} className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-white px-6 font-bold text-[#b8232f]">
+      <Link href={loggedIn ? "/create-sla" : "/register"} className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-white px-6 font-bold text-[#09090b]">
         {loggedIn ? "Tạo hợp đồng" : "Bắt đầu ngay"} <ArrowRight className="h-4 w-4" />
       </Link>
     </section>

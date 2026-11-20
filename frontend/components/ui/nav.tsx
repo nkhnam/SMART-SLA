@@ -15,7 +15,7 @@ export default function Nav() {
   return (
     <nav className="w-full border-b bg-card/50">
       <div className="max-w-6xl mx-auto flex items-center gap-6 px-4 py-3">
-        <div className="font-semibold">SLA-DEX</div>
+        <div className="font-semibold">SMART-SLA</div>
         <div className="flex gap-2 ml-4">
           {items.map(i => {
             const active = path === i.href

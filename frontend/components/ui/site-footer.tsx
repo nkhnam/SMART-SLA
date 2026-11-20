@@ -12,7 +12,7 @@ const footerNav = [
   { href: "/pricing", label: "Gói dịch vụ" },
 ]
 
-// Footer dùng chung cho mọi trang: full chiều ngang, nền đỏ trầm
+// Footer dùng chung cho mọi trang: full chiều ngang, nền đen obsidian kính mờ
 export default function SiteFooter() {
   return (
   <footer className="brand-footer relative z-10 w-full font-sans font-semibold print:hidden">
@@ -22,7 +22,7 @@ export default function SiteFooter() {
             <div className="flex items-center gap-3">
               <AiscMark height={40} />
               <div>
-                <p className="font-[family-name:var(--font-display)] text-lg font-extrabold leading-none text-white">Shadow Byte<span className="ml-1 text-cyan-400">•</span></p>
+                <p className="font-[family-name:var(--font-display)] text-lg font-extrabold leading-none text-white">SMART-SLA<span className="ml-1 text-cyan-400">•</span></p>
                 <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Trust protocol</p>
               </div>
             </div>
@@ -62,7 +62,7 @@ export default function SiteFooter() {
           </div>
         </div>
         <div className="mt-10 flex flex-wrap justify-between gap-2 border-t border-slate-700/60 pt-5 text-xs text-slate-400">
-          <span>© 2026 SLA-DEX · Shadow Byte · AISC&apos;26</span>
+          <span>© 2026 SMART-SLA · AISC&apos;26</span>
           <span>Polygon Amoy testnet · Bản demo, thanh toán giả lập</span>
         </div>
       </div>

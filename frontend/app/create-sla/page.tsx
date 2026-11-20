@@ -148,7 +148,7 @@ export default function CreateSlaPage() {
                 <p className="-mt-1 mb-3 text-xs text-slate-400">
                   {iAmSupplier
                     ? "Chọn dịch vụ đã được duyệt để dùng làm mẫu hợp đồng, rồi nhập tên bên mua."
-                    : "Chọn dịch vụ đã được SLA-DEX duyệt: điều khoản và nhà cung cấp được điền sẵn theo dịch vụ."}
+                    : "Chọn dịch vụ đã được SMART-SLA duyệt: điều khoản và nhà cung cấp được điền sẵn theo dịch vụ."}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {listings.map((l) => (
@@ -188,7 +188,7 @@ export default function CreateSlaPage() {
 
             <Panel title="Thông tin hợp đồng">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={iAmSupplier ? "Bên mua dịch vụ" : "Nhà cung cấp"} hint="Nhập đúng tên doanh nghiệp bên kia đã đăng ký trên SLA-DEX (phân biệt chữ hoa và chữ thường) để họ thấy hợp đồng và ký được">
+                <Field label={iAmSupplier ? "Bên mua dịch vụ" : "Nhà cung cấp"} hint="Nhập đúng tên doanh nghiệp bên kia đã đăng ký trên SMART-SLA (phân biệt chữ hoa và chữ thường) để họ thấy hợp đồng và ký được">
                   <input value={counterpart} onChange={(e) => setCounterpart(e.target.value)} placeholder={iAmSupplier ? "Công ty ABC Logistics" : "Công ty XYZ Cloud"} className={inputCls} />
                 </Field>
                 <Field label="Tên hợp đồng (tuỳ chọn)" hint="Tên dễ nhớ để quản lý và tìm kiếm, đổi được bất cứ lúc nào">
@@ -203,7 +203,7 @@ export default function CreateSlaPage() {
                 </Field>
                 <Field
                   label="URL dịch vụ cần giám sát"
-                  hint="Địa chỉ kiểm tra sức khoẻ (health check) của dịch vụ nhà cung cấp, hai bên cần thống nhất. SLA-DEX tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SLA-DEX gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng https://shadow-byte-ctwf.onrender.com/api/demo-provider/health. URL là điều khoản: sửa được khi còn chờ ký (sửa sẽ huỷ chữ ký đã có), ký đủ thì khoá và ghi lên blockchain"
+                  hint="Địa chỉ kiểm tra sức khoẻ (health check) của dịch vụ nhà cung cấp, hai bên cần thống nhất. SMART-SLA tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SMART-SLA gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng https://shadow-byte-ctwf.onrender.com/api/demo-provider/health. URL là điều khoản: sửa được khi còn chờ ký (sửa sẽ huỷ chữ ký đã có), ký đủ thì khoá và ghi lên blockchain"
                 >
                   <input type="url" value={monitorUrl} onChange={(e) => setMonitorUrl(e.target.value)} placeholder="https://api.congty.vn/health" className={inputCls} />
                 </Field>

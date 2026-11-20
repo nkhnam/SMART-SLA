@@ -101,7 +101,7 @@ export default function AdminListingsPage() {
       {!rows && !error && <Loading />}
       {rows && rows.length === 0 && <Empty>Không có dịch vụ nào.</Empty>}
       {rows && rows.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-slate-700/70 bg-[#0b1424]/85 [scrollbar-color:#334155_transparent] [scrollbar-width:thin]">
+        <div className="overflow-x-auto rounded-2xl border border-slate-700/70 bg-[#0b1424]/85 [scrollbar-color:#52525b_transparent] [scrollbar-width:thin]">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-slate-700/70 text-xs text-slate-400">
               <tr>

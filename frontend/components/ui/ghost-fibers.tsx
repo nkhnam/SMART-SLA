@@ -78,16 +78,16 @@ void main() {
   float vignette = 1. - smoothstep(.35, 1.45, length(uv));
   color *= mix(1. - uVignette, 1., vignette);
   color = 1. - exp(-color * uBrightness); color.b *= uBlueBoost;
-  vec3 outputColor = vec3(.0235, .0431, .0824) + color;
+  vec3 outputColor = vec3(.04, .04, .045) + color;
   outputColor += (layeredGrain(gl_FragCoord.xy) - .5) * uGrain;
   fragColor = vec4(clamp(outputColor, 0., 1.), 1.);
 }`
 
 export default function GhostFibers({
-  lineColor = "#071a42", glowColor = "#1d4ed8", speed = 0.12, scale = 2.2, rotation = -8, rotationSpeed = 0.04,
+  lineColor = "#18181b", glowColor = "#71717a", speed = 0.12, scale = 2.2, rotation = -8, rotationSpeed = 0.04,
   layers = 3, waveAmplitude = 0.015, waveFrequency = 3, waveSpeed = 0.15, layerSpeed = 0.08, twist = 0.1,
   twistFrequency = 5, twistSpeed = 1.2, lineFrequency = 5, lineSpacing = 2, lineSharpness = 16, glowFalloff = 10,
-  glowIntensity = 1.2, brightness = 1.5, blueBoost = 1.2, vignette = 0.8, grain = 0.025, dpr = 1, fps = 30,
+  glowIntensity = 1.2, brightness = 1.5, blueBoost = 1.0, vignette = 0.8, grain = 0.025, dpr = 1, fps = 30,
   paused = false, className = "",
 }: GhostFibersProps) {
   const containerRef = useRef<HTMLDivElement>(null)

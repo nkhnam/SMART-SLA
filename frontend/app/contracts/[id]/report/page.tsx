@@ -202,7 +202,7 @@ export default function ReconciliationReportPage() {
         {r && (
           <>
             <header className="rounded-2xl border border-slate-700/80 bg-slate-900/60 p-6">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">SLA-DEX · Báo cáo đối soát</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-300">SMART-SLA · Báo cáo đối soát</p>
               <h1 className="mt-2 text-3xl font-extrabold text-white">
                 {r.contract.contractName || r.contract.serviceName}
               </h1>
@@ -219,7 +219,7 @@ export default function ReconciliationReportPage() {
               ) : (
                 <p className="mt-2 text-sm text-amber-300">Hợp đồng chưa tới ngày hiệu lực nên chưa có kỳ đối soát nào.</p>
               )}
-              <p className="mt-1 text-xs text-slate-500">Lập tự động lúc {fmtDateTime(r.generatedAt)} từ dữ liệu SLA-DEX đo được và bằng chứng ghi trên {r.chain.network}.</p>
+              <p className="mt-1 text-xs text-slate-500">Lập tự động lúc {fmtDateTime(r.generatedAt)} từ dữ liệu SMART-SLA đo được và bằng chứng ghi trên {r.chain.network}.</p>
             </header>
 
             {r.penaltyCap && <PenaltyCapBar cap={r.penaltyCap} />}
@@ -378,7 +378,7 @@ export default function ReconciliationReportPage() {
             </section>
 
             <footer className="pb-4 text-center text-xs text-slate-500">
-              Báo cáo do SLA-DEX lập tự động · {r.contract.contractCode} · {fmtDateTime(r.generatedAt)}
+              Báo cáo do SMART-SLA lập tự động · {r.contract.contractCode} · {fmtDateTime(r.generatedAt)}
             </footer>
           </>
         )}

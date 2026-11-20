@@ -42,8 +42,8 @@ export default function KpiGuide(p: Props) {
     body = (
       <>
         <Block title="Đo thế nào">
-          <p>• <b>SLA-DEX tự đo:</b> gửi request GET tới URL health check của nhà cung cấp theo chu kỳ của gói (Enterprise 1 phút, Starter 5 phút). Mã HTTP dưới 400 là <b>UP</b>; từ 400 trở lên, quá 5 giây không trả lời hoặc lỗi kết nối là <b>DOWN</b>.</p>
-          {hook && <p>• <b>Webhook 2 bên:</b> UptimeRobot, Datadog, CloudWatch… gửi sự kiện DOWN / UP. Ưu tiên webhook client, rồi webhook provider; SLA-DEX vẫn đo song song để đối chiếu.</p>}
+          <p>• <b>SMART-SLA tự đo:</b> gửi request GET tới URL health check của nhà cung cấp theo chu kỳ của gói (Enterprise 1 phút, Starter 5 phút). Mã HTTP dưới 400 là <b>UP</b>; từ 400 trở lên, quá 5 giây không trả lời hoặc lỗi kết nối là <b>DOWN</b>.</p>
+          {hook && <p>• <b>Webhook 2 bên:</b> UptimeRobot, Datadog, CloudWatch… gửi sự kiện DOWN / UP. Ưu tiên webhook client, rồi webhook provider; SMART-SLA vẫn đo song song để đối chiếu.</p>}
         </Block>
         <Block title="Tính thế nào">
           <p>Uptime = số lần UP ÷ tổng số lần đo × 100%{hook ? " (theo webhook: thời gian hoạt động ÷ tổng thời gian)" : ""}, trong kỳ {win}. {maint}</p>
@@ -60,7 +60,7 @@ export default function KpiGuide(p: Props) {
     body = (
       <>
         <Block title="Đo thế nào">
-          <p>• <b>SLA-DEX tự đo:</b> dùng cùng lần gọi với Uptime, bấm giờ từ lúc gửi đến lúc nhận phản hồi (mili giây). Chỉ tính các lần dịch vụ UP.</p>
+          <p>• <b>SMART-SLA tự đo:</b> dùng cùng lần gọi với Uptime, bấm giờ từ lúc gửi đến lúc nhận phản hồi (mili giây). Chỉ tính các lần dịch vụ UP.</p>
           {hook && <p>• <b>Webhook 2 bên:</b> công cụ của hai bên gửi {"{"}&quot;responseTimeMs&quot;: 230{"}"}. Ưu tiên webhook client, rồi webhook provider.</p>}
         </Block>
         <Block title="Tính thế nào">
@@ -81,8 +81,8 @@ export default function KpiGuide(p: Props) {
       <>
         <Block title="Đo thế nào">
           <p>• Đồng hồ chạy từ lúc <b>mở ticket</b> đến lúc {first ? <><b>bên kia trả lời lần đầu</b></> : <><b>nhà cung cấp đánh dấu đã giải quyết</b> (bên mua mở lại thì đồng hồ chạy tiếp)</>}.</p>
-          <p>• <b>Chat hỗ trợ SLA-DEX:</b> bên mua mở ticket trong mục Bàn bạc → Ticket hỗ trợ.</p>
-          {hook && <p>• <b>Webhook 2 bên:</b> Jira / Zendesk gửi TICKET_CREATED rồi {first ? "TICKET_RESPONDED" : "TICKET_RESOLVED"}. Ưu tiên webhook client, rồi webhook provider; chat SLA-DEX dùng để đối chiếu.</p>}
+          <p>• <b>Chat hỗ trợ SMART-SLA:</b> bên mua mở ticket trong mục Bàn bạc → Ticket hỗ trợ.</p>
+          {hook && <p>• <b>Webhook 2 bên:</b> Jira / Zendesk gửi TICKET_CREATED rồi {first ? "TICKET_RESPONDED" : "TICKET_RESOLVED"}. Ưu tiên webhook client, rồi webhook provider; chat SMART-SLA dùng để đối chiếu.</p>}
         </Block>
         <Block title="Tính thế nào">
           <p>Mỗi ticket <b>đạt</b> nếu {first ? "được phản hồi" : "được xử lý xong"} trong ≤ {vn(t)} {unit}; quá hạn mà chưa có kết quả tính là <b>không đạt</b>. KPI = % ticket đạt trong kỳ {win}. Cần tối thiểu 3 ticket mới kết luận.</p>

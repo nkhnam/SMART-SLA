@@ -85,7 +85,7 @@ export default function AdminRevenuePage() {
             {data.transactions.length === 0 ? (
               <Empty>Chưa có giao dịch.</Empty>
             ) : (
-              <div className="overflow-x-auto [scrollbar-color:#334155_transparent] [scrollbar-width:thin]">
+              <div className="overflow-x-auto [scrollbar-color:#52525b_transparent] [scrollbar-width:thin]">
                 <table className="w-full min-w-[900px] text-left text-sm">
                   <thead className="border-b border-slate-700/70 text-xs text-slate-400">
                     <tr>

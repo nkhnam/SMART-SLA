@@ -74,15 +74,15 @@ export default function AppShell({ children, allowGuest = false }: AppShellProps
   ]
   const currentLabel = nav.find((n) => pathname === n.href || pathname.startsWith(`${n.href}/`))?.label
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
-  const initials = (user?.fullName ?? "").split(/\s+/).filter(Boolean).slice(-2).map((p) => p[0]).join("").toUpperCase() || "SD"
+  const initials = (user?.fullName ?? "").split(/\s+/).filter(Boolean).slice(-2).map((p) => p[0]).join("").toUpperCase() || "SS"
 
   return (
     <div className="app-theme relative isolate min-h-screen overflow-hidden text-slate-100 print:overflow-visible print:bg-white">
-      <header className="sticky top-0 z-40 print:hidden border-b border-[#f1dede] bg-[#071120]/70 shadow-[0_4px_20px_rgba(120,20,30,.05)] backdrop-blur-xl">
+      <header className="sticky top-0 z-40 print:hidden border-b border-black/10 bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,.07)] backdrop-blur-2xl">
         <div className="mx-auto flex h-20 max-w-[1600px] items-center gap-5 px-4 sm:px-6 lg:px-10">
-          <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Shadow Byte trang chủ">
+          <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="SMART-SLA trang chủ">
             <AiscMark height={40} />
-            <span className="hidden whitespace-nowrap font-[family-name:var(--font-display)] text-lg font-extrabold tracking-[-0.02em] text-white sm:inline lg:hidden xl:inline">Shadow Byte<span className="ml-1 text-cyan-400">•</span></span>
+            <span className="hidden whitespace-nowrap font-[family-name:var(--font-display)] text-lg font-extrabold tracking-[-0.02em] text-white sm:inline lg:hidden xl:inline">SMART-SLA<span className="ml-1 text-cyan-400">•</span></span>
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Điều hướng chính">
@@ -110,7 +110,7 @@ export default function AppShell({ children, allowGuest = false }: AppShellProps
             ) : (
               <>
             <div className="hidden h-10 items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-900/80 px-3 xl:flex" title="Mạng blockchain đang dùng">
-              <span className="h-2.5 w-2.5 rounded-full bg-violet-400 shadow-[0_0_12px_rgba(167,139,250,.8)]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-violet-400 shadow-[0_0_10px_rgba(0,0,0,.45)]" />
               <span className="font-mono text-xs font-medium text-slate-300">Polygon Amoy</span>
             </div>
 

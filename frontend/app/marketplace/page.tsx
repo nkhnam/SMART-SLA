@@ -148,7 +148,7 @@ function ServicesTab() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-sm text-slate-400">Dịch vụ đã được SLA-DEX kiểm duyệt. Điểm uy tín tính từ dữ liệu đo thật, nhà cung cấp không tự sửa được.</p>
+        <p className="max-w-2xl text-sm text-slate-400">Dịch vụ đã được SMART-SLA kiểm duyệt. Điểm uy tín tính từ dữ liệu đo thật, nhà cung cấp không tự sửa được.</p>
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-500" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm dịch vụ, danh mục, nhà cung cấp" className={`${inputCls} pl-9`} aria-label="Tìm dịch vụ" />
@@ -240,7 +240,7 @@ function ManageTab() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-sm text-slate-400">Dịch vụ chỉ hiển thị trên Marketplace sau khi admin SLA-DEX duyệt.</p>
+        <p className="max-w-2xl text-sm text-slate-400">Dịch vụ chỉ hiển thị trên Marketplace sau khi admin SMART-SLA duyệt.</p>
         <Btn onClick={() => setEditing("new")}><Plus className="h-4 w-4" />Tạo dịch vụ mới</Btn>
       </div>
       <div className="mt-6 space-y-3">
@@ -259,7 +259,7 @@ function ManageTab() {
             {l.status === "REJECTED" && l.rejectReason && (
               <p className="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">Lý do từ chối: {l.rejectReason}</p>
             )}
-            {l.status === "PENDING" && <p className="mt-3 text-xs text-amber-300">Đang chờ admin SLA-DEX duyệt.</p>}
+            {l.status === "PENDING" && <p className="mt-3 text-xs text-amber-300">Đang chờ admin SMART-SLA duyệt.</p>}
             <div className="mt-4 flex flex-wrap gap-2">
               <Btn variant="ghost" onClick={() => setPreview(l)}>Xem trước</Btn>
               <Btn variant="ghost" onClick={() => setEditing(l)}>Sửa</Btn>

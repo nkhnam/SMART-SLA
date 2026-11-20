@@ -18,7 +18,7 @@ const KPI_NAME: Record<string, string> = { UPTIME: "Uptime", RESPONSE_TIME: "Th�
 
 // Nguồn dữ liệu cho Oracle: URL HTTP Health Check (điều khoản: chỉ sửa khi chờ ký, ký đủ thì khoá và ghi lên chain)
 // + mỗi bên 1 địa chỉ webhook (client = bên mua, provider = nhà cung cấp), dùng cho KPI chọn nguồn Webhook.
-// KPI nguồn Webhook tính theo: webhook client > webhook provider > SLA-DEX. SLA-DEX luôn đo song song để đối chiếu.
+// KPI nguồn Webhook tính theo: webhook client > webhook provider > SMART-SLA. SMART-SLA luôn đo song song để đối chiếu.
 export default function MonitoringPanel({ contract, party, onChanged }: { contract: Contract; party: HookParty; onChanged: () => void }) {
   const [data, setData] = useState<SourcesRes | null>(null)
   const [url, setUrl] = useState("")
@@ -89,10 +89,10 @@ export default function MonitoringPanel({ contract, party, onChanged }: { contra
         {data && <> theo gói <strong className="text-white">{data.planName}</strong></>}.{" "}
         {full && <Link href="/pricing" className="font-semibold text-blue-300 hover:text-blue-200">Nâng cấp gói để thêm nguồn</Link>}
       </p>
-      {data?.pausedByAdmin && <p className="mt-2 text-xs text-amber-300">Admin SLA-DEX đang tạm dừng giám sát hợp đồng này (tự bật lại khi xử lý xong).</p>}
-      {data?.penaltyHold && <p className="mt-2 text-xs text-amber-300">Đang có khiếu nại chờ admin xử lý: SLA-DEX vẫn đo bình thường, tạm giữ việc mở vụ phạt mới.</p>}
+      {data?.pausedByAdmin && <p className="mt-2 text-xs text-amber-300">Admin SMART-SLA đang tạm dừng giám sát hợp đồng này (tự bật lại khi xử lý xong).</p>}
+      {data?.penaltyHold && <p className="mt-2 text-xs text-amber-300">Đang có khiếu nại chờ admin xử lý: SMART-SLA vẫn đo bình thường, tạm giữ việc mở vụ phạt mới.</p>}
       <p className="mt-2 text-xs text-slate-400">
-        KPI dùng webhook: {hookKpis.length ? <strong className="text-slate-200">{hookKpis.map((k) => KPI_NAME[k.kpiCode] ?? k.kpiCode).join(", ")}</strong> : "không có (chỉ SLA-DEX tự đo)"}.
+        KPI dùng webhook: {hookKpis.length ? <strong className="text-slate-200">{hookKpis.map((k) => KPI_NAME[k.kpiCode] ?? k.kpiCode).join(", ")}</strong> : "không có (chỉ SMART-SLA tự đo)"}.
       </p>
 
       {/* Danh sách nguồn */}
@@ -133,7 +133,7 @@ export default function MonitoringPanel({ contract, party, onChanged }: { contra
         {/* HTTP Health Check */}
         <div className="rounded-xl border border-slate-700/80 p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-white"><Globe className="h-4 w-4 text-blue-300" />HTTP Health Check</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">URL health check của dịch vụ nhà cung cấp, hai bên thống nhất. SLA-DEX tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SLA-DEX gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng https://shadow-byte-ctwf.onrender.com/api/demo-provider/health.</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">URL health check của dịch vụ nhà cung cấp, hai bên thống nhất. SMART-SLA tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SMART-SLA gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng https://shadow-byte-ctwf.onrender.com/api/demo-provider/health.</p>
           {pending ? (
             <>
               <div className="mt-3 flex gap-2">
@@ -160,7 +160,7 @@ export default function MonitoringPanel({ contract, party, onChanged }: { contra
           </Btn>
           {hook && !webhookUrl && <p className="mt-2 text-[11px] text-slate-500">Đã có {HOOK_NAME[party].toLowerCase()}. Mã bí mật chỉ hiển thị một lần lúc tạo; tạo lại sẽ vô hiệu địa chỉ cũ.</p>}
           {hooks.length > 0 && httpSources.length === 0 && (
-            <p className="mt-2 text-[11px] text-amber-300">Nên thêm 1 URL HTTP Health Check để SLA-DEX đo độc lập, đối chiếu với webhook.</p>
+            <p className="mt-2 text-[11px] text-amber-300">Nên thêm 1 URL HTTP Health Check để SMART-SLA đo độc lập, đối chiếu với webhook.</p>
           )}
           {webhookUrl && (
             <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">

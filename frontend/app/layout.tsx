@@ -1,9 +1,33 @@
 import "./globals.css";
 import type { Metadata } from "next";
 
+const TITLE = "SMART-SLA | Trust Protocol"
+const DESCRIPTION = "Nền tảng quản trị và đối soát SLA, bằng chứng ghi trên Polygon"
+
+// Domain gốc để LinkedIn, Facebook, Zalo đọc được đường dẫn tuyệt đối của ảnh xem trước.
+// Ưu tiên NEXT_PUBLIC_SITE_URL, sau đó domain production do Vercel cấp.
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://shadow-byte-beta.vercel.app")
+
+// Ảnh xem trước lấy từ app/opengraph-image.png và app/twitter-image.png (Next.js tự gắn thẻ og:image)
 export const metadata: Metadata = {
-  title: "Shadow Byte | Trust Protocol",
-  description: "Nền tảng quản trị và đối soát SLA, bằng chứng ghi trên Polygon",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    locale: "vi_VN",
+    siteName: "SMART-SLA",
+    url: "/",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

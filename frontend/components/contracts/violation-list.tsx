@@ -60,7 +60,7 @@ function ViolationCard({ v, canChallenge, onChanged }: { v: Violation; canChalle
           {v.challengedBy ? PARTY_LABEL[v.challengedBy] : "Một bên"} phản đối: “{v.challengeReason}”
         </p>
       )}
-      {v.resolutionNote && <p className="mt-2 rounded-lg bg-slate-500/10 px-3 py-2 text-xs text-slate-300">Admin SLA-DEX: {v.resolutionNote}</p>}
+      {v.resolutionNote && <p className="mt-2 rounded-lg bg-slate-500/10 px-3 py-2 text-xs text-slate-300">Admin SMART-SLA: {v.resolutionNote}</p>}
 
       {txLinks.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-3 text-xs">

@@ -24,7 +24,7 @@ export default function AdminFrame({ children }: { children: React.ReactNode }) 
       <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin nền tảng</h1>
         {user && !user.platformAdmin ? (
-          <Empty>Trang này chỉ dành cho admin nền tảng SLA-DEX.</Empty>
+          <Empty>Trang này chỉ dành cho admin nền tảng SMART-SLA.</Empty>
         ) : (
           <>
             <nav className="flex flex-wrap gap-2 border-b border-slate-800 pb-3" aria-label="Màn hình quản trị">

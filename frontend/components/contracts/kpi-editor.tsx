@@ -125,7 +125,7 @@ export default function KpiEditor({ catalog, rows, setRows }: { catalog: Catalog
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
                           <span>Cam kết tối thiểu</span>
                           <input type="number" min={1} max={100} step="any" value={r.minPercent} onChange={(e) => update(i, { minPercent: e.target.value })} className={`${inputCls} h-8 w-24`} aria-label="Tỷ lệ ticket tối thiểu phải đạt" />
-                          <span>% ticket đạt ngưỡng trên. Ticket lấy từ chat SLA-DEX và webhook (Jira, Zendesk…).</span>
+                          <span>% ticket đạt ngưỡng trên. Ticket lấy từ chat SMART-SLA và webhook (Jira, Zendesk…).</span>
                         </div>
                       )}
 

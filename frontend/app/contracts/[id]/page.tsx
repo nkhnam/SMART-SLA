@@ -23,7 +23,7 @@ import type { Contract, KpiSummary, Violation } from "@/lib/types"
 import { Badge, ErrorNote, Loading, PARTY_LABEL, Panel, StatusBadge, fmtDateTime, fmtPercent, shortHash } from "@/components/sla/ui"
 
 const DAYS = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"]
-const SOURCE = { HTTP_CHECK: "SLA-DEX tự đo (HTTP)", WEBHOOK: "Webhook 2 bên + SLA-DEX đối chiếu", TICKET: "Chat hỗ trợ SLA-DEX" } as Record<string, string>
+const SOURCE = { HTTP_CHECK: "SMART-SLA tự đo (HTTP)", WEBHOOK: "Webhook 2 bên + SMART-SLA đối chiếu", TICKET: "Chat hỗ trợ SMART-SLA" } as Record<string, string>
 
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -121,7 +121,7 @@ export default function ContractDetailPage() {
                   {contract.terminationAlert.periods.map((p) => `${p.label} đạt ${p.uptime}%`).join(", ")}.
                   Theo điều khoản chấm dứt (nếu có trong hợp đồng), Bên mua có quyền đơn phương chấm dứt ngay và được hoàn phần phí chưa sử dụng.
                 </p>
-                <p className="mt-1 text-xs text-rose-200/80">Phát hiện tự động lúc {fmtDateTime(contract.terminationAlert.at)} từ dữ liệu SLA-DEX đo được.</p>
+                <p className="mt-1 text-xs text-rose-200/80">Phát hiện tự động lúc {fmtDateTime(contract.terminationAlert.at)} từ dữ liệu SMART-SLA đo được.</p>
               </div>
             )}
 

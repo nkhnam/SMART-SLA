@@ -128,7 +128,7 @@ export default function PricingPage() {
 
         {user && history.length > 0 && (
           <Panel title="Lịch sử đăng ký và phí">
-            <div className="overflow-x-auto [scrollbar-color:#334155_transparent] [scrollbar-width:thin]">
+            <div className="overflow-x-auto [scrollbar-color:#52525b_transparent] [scrollbar-width:thin]">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="text-xs text-slate-400">
                   <tr><th className="pb-2 font-semibold">Thời gian</th><th className="pb-2 font-semibold">Nội dung</th><th className="pb-2 font-semibold">Số tiền</th><th className="pb-2 font-semibold">Trạng thái</th></tr>

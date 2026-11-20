@@ -39,7 +39,7 @@ const HOOK_NAME: Record<(typeof HOOKS)[number], string> = { WEBHOOK_CLIENT: "Web
 const nameOf = (k: KpiCompare, s: SourceKey) => (s === "BASE" ? k.baseLabel : HOOK_NAME[s])
 // Màu từng nguồn (dùng cho dải nền và đường biểu đồ)
 const LANE_BG: Record<SourceKey, string> = { BASE: "bg-blue-500/25", WEBHOOK_CLIENT: "bg-emerald-500/25", WEBHOOK_PROVIDER: "bg-violet-500/25" }
-const LINE: Record<SourceKey, string> = { BASE: "#b8232f", WEBHOOK_CLIENT: "#0f8a5f", WEBHOOK_PROVIDER: "#6d4fc2" }
+const LINE: Record<SourceKey, string> = { BASE: "#09090b", WEBHOOK_CLIENT: "#52525b", WEBHOOK_PROVIDER: "#a1a1aa" }
 
 const KPI_TABS = [
   { code: "UPTIME", label: "Uptime" },
@@ -175,7 +175,7 @@ function LatencyChart({ k, shown, from, to }: { k: KpiCompare; shown: SourceKey[
       </div>
       <div className="relative rounded-md bg-slate-800/40">
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-40 w-full" role="img" aria-label={`Thời gian phản hồi theo nguồn`}>
-          <line x1={0} x2={W} y1={y(k.target)} y2={y(k.target)} stroke="#94a3b8" strokeDasharray="6 5" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={0} x2={W} y1={y(k.target)} y2={y(k.target)} stroke="#71717a" strokeDasharray="6 5" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           {series.map(({ s, pts }) => (
             <polyline
               key={s}
@@ -194,7 +194,7 @@ function LatencyChart({ k, shown, from, to }: { k: KpiCompare; shown: SourceKey[
   )
 }
 
-// Phần mở rộng của 1 hợp đồng: nguồn gốc SLA-DEX luôn hiện, webhook client / provider bật thêm bằng nút
+// Phần mở rộng của 1 hợp đồng: nguồn gốc SMART-SLA luôn hiện, webhook client / provider bật thêm bằng nút
 function Detail({ k, from, to }: { k: KpiCompare; from: number; to: number }) {
   const [shown, setShown] = useState<SourceKey[]>([])
   const toggle = (s: SourceKey) => setShown((v) => (v.includes(s) ? v.filter((x) => x !== s) : [...v, s]))
@@ -256,7 +256,7 @@ function Detail({ k, from, to }: { k: KpiCompare; from: number; to: number }) {
   )
 }
 
-// Panel Admin: đối chiếu từng KPI giữa nguồn SLA-DEX tự đo và webhook của từng bên
+// Panel Admin: đối chiếu từng KPI giữa nguồn SMART-SLA tự đo và webhook của từng bên
 export default function SourceComparePanel() {
   const [minutes, setMinutes] = useState(0)
   const [kpiCode, setKpiCode] = useState("UPTIME")
@@ -291,7 +291,7 @@ export default function SourceComparePanel() {
     .map((r) => ({ r, k: r.kpis.find((x) => x.kpiCode === kpiCode) }))
     .filter((x): x is { r: CompareRow; k: KpiCompare } => !!x.k)
     .sort((a, b) => order[a.k.verdict] - order[b.k.verdict])
-  const baseLabel = rows[0]?.k.baseLabel ?? (kpiCode === "UPTIME" || kpiCode === "RESPONSE_TIME" ? "HTTP (SLA-DEX)" : "Chat SLA-DEX")
+  const baseLabel = rows[0]?.k.baseLabel ?? (kpiCode === "UPTIME" || kpiCode === "RESPONSE_TIME" ? "HTTP (SMART-SLA)" : "Chat SMART-SLA")
 
   return (
     <Panel
@@ -334,7 +334,7 @@ export default function SourceComparePanel() {
       </div>
 
       <p className="mb-3 text-xs leading-5 text-slate-400">
-        KPI tính theo thứ tự ưu tiên <strong className="text-slate-200">webhook client → webhook provider → {baseLabel}</strong>. {baseLabel} do SLA-DEX tự ghi nhận, luôn chạy song song để đối chiếu.
+        KPI tính theo thứ tự ưu tiên <strong className="text-slate-200">webhook client → webhook provider → {baseLabel}</strong>. {baseLabel} do SMART-SLA tự ghi nhận, luôn chạy song song để đối chiếu.
         {data && <> Khoảng xét: {fmtDateTime(data.from)} → {fmtDateTime(data.to)}.</>}
       </p>
       <ErrorNote message={error} />

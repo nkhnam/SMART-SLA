@@ -28,7 +28,7 @@ const PLANS: Record<string, { label: string; tone: "blue" | "green" | "amber" | 
   STARTER: { label: "Starter", tone: "green" },
   ENTERPRISE: { label: "Enterprise", tone: "violet" },
   EXPIRED: { label: "Hết hạn", tone: "red" },
-  PLATFORM: { label: "Nội bộ Shadow Byte", tone: "violet" },
+  PLATFORM: { label: "Nội bộ SMART-SLA", tone: "violet" },
 }
 const ACCOUNT_TYPES: Record<string, string> = { BUYER: "Bên mua", SUPPLIER: "Nhà cung cấp" }
 const PAYMENT: Record<string, { label: string; tone: "slate" | "green" | "amber" | "red" }> = {
@@ -117,7 +117,7 @@ export default function AdminPlansPage() {
           {!users && !error && <Loading />}
           {users && list.length === 0 && <Empty>Không có người dùng phù hợp.</Empty>}
           {list.length > 0 && (
-            <div className="overflow-x-auto rounded-2xl border border-slate-700/70 bg-[#0b1424]/85 [scrollbar-color:#334155_transparent] [scrollbar-width:thin]">
+            <div className="overflow-x-auto rounded-2xl border border-slate-700/70 bg-[#0b1424]/85 [scrollbar-color:#52525b_transparent] [scrollbar-width:thin]">
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="border-b border-slate-700/70 text-xs text-slate-400">
                   <tr>

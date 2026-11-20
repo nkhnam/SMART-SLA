@@ -50,7 +50,7 @@ function walletConnect(): Promise<WcProvider> {
           rpcMap: { [AMOY_DEC]: AMOY_RPC },
           showQrModal: true, // hiện mã QR để quét bằng app ví trên điện thoại
           metadata: {
-            name: "SLA-DEX",
+            name: "SMART-SLA",
             description: "Ký hợp đồng SLA bằng chữ ký điện tử EIP-712",
             url: window.location.origin,
             icons: [],
