@@ -74,7 +74,7 @@ export class SlaContractService {
       if (registered.length === 1) {
         client = registered[0];
       } else {
-        const clientEmail = `${clientName.toLowerCase().replace(/\s/g, '')}@sladex.io`;
+        const clientEmail = `${clientName.toLowerCase().replace(/\s/g, '')}@smartsla.io`;
         client = await this.prisma.organization.upsert({
           where: { email: clientEmail },
           update: {},
@@ -224,7 +224,7 @@ export class SlaContractService {
   }
 
   // KIỂM CHỨNG: tính lại hash từ dữ liệu trong database, so với hash đã lưu và với dữ liệu trên Polygon.
-  // Không cần tin SLA_DEX: ai cũng có thể tự tính lại và tự đọc blockchain để đối chiếu.
+  // Không cần tin SMART-SLA: ai cũng có thể tự tính lại và tự đọc blockchain để đối chiếu.
   async verifyContract(id: string) {
     const c = await this.prisma.slaContract.findUnique({
       where: { id },

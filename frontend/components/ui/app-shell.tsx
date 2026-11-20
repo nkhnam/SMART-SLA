@@ -9,7 +9,7 @@ import { useSession } from "@/lib/session"
 import { useMyPlan } from "@/lib/plan"
 import type { Notification } from "@/lib/types"
 import { fmtDateTime } from "@/components/sla/ui"
-import { AiscMark } from "@/components/ui/brand-logo"
+import { BrandMark } from "@/components/ui/brand-logo"
 import SiteFooter from "@/components/ui/site-footer"
 
 // allowGuest: trang cho phép khách chưa đăng nhập xem (trang chủ). Các trang khác hiện lời mời đăng nhập.
@@ -81,7 +81,7 @@ export default function AppShell({ children, allowGuest = false }: AppShellProps
       <header className="sticky top-0 z-40 print:hidden border-b border-black/10 bg-white/70 shadow-[0_8px_30px_rgba(0,0,0,.07)] backdrop-blur-2xl">
         <div className="mx-auto flex h-20 max-w-[1600px] items-center gap-5 px-4 sm:px-6 lg:px-10">
           <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="SMART-SLA trang chủ">
-            <AiscMark height={40} />
+            <BrandMark height={40} />
             <span className="hidden whitespace-nowrap font-[family-name:var(--font-display)] text-lg font-extrabold tracking-[-0.02em] text-white sm:inline lg:hidden xl:inline">SMART-SLA<span className="ml-1 text-cyan-400">•</span></span>
           </Link>
 

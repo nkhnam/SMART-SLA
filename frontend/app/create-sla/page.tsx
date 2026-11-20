@@ -7,7 +7,7 @@ import KpiEditor, { rowsToKpis, toRow, type KpiRow } from "@/components/contract
 import ConditionsEditor, { hasEmptyCondition } from "@/components/contracts/conditions-editor"
 import ContractTermsFields, { termsBody, termsError, type TermsValue } from "@/components/contracts/contract-terms-fields"
 import { oneYearLater, todayVn } from "@/lib/terms"
-import { api } from "@/lib/api"
+import { API_BASE_URL, api } from "@/lib/api"
 import { getSession, useSession } from "@/lib/session"
 import type { Catalog, Contract, ServiceListing } from "@/lib/types"
 import { Btn, ErrorNote, Field, Loading, Panel, inputCls } from "@/components/sla/ui"
@@ -203,7 +203,7 @@ export default function CreateSlaPage() {
                 </Field>
                 <Field
                   label="URL dịch vụ cần giám sát"
-                  hint="Địa chỉ kiểm tra sức khoẻ (health check) của dịch vụ nhà cung cấp, hai bên cần thống nhất. SMART-SLA tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SMART-SLA gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng https://shadow-byte-ctwf.onrender.com/api/demo-provider/health. URL là điều khoản: sửa được khi còn chờ ký (sửa sẽ huỷ chữ ký đã có), ký đủ thì khoá và ghi lên blockchain"
+                  hint={`Địa chỉ kiểm tra sức khoẻ (health check) của dịch vụ nhà cung cấp, hai bên cần thống nhất. SMART-SLA tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SMART-SLA gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng ${API_BASE_URL}/api/demo-provider/health. URL là điều khoản: sửa được khi còn chờ ký (sửa sẽ huỷ chữ ký đã có), ký đủ thì khoá và ghi lên blockchain`}
                 >
                   <input type="url" value={monitorUrl} onChange={(e) => setMonitorUrl(e.target.value)} placeholder="https://api.congty.vn/health" className={inputCls} />
                 </Field>

@@ -157,7 +157,7 @@ export class MarketplaceService {
         serviceType: p.serviceType,
         description: p.description,
         website: p.website,
-        hasAccount: !!p.organization, // nhà cung cấp đã có tài khoản trên SLA-DEX
+        hasAccount: !!p.organization, // nhà cung cấp đã có tài khoản trên SMART-SLA
         ...(await this.profileWithPerks(p)),
       })),
     );

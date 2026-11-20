@@ -95,7 +95,7 @@ export class PenaltyCapService {
         c.id,
         'PENALTY_CAP_REACHED',
         `${c.contractCode}: chạm trần phạt ${PENALTY_CAP_PERCENT}%, hợp đồng đã dừng`,
-        `${summary}, đạt trần phạt ${PENALTY_CAP_PERCENT}% theo quy định. SLA-DEX đã dừng hợp đồng ${c.contractCode} (${c.serviceName}) và ngừng đo. Hai bên làm việc tiếp về thanh lý hoặc ký hợp đồng mới.`,
+        `${summary}, đạt trần phạt ${PENALTY_CAP_PERCENT}% theo quy định. SMART-SLA đã dừng hợp đồng ${c.contractCode} (${c.serviceName}) và ngừng đo. Hai bên làm việc tiếp về thanh lý hoặc ký hợp đồng mới.`,
       );
       this.logger.warn(`⛔ ${c.contractCode} chạm trần phạt ${PENALTY_CAP_PERCENT}% -> TERMINATED`);
       return next;
@@ -127,7 +127,7 @@ export class PenaltyCapService {
       select: { email: true },
     });
     for (const u of users) {
-      this.notifier.sendDirectEmail(u.email, `[SLA-DEX] ${title}`, message).catch((e) => this.logger.warn(`Gửi email trần phạt lỗi: ${e?.message}`));
+      this.notifier.sendDirectEmail(u.email, `[SMART-SLA] ${title}`, message).catch((e) => this.logger.warn(`Gửi email trần phạt lỗi: ${e?.message}`));
     }
   }
 }

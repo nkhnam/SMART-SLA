@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, BarChart3, BriefcaseBusiness, FileCheck2 } from "lucide-react"
 import AppShell from "@/components/ui/app-shell"
-import { AiscBadge } from "@/components/ui/brand-logo"
+import { BrandBadge } from "@/components/ui/brand-logo"
 import MarketingSections, { MarketingHero } from "@/components/home/marketing"
 import { api } from "@/lib/api"
 import { useSession } from "@/lib/session"
@@ -53,7 +53,7 @@ export default function HomePage() {
         {user && (
         <section className="relative z-10">
           <div className="mb-12 text-center">
-            <AiscBadge width={190} className="mb-7" />
+            <BrandBadge className="mb-7" />
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-slate-400">Trung tâm điều hướng</p>
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-[clamp(40px,6vw,84px)] font-extrabold leading-[1.05] tracking-[-0.03em] text-white">
               Xin chào, {user?.fullName ?? "Khách tham quan"}

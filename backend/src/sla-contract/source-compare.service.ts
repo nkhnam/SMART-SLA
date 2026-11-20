@@ -20,7 +20,7 @@ import {
 
 // ĐỐI CHIẾU NGUỒN DỮ LIỆU KPI (trang Admin)
 //   Mỗi hợp đồng, mỗi KPI đo được: giá trị theo từng nguồn trên cùng 1 khoảng thời gian
-//     - Nguồn gốc SLA-DEX (BASE): HTTP với Uptime / thời gian phản hồi, chat hỗ trợ với KPI ticket
+//     - Nguồn gốc SMART-SLA (BASE): HTTP với Uptime / thời gian phản hồi, chat hỗ trợ với KPI ticket
 //     - Webhook client, webhook provider
 //   kèm dữ liệu để vẽ (khoảng sự cố, chuỗi thời gian phản hồi, từng ticket).
 //   Lệch quá ngưỡng, hoặc 1 nguồn ghi nhận điều nguồn kia không thấy -> gắn cờ để admin xem xét.
@@ -138,7 +138,7 @@ export class SourceCompareService {
     return { from: new Date(from).toISOString(), to: new Date(now).toISOString(), now: new Date(now).toISOString(), minutes, rows };
   }
 
-  // Uptime: HTTP (SLA-DEX) và webhook từng bên
+  // Uptime: HTTP (SMART-SLA) và webhook từng bên
   private async uptime(ctx: Ctx, target: number, exclusions: Exclusion[], hookAllowed: boolean): Promise<KpiCompare> {
     const { id, cfgs, https, from, now, intervalMs } = ctx;
     const base: SourceResult = https.length
@@ -193,10 +193,10 @@ export class SourceCompareService {
         if (!base.incidents!.some((h) => overlaps(i, h, now))) notes.push(`${SOURCE_NAME[key]} báo sự cố ${span(i, now)} nhưng HTTP vẫn ghi nhận UP`);
       }
     }
-    return this.finish('UPTIME', '%', target, 'HTTP (SLA-DEX)', primary ? hookSource(hookPartyOf(primary)) : https.length ? 'BASE' : null, sources, maxDiff, notes);
+    return this.finish('UPTIME', '%', target, 'HTTP (SMART-SLA)', primary ? hookSource(hookPartyOf(primary)) : https.length ? 'BASE' : null, sources, maxDiff, notes);
   }
 
-  // Thời gian phản hồi: HTTP (SLA-DEX) và thời gian phản hồi webhook từng bên gửi sang
+  // Thời gian phản hồi: HTTP (SMART-SLA) và thời gian phản hồi webhook từng bên gửi sang
   private async latency(ctx: Ctx, target: number, exclusions: Exclusion[], hookAllowed: boolean): Promise<KpiCompare> {
     const { id, cfgs, https, from, now } = ctx;
     const series = async (codes: string[], since: number, upOnly: boolean): Promise<SourceResult> => {
@@ -226,10 +226,10 @@ export class SourceCompareService {
       maxDiff = Math.max(maxDiff ?? 0, d);
       if (d > Math.max(LATENCY_DIFF_MS, base.value * LATENCY_DIFF_RATIO)) notes.push(`${SOURCE_NAME[key]} báo trung bình ${hook.value}ms, HTTP đo ${base.value}ms (lệch ${d}ms)`);
     }
-    return this.finish('RESPONSE_TIME', 'ms', target, 'HTTP (SLA-DEX)', party ? hookSource(party) : https.length ? 'BASE' : null, sources, maxDiff, notes);
+    return this.finish('RESPONSE_TIME', 'ms', target, 'HTTP (SMART-SLA)', party ? hookSource(party) : https.length ? 'BASE' : null, sources, maxDiff, notes);
   }
 
-  // KPI ticket: chat hỗ trợ SLA-DEX và ticket webhook từng bên gửi sang (Jira, Zendesk…)
+  // KPI ticket: chat hỗ trợ SMART-SLA và ticket webhook từng bên gửi sang (Jira, Zendesk…)
   private async tickets(ctx: Ctx, kpiCode: string, target: number, minPercent: number, hookAllowed: boolean): Promise<KpiCompare> {
     const { id, cfgs, from, now } = ctx;
     const unitMs = kpiCode === 'FIRST_RESPONSE' ? 60_000 : 3_600_000;
@@ -275,7 +275,7 @@ export class SourceCompareService {
         const b = sources[valued[j]].value!;
         const d = Math.abs(a - b);
         maxDiff = Math.max(maxDiff ?? 0, d);
-        const name = (k: SourceKey) => (k === 'BASE' ? 'Chat SLA-DEX' : SOURCE_NAME[k]);
+        const name = (k: SourceKey) => (k === 'BASE' ? 'Chat SMART-SLA' : SOURCE_NAME[k]);
         if (d > TICKET_DIFF) notes.push(`${name(valued[i])} ${a}% đạt so với ${name(valued[j])} ${b}% (lệch ${d.toFixed(2)} điểm)`);
       }
     }
@@ -300,7 +300,7 @@ export class SourceCompareService {
       }
       for (const rid of byId.keys()) notes.push(`Ticket ${rid} có ở webhook provider nhưng webhook client không gửi`);
     }
-    return this.finish(kpiCode, '%', minPercent, 'Chat SLA-DEX', src === 'BASE' ? 'BASE' : hookSource(src), sources, maxDiff, notes, `${target} ${kpiCode === 'FIRST_RESPONSE' ? 'phút' : 'giờ'}`);
+    return this.finish(kpiCode, '%', minPercent, 'Chat SMART-SLA', src === 'BASE' ? 'BASE' : hookSource(src), sources, maxDiff, notes, `${target} ${kpiCode === 'FIRST_RESPONSE' ? 'phút' : 'giờ'}`);
   }
 
   private finish(

@@ -36,7 +36,7 @@ const TIMEOUT_MS = 5000;
 type ProbeResult = { isUp: boolean; latencyMs: number; detail: string };
 
 // Giải thích URL hợp lệ, kèm theo mọi thông báo lỗi URL giám sát
-const DEMO_URL_EXAMPLE = `${process.env.PUBLIC_API_URL ?? 'https://shadow-byte-ctwf.onrender.com'}/api/demo-provider/health`;
+const DEMO_URL_EXAMPLE = `${process.env.PUBLIC_API_URL ?? 'http://localhost:3002'}/api/demo-provider/health`;
 const URL_HINT = `URL hợp lệ là địa chỉ công khai của dịch vụ cần giám sát, bắt đầu bằng https://, mở bằng trình duyệt phải ra trang hoặc dữ liệu bình thường (không lỗi 404/500). VD: https://api.congty.vn/health. Khi demo, dùng: ${DEMO_URL_EXAMPLE}`;
 // Tên miền giao diện (lấy từ CORS_ORIGINS, APP_URL) để phát hiện nhập nhầm frontend
 const FRONTEND_HOSTS = [...(process.env.CORS_ORIGINS ?? '').split(','), process.env.APP_URL ?? '']
@@ -77,7 +77,7 @@ export class OracleService {
   ) {}
 
   // CONNECTOR 1: HTTP HEALTH CHECK
-  // SLA_DEX tự gọi thật vào endpoint của nhà cung cấp, đo sống/chết + thời gian phản hồi
+  // SMART-SLA tự gọi thật vào endpoint của nhà cung cấp, đo sống/chết + thời gian phản hồi
   async probeHttp(url: string): Promise<ProbeResult> {
     const started = Date.now();
     try {
@@ -85,7 +85,7 @@ export class OracleService {
         method: 'GET',
         redirect: 'follow',
         signal: AbortSignal.timeout(TIMEOUT_MS),
-        headers: { 'User-Agent': 'SLA_DEX-OracleHub/1.0' },
+        headers: { 'User-Agent': 'SMART-SLA-OracleHub/1.0' },
       });
       return { isUp: res.status < 400, latencyMs: Date.now() - started, detail: `HTTP ${res.status}` };
     } catch (err: any) {
@@ -159,7 +159,7 @@ export class OracleService {
 
   // Chuẩn hoá payload từ nhiều công cụ khác nhau về DOWN / UP
   private normalizeWebhook(body: any): 'DOWN' | 'UP' | null {
-    // Định dạng chuẩn của SLA_DEX: { "status": "DOWN" | "UP" }
+    // Định dạng chuẩn của SMART-SLA: { "status": "DOWN" | "UP" }
     const raw = String(body?.status ?? body?.event ?? body?.state ?? '').toUpperCase();
     if (['DOWN', 'TRIGGERED', 'ALERT', 'ALARM', 'FIRING', 'CRITICAL'].includes(raw)) return 'DOWN';
     if (['UP', 'RECOVERED', 'OK', 'RESOLVED'].includes(raw)) return 'UP';
@@ -354,11 +354,11 @@ export class OracleService {
         windowStart: start.toISOString(),
       };
 
-      // KPI ticket: % ticket đạt ngưỡng. Nguồn: ticket từ webhook client > webhook provider > chat hỗ trợ SLA-DEX
+      // KPI ticket: % ticket đạt ngưỡng. Nguồn: ticket từ webhook client > webhook provider > chat hỗ trợ SMART-SLA
       if (TICKET_KPIS.includes(k.kpiCode) && k.minPercent !== null) {
         const src = k.dataSource === 'WEBHOOK' ? await this.ticketSource(contract.id, contract.oracleConfigs, new Date(windowFrom), end) : 'BASE';
         const t = await this.ticketMetric(contract.id, k.kpiCode, k.target, new Date(windowFrom), end, src);
-        if (src !== 'BASE') t.note = `${t.note}. Tính theo ticket của ${hookLabel(src)}, chat SLA-DEX dùng để đối chiếu`;
+        if (src !== 'BASE') t.note = `${t.note}. Tính theo ticket của ${hookLabel(src)}, chat SMART-SLA dùng để đối chiếu`;
         kpis.push({
           kpiCode: k.kpiCode,
           name: `${k.name} ≤ ${k.target} ${k.unit}`,
@@ -425,7 +425,7 @@ export class OracleService {
     return null;
   }
 
-  // Nguồn ticket: webhook có gửi ticket trong kỳ (client trước, provider sau). Không có -> chat hỗ trợ SLA-DEX
+  // Nguồn ticket: webhook có gửi ticket trong kỳ (client trước, provider sau). Không có -> chat hỗ trợ SMART-SLA
   async ticketSource(contractId: string, cfgs: { sourceType: string; endpointUrl: string | null }[], since: Date, until?: Date): Promise<'BASE' | HookParty> {
     for (const party of HOOK_PARTIES) {
       if (!hookOf(cfgs, party)) continue;
@@ -470,7 +470,7 @@ export class OracleService {
     };
   }
 
-  // Sự kiện ticket từ hệ thống bên ngoài -> lưu CHUNG bảng Ticket với ticket chat của SLA_DEX
+  // Sự kiện ticket từ hệ thống bên ngoài -> lưu CHUNG bảng Ticket với ticket chat của SMART-SLA
   private async receiveTicketEvent(contractId: string, event: string, body: any, party: HookParty) {
     const rawId = String(body?.ticketId ?? '').trim().slice(0, 90);
     if (!rawId) throw new Error('Thiếu ticketId');

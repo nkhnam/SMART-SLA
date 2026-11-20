@@ -42,7 +42,7 @@ export function viewerOrThrow(jwt: JwtService, authHeader?: string): AuthUser | 
   return user;
 }
 
-// Chỉ admin nền tảng (team SLA_DEX) mới được gọi
+// Chỉ admin nền tảng (team SMART_SLA) mới được gọi
 @Injectable()
 export class PlatformAdminGuard implements CanActivate {
   constructor(private jwt: JwtService) {}
@@ -51,7 +51,7 @@ export class PlatformAdminGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest();
     const user = readUser(this.jwt, req.headers.authorization);
     if (!user) throw new UnauthorizedException('Cần đăng nhập');
-    if (!user.platformAdmin) throw new ForbiddenException('Chỉ admin nền tảng SLA-DEX mới được thực hiện');
+    if (!user.platformAdmin) throw new ForbiddenException('Chỉ admin nền tảng SMART-SLA mới được thực hiện');
     req.user = user;
     return true;
   }

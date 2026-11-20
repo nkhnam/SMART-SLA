@@ -15,7 +15,7 @@ const COOLDOWN_MS = 20_000; // chống bấm liên tục làm tốn hạn mức 
 const RECOMMENDATIONS = ['Có thể ký sau khi kiểm tra', 'Cần bàn bạc thêm', 'Cân nhắc từ chối'] as const;
 
 const SYSTEM_PROMPT = [
-  'Bạn là trợ lý tóm tắt cuộc bàn bạc hợp đồng SLA giữa Bên mua và Nhà cung cấp trên nền tảng SLA-DEX.',
+  'Bạn là trợ lý tóm tắt cuộc bàn bạc hợp đồng SLA giữa Bên mua và Nhà cung cấp trên nền tảng SMART-SLA.',
   'Chỉ dùng nội dung tin nhắn và điều khoản được cung cấp, không tự bịa dữ liệu, không đưa ra kết luận pháp lý.',
   'Chỉ đưa một nội dung vào "agreedChanges" hoặc "agreedConditions" khi CẢ HAI bên đã xác nhận rõ ràng.',
   'Nội dung còn tranh luận, mơ hồ hoặc mới chỉ một bên đề xuất thì đưa vào "pending".',

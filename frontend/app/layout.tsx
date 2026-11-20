@@ -4,13 +4,12 @@ import type { Metadata } from "next";
 const TITLE = "SMART-SLA | Trust Protocol"
 const DESCRIPTION = "Nền tảng quản trị và đối soát SLA, bằng chứng ghi trên Polygon"
 
-// Domain gốc để LinkedIn, Facebook, Zalo đọc được đường dẫn tuyệt đối của ảnh xem trước.
+// Domain gốc để đọc đường dẫn tuyệt đối của metadata khi chia sẻ.
 // Ưu tiên NEXT_PUBLIC_SITE_URL, sau đó domain production do Vercel cấp.
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://shadow-byte-beta.vercel.app")
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
 
-// Ảnh xem trước lấy từ app/opengraph-image.png và app/twitter-image.png (Next.js tự gắn thẻ og:image)
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: TITLE,

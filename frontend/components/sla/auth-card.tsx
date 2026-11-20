@@ -8,7 +8,7 @@ import { api } from "@/lib/api"
 import { setSession } from "@/lib/session"
 import type { SessionUser } from "@/lib/types"
 import { ErrorNote, inputCls } from "@/components/sla/ui"
-import { AiscMark } from "@/components/ui/brand-logo"
+import { BrandMark } from "@/components/ui/brand-logo"
 import SiteFooter from "@/components/ui/site-footer"
 
 type AuthResponse = { accessToken: string; user: SessionUser }
@@ -110,7 +110,7 @@ export default function AuthCard({ mode }: { mode: "login" | "register" }) {
     <div className="flex flex-1 items-center justify-center p-4 py-12">
       <div className="relative flex w-full max-w-[440px] flex-col items-center rounded-2xl border border-slate-700 bg-[#0f172a] p-8 shadow-2xl">
         <Link href="/" className="absolute left-4 top-4 text-slate-400 hover:text-white" aria-label="Về trang chủ">←</Link>
-        <div className="mb-4"><AiscMark height={48} /></div>
+        <div className="mb-4"><BrandMark height={48} /></div>
         <h2 className="mb-1 text-2xl font-bold text-white">{isLogin ? "Đăng nhập" : "Đăng ký doanh nghiệp"}</h2>
         <p className="mb-6 text-center text-sm text-slate-400">{isLogin ? "Dùng email công việc đã đăng ký" : "Tài khoản đầu tiên sẽ là quản trị viên của doanh nghiệp"}</p>
         <form onSubmit={submit} className="w-full space-y-4">

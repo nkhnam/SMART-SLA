@@ -112,9 +112,9 @@ export const KPI_CATALOG: Record<
 };
 
 export const DATA_SOURCES: Record<string, string> = {
-  HTTP_CHECK: 'HTTP Health Check (SLA-DEX tự đo)',
-  WEBHOOK: 'Webhook 2 bên (client → provider), SLA-DEX đo song song để đối chiếu',
-  TICKET: 'Chat hỗ trợ SLA-DEX',
+  HTTP_CHECK: 'HTTP Health Check (SMART-SLA tự đo)',
+  WEBHOOK: 'Webhook 2 bên (client → provider), SMART-SLA đo song song để đối chiếu',
+  TICKET: 'Chat hỗ trợ SMART-SLA',
 };
 
 // Kỳ đo mặc định theo thực tế: 30 ngày
@@ -126,7 +126,7 @@ const SUNDAY_MAINTENANCE: Exclusion[] = [
 
 // Điều kiện bổ sung gợi ý theo từng mẫu (văn bản, không đo tự động; được băm và ký cùng hợp đồng).
 // Tên các bên thống nhất theo hệ thống: "Bên mua" và "Nhà cung cấp".
-const AUTO_RECORDING = 'Vi phạm cam kết SLA được SLA-DEX đo và ghi nhận tự động, kèm bằng chứng trên blockchain. Mỗi bên có quyền phản đối trong thời hạn phản đối của hợp đồng; quá hạn không có phản đối thì kết quả được chốt.';
+const AUTO_RECORDING = 'Vi phạm cam kết SLA được SMART-SLA đo và ghi nhận tự động, kèm bằng chứng trên blockchain. Mỗi bên có quyền phản đối trong thời hạn phản đối của hợp đồng; quá hạn không có phản đối thì kết quả được chốt.';
 const FORCE_MAJEURE = 'Bất khả kháng (thiên tai, dịch bệnh, chiến tranh, sự cố điện/viễn thông diện rộng, quyết định của cơ quan nhà nước): bên bị ảnh hưởng thông báo cho bên kia trong vòng 48 giờ kèm bằng chứng để được xem xét miễn trừ trách nhiệm trong thời gian xảy ra sự kiện.';
 const DISPUTES = 'Hợp đồng áp dụng pháp luật Việt Nam. Tranh chấp ưu tiên thương lượng trong 30 ngày; nếu không thành, đưa ra Tòa án nhân dân có thẩm quyền tại TP. Hồ Chí Minh hoặc Trung tâm Trọng tài Quốc tế Việt Nam (VIAC) nếu hai bên chọn.';
 const CONFIDENTIALITY = 'Mỗi bên giữ bí mật thông tin do bên kia cung cấp (dữ liệu khách hàng, cấu hình kỹ thuật, token/key kết nối) trong thời hạn hợp đồng và 03 năm sau khi chấm dứt.';
@@ -200,7 +200,7 @@ export const TEMPLATES: Record<
     ],
     conditions: [
       AUTO_RECORDING,
-      'Ticket tạo trên SLA-DEX hoặc gửi sang qua webhook từ hệ thống ticket hai bên đã thống nhất là nguồn dữ liệu chính thức để tính KPI.',
+      'Ticket tạo trên SMART-SLA hoặc gửi sang qua webhook từ hệ thống ticket hai bên đã thống nhất là nguồn dữ liệu chính thức để tính KPI.',
       'Thời gian hỗ trợ: 8 giờ/ngày, 5 ngày/tuần (giờ hành chính Việt Nam), trừ khi hai bên thỏa thuận khác.',
       CONFIDENTIALITY,
       DISPUTES,

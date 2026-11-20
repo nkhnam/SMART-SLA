@@ -1,8 +1,8 @@
 // Nguồn dữ liệu của 1 hợp đồng và thứ tự ưu tiên khi tính KPI.
-//   - Nguồn gốc do SLA-DEX tự đo (luôn chạy song song để đối chiếu):
-//       Uptime, thời gian phản hồi: HTTP_CHECK | KPI ticket: chat hỗ trợ của SLA-DEX
+//   - Nguồn gốc do SMART-SLA tự đo (luôn chạy song song để đối chiếu):
+//       Uptime, thời gian phản hồi: HTTP_CHECK | KPI ticket: chat hỗ trợ của SMART-SLA
 //   - Webhook client (bên mua) và webhook provider (nhà cung cấp): mỗi bên tối đa 1 địa chỉ.
-// Ưu tiên tính KPI: webhook client > webhook provider > nguồn gốc của SLA-DEX.
+// Ưu tiên tính KPI: webhook client > webhook provider > nguồn gốc của SMART-SLA.
 //   Uptime: theo webhook đã kết nối. Thời gian phản hồi, ticket: theo webhook có gửi dữ liệu loại đó trong kỳ.
 // Bên của webhook lưu ở cột endpointUrl ('BUYER' | 'SUPPLIER'); webhook tạo trước bản cập nhật (null) coi là provider.
 

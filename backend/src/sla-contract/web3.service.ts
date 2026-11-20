@@ -106,7 +106,7 @@ export class Web3Service {
       base.effectiveFrom = c.effectiveFrom ? new Date(c.effectiveFrom).toISOString() : null;
       base.effectiveTo = c.effectiveTo ? new Date(c.effectiveTo).toISOString() : null;
     }
-    // hashVersion 5: thêm URL dịch vụ mà SLA-DEX đo (HTTP Health Check) -> đã ký thì không ai đổi lén được
+    // hashVersion 5: thêm URL dịch vụ mà SMART-SLA đo (HTTP Health Check) -> đã ký thì không ai đổi lén được
     if (c.hashVersion >= 5) {
       if (!Array.isArray(c.oracleConfigs)) throw new Error('Thiếu cấu hình nguồn dữ liệu để tính hash hợp đồng');
       base.monitoring = {

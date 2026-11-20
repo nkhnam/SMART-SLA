@@ -113,7 +113,7 @@ export class SlaContractController {
   @UseGuards(JwtAuthGuard)
   @Post(':id/monitoring')
   monitoring() {
-    throw new ForbiddenException('Hai bên không được tạm dừng giám sát. Liên hệ admin SLA-DEX nếu cần.');
+    throw new ForbiddenException('Hai bên không được tạm dừng giám sát. Liên hệ admin SMART-SLA nếu cần.');
   }
 
   // Đổi tên hợp đồng (phải là 1 bên): { "contractName": "..." } (rỗng = bỏ tên)

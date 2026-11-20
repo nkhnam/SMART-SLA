@@ -1,4 +1,4 @@
-// GÓI DỊCH VỤ SLA_DEX (đã chốt). Áp dụng cho MỌI doanh nghiệp (bên mua và nhà cung cấp).
+// GÓI DỊCH VỤ SMART_SLA (đã chốt). Áp dụng cho MỌI doanh nghiệp (bên mua và nhà cung cấp).
 // Bản demo: bấm đăng ký là kích hoạt ngay, KHÔNG thu tiền thật. Phân quyền chạy thật.
 export type PlanCode = 'PILOT' | 'PAYG' | 'STARTER' | 'ENTERPRISE';
 

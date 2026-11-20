@@ -79,7 +79,7 @@ export class PlanService {
     const pilotUsed = !!org.pilotUsedAt;
 
     if (await this.isPlatformOrg(orgId)) {
-      return { code: 'PLATFORM', name: 'Nội bộ Shadow Byte', active: true, status: 'PLATFORM', startedAt: null, expiresAt: null, pilotUsed, limits: PLATFORM_LIMITS };
+      return { code: 'PLATFORM', name: 'Nội bộ SMART-SLA', active: true, status: 'PLATFORM', startedAt: null, expiresAt: null, pilotUsed, limits: PLATFORM_LIMITS };
     }
     const def = org.planCode ? PLANS[org.planCode as PlanCode] : null;
     if (!def) {
@@ -171,7 +171,7 @@ export class PlanService {
 
     const def = PLANS[planCode as PlanCode];
     if (!def) throw new BadRequestException('Gói dịch vụ không hợp lệ');
-    if (await this.isPlatformOrg(orgId)) throw new BadRequestException('Doanh nghiệp nội bộ Shadow Byte không cần đăng ký gói');
+    if (await this.isPlatformOrg(orgId)) throw new BadRequestException('Doanh nghiệp nội bộ SMART-SLA không cần đăng ký gói');
 
     const org = await this.prisma.organization.findUnique({ where: { id: orgId } });
     if (!org) throw new BadRequestException('Không tìm thấy doanh nghiệp');

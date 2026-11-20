@@ -14,7 +14,7 @@ type Party = 'BUYER' | 'SUPPLIER';
 // Kết nối Dify Workflow (soạn nội dung + gửi email). Thiếu -> dùng mẫu soạn sẵn, chỉ thông báo trong web.
 const DIFY_API_URL = (process.env.DIFY_API_URL ?? '').replace(/\/$/, ''); // VD: https://api.dify.ai/v1
 const DIFY_API_KEY = process.env.DIFY_API_KEY ?? ''; // API key của Workflow app (app-...)
-const APP_URL = process.env.APP_URL ?? ''; // VD: https://shadow-byte.vercel.app (link trong thông báo)
+const APP_URL = process.env.APP_URL ?? ''; // VD: https://smart-sla.vercel.app (link trong thông báo)
 const DIFY_TIMEOUT_MS = 30_000;
 // Workflow Dify thứ 2 CHỈ gửi email (không có LLM) - dùng cho mã OTP, nội dung không được để AI chỉnh sửa
 const DIFY_MAIL_API_KEY = process.env.DIFY_MAIL_API_KEY ?? '';
@@ -50,7 +50,7 @@ export class NotificationService {
     ];
 
     for (const p of parties) {
-      if (!p.orgId) continue; // bên này chưa có tài khoản trên SLA-DEX -> không có ai để báo
+      if (!p.orgId) continue; // bên này chưa có tài khoản trên SMART-SLA -> không có ai để báo
 
       const org = await this.prisma.organization.findUnique({
         where: { id: p.orgId },
@@ -121,7 +121,7 @@ export class NotificationService {
     const res = await fetch(`${DIFY_API_URL}/workflows/run`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${DIFY_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputs, response_mode: 'blocking', user: 'sla-dex-backend' }),
+      body: JSON.stringify({ inputs, response_mode: 'blocking', user: 'smart-sla-backend' }),
       signal: AbortSignal.timeout(DIFY_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -145,7 +145,7 @@ export class NotificationService {
       body: JSON.stringify({
         inputs: { to_email: toEmail, subject, content },
         response_mode: 'blocking',
-        user: 'sla-dex-backend',
+        user: 'smart-sla-backend',
       }),
       signal: AbortSignal.timeout(DIFY_TIMEOUT_MS),
     });
@@ -170,7 +170,7 @@ export class NotificationService {
       case 'SETTLED':
         return { title: `${head}: đã chốt kết quả`, message: `Hết hạn phản đối, kết quả được chốt tự động: hoàn ${i.credit_percent}% phí theo điều khoản hợp đồng.` };
       case 'RESOLVED':
-        return { title: `${head}: đã có kết quả xử lý`, message: `Admin SLA-DEX quyết định ${i.resolution}. Ghi chú: ${i.resolution_note}` };
+        return { title: `${head}: đã có kết quả xử lý`, message: `Admin SMART-SLA quyết định ${i.resolution}. Ghi chú: ${i.resolution_note}` };
     }
   }
 

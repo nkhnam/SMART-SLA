@@ -6,7 +6,7 @@ import { AuthUser } from './auth.guard';
 
 export const ROLES = ['ADMIN', 'OPERATIONS', 'LEGAL', 'PM'];
 
-// Admin nền tảng (team SLA_DEX): danh sách email trong biến môi trường PLATFORM_ADMIN_EMAILS, cách nhau bởi dấu phẩy
+// Admin nền tảng (team SMART_SLA): danh sách email trong biến môi trường PLATFORM_ADMIN_EMAILS, cách nhau bởi dấu phẩy
 const isPlatformAdmin = (email: string) =>
   (process.env.PLATFORM_ADMIN_EMAILS ?? '')
     .split(',')

@@ -1,4 +1,4 @@
-# Shadow-Byte
+# SMART-SLA
 
 ## Local architecture
 

@@ -6,7 +6,7 @@ import { AuthUser } from '../auth/auth.guard';
 
 // TICKET + KHUNG CHAT TÍCH HỢP SẴN
 //   NEGOTIATION: bàn bạc điều khoản (mỗi hợp đồng 1 luồng, không tính KPI)
-//   SUPPORT    : yêu cầu hỗ trợ. SLA_DEX tự ghi mốc thời gian để đo KPI ticket:
+//   SUPPORT    : yêu cầu hỗ trợ. SMART-SLA tự ghi mốc thời gian để đo KPI ticket:
 //                firstResponseAt = tin nhắn đầu tiên của BÊN KIA (không phải bên mở ticket)
 //                resolvedAt      = lúc nhà cung cấp đánh dấu "Đã giải quyết"
 const KINDS = ['NEGOTIATION', 'SUPPORT'];

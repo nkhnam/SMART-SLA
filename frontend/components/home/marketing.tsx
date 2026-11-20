@@ -4,15 +4,15 @@ import Link from "next/link"
 import { useRef, useState } from "react"
 import { ArrowRight, BadgeCheck, Blocks, Check, FileBarChart2, Percent, PenLine, Play, Radar, Star } from "lucide-react"
 
-// Video demo: file trong public/home (đặt NEXT_PUBLIC_DEMO_VIDEO_URL trên Vercel nếu muốn đổi sang link YouTube / mp4 khác).
-// Mốc thời gian (giây) để bấm tua tới từng phần của video.
-const VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "/home/SLA-DEX_Demo.mp4"
+// Video demo: đặt NEXT_PUBLIC_DEMO_VIDEO_URL nếu muốn gắn link YouTube hoặc mp4 của dự án mới.
+// Mốc thời gian (giây) để bấm tua tới từng phần của video (để null khi chưa gắn video).
+const VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || ""
 const CHAPTERS: { label: string; at: number | null }[] = [
-  { label: "Tạo SLA từ mẫu và giải thích 5 KPI", at: 0 },
-  { label: "Bàn bạc, hai bên ký và ghi lên Polygon", at: 56 },
-  { label: "Giả lập sự cố, Gantt báo đỏ tức thì", at: 145 },
-  { label: "Phân xử khiếu nại và báo cáo đối soát", at: 255 },
-  { label: "Ticket hỗ trợ: đo phản hồi và xử lý", at: 370 },
+  { label: "Tạo SLA từ mẫu và giải thích 5 KPI", at: null },
+  { label: "Bàn bạc, hai bên ký và ghi lên Polygon", at: null },
+  { label: "Giả lập sự cố, Gantt báo đỏ tức thì", at: null },
+  { label: "Phân xử khiếu nại và báo cáo đối soát", at: null },
+  { label: "Ticket hỗ trợ: đo phản hồi và xử lý", at: null },
 ]
 
 const youtubeId = (url: string) => url.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/)?.[1] ?? null
@@ -57,15 +57,71 @@ export function MarketingHero() {
           ))}
         </ul>
       </div>
-      <figure className="rounded-2xl border border-slate-700/80 bg-[#0b1424]/85 p-2.5 shadow-2xl">
-        <div className="mb-2 flex items-center gap-1.5 px-1.5">
-          <i className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-          <i className="h-2.5 w-2.5 rounded-full bg-slate-700" />
-          <i className="h-2.5 w-2.5 rounded-full bg-slate-700" />
+      <figure className="rounded-2xl border border-slate-700/80 bg-[#0b1424]/85 p-3 shadow-2xl">
+        <div className="mb-2.5 flex items-center gap-1.5 px-1.5">
+          <i className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+          <i className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+          <i className="h-2.5 w-2.5 rounded-full bg-slate-600" />
           <figcaption className="ml-2 text-[11px] text-slate-500">Dashboard SMART-SLA</figcaption>
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/home/dashboard.webp" alt="Dashboard SMART-SLA: số hợp đồng theo trạng thái và biểu đồ Gantt sự cố, thời hạn phản đối" className="block w-full rounded-xl grayscale contrast-[1.04]" />
+        <div className="space-y-2.5 rounded-xl border border-slate-700/80 p-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "Đang hiệu lực", value: "2" },
+              { label: "Chờ ký", value: "1" },
+              { label: "Đang vi phạm", value: "1" },
+              { label: "Vi phạm chờ xử lý", value: "1" },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl border border-slate-700/80 p-2.5">
+                <p className="truncate text-[10px] text-slate-400">{s.label}</p>
+                <p className="mt-0.5 font-mono text-lg font-extrabold text-white">{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-slate-700/80 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold text-white">Tiến trình hợp đồng (Gantt)</p>
+              <div className="flex items-center gap-1 text-[10px] font-semibold">
+                <span className="rounded-md bg-blue-600 px-2 py-0.5 text-white">1 giờ</span>
+                <span className="rounded-md px-2 py-0.5 text-slate-400">24 giờ</span>
+                <span className="rounded-md px-2 py-0.5 text-slate-400">Toàn hợp đồng</span>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-slate-400">
+              <span className="inline-flex items-center gap-1"><span className="h-2 w-3.5 rounded-sm bg-emerald-500/35" />Hiệu lực</span>
+              <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rotate-45 bg-violet-500" />Ký</span>
+              <span className="inline-flex items-center gap-1"><span className="h-2 w-3.5 rounded-sm bg-rose-600" />Sự cố</span>
+              <span className="inline-flex items-center gap-1"><span className="h-2 w-3.5 rounded-sm bg-amber-400" />Phản đối</span>
+            </div>
+            <div className="mt-2.5 space-y-2 border-t border-slate-800 pt-2.5 text-[11px]">
+              {[
+                { name: "Hosting core banking Q4", code: "SLA-4821", badge: "Đang vi phạm", incident: true },
+                { name: "API Gateway thanh toán", code: "SLA-3307", badge: "Đang hiệu lực", incident: false },
+                { name: "IT Support văn phòng", code: "SLA-5190", badge: "Đang hiệu lực", incident: false },
+              ].map((row) => (
+                <div key={row.code} className="grid grid-cols-[140px_1fr] items-center gap-2.5 sm:grid-cols-[170px_1fr]">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-white">{row.name}</p>
+                    <p className="font-mono text-[10px] text-slate-400">{row.code} · {row.badge}</p>
+                  </div>
+                  <div className="relative h-6 rounded-md bg-slate-800/40">
+                    <span className="absolute left-[8%] right-[6%] top-1/2 h-2 -translate-y-1/2 rounded-sm bg-emerald-500/30" />
+                    <span className="absolute left-[22%] top-0.5 h-2 w-2 rotate-45 bg-violet-500" />
+                    <span className="absolute left-[27%] top-0.5 h-2 w-2 rotate-45 bg-violet-500" />
+                    {row.incident && (
+                      <>
+                        <span className="absolute left-[72%] top-1/2 h-3.5 w-[10%] -translate-y-1/2 rounded-sm bg-rose-600" />
+                        <span className="absolute bottom-0.5 left-[74%] h-1 w-[20%] rounded-sm bg-amber-400" />
+                      </>
+                    )}
+                    <span className="absolute inset-y-0 left-[86%] w-0.5 bg-blue-600" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </figure>
     </section>
   )
@@ -123,16 +179,13 @@ function VideoDemo() {
               className="absolute inset-0 h-full w-full"
             />
           ) : VIDEO_URL ? (
-            <video ref={mp4Ref} src={VIDEO_URL} controls preload="metadata" poster="/home/dashboard-full.webp" className="absolute inset-0 h-full w-full bg-black" />
+            <video ref={mp4Ref} src={VIDEO_URL} controls preload="metadata" className="absolute inset-0 h-full w-full bg-black" />
           ) : (
-            <div className="absolute inset-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/home/dashboard-full.webp" alt="" className="h-full w-full object-cover opacity-30 grayscale contrast-[1.04]" />
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="text-center">
-                  <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-blue-600 text-white shadow-xl"><Play className="ml-1 h-8 w-8" /></span>
-                  <p className="mt-4 text-sm font-semibold text-white">Video demo sẽ được cập nhật</p>
-                </div>
+            <div className="app-grid relative flex h-full w-full items-center justify-center">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.88),transparent_70%)]" />
+              <div className="relative z-10 text-center">
+                <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-blue-600 text-white shadow-xl"><Play className="ml-1 h-8 w-8" /></span>
+                <p className="mt-4 text-sm font-semibold text-white">Video demo sẽ được cập nhật</p>
               </div>
             </div>
           )}

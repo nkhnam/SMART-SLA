@@ -19,7 +19,7 @@ const SIGN_TTL_SECONDS = 15 * 60; // Nội dung ký có hiệu lực 15 phút k�
 const OTP_TTL_MS = 10 * 60_000; // mã hiệu lực 10 phút
 const OTP_RESEND_MS = 60_000; // 60 giây mới được gửi lại
 const OTP_MAX_ATTEMPTS = 5; // nhập sai 5 lần -> phải yêu cầu mã mới
-const OTP_SECRET = process.env.JWT_SECRET || 'sla-dex-otp';
+const OTP_SECRET = process.env.JWT_SECRET || 'smart-sla-otp';
 // Hash biên bản OTP theo THỨ TỰ TRƯỜNG CỐ ĐỊNH (Postgres JSON có thể đảo thứ tự key khi lưu)
 const OTP_EVIDENCE_KEYS = ['contractCode', 'slaHash', 'party', 'organization', 'signerUserId', 'signerEmail', 'statement', 'method', 'signedAt'];
 const otpEvidenceHash = (e: any) =>
@@ -52,10 +52,10 @@ export class SigningService {
     private plans: PlanService,
   ) {}
 
-  // Domain EIP-712: gắn chữ ký với SLA_DEX + mạng Amoy + đúng smart contract -> không dùng lại được ở nơi khác
+  // Domain EIP-712: gắn chữ ký với SMART_SLA + mạng Amoy + đúng smart contract -> không dùng lại được ở nơi khác
   domain() {
     return {
-      name: 'SLA_DEX',
+      name: 'SMART_SLA',
       version: '1',
       chainId: CHAIN_ID,
       verifyingContract: this.web3.contractAddress ?? ethers.ZeroAddress,
@@ -259,7 +259,7 @@ export class SigningService {
     const slaHash = this.web3.computeSlaHash(c);
     await this.notifier.sendDirectEmail(
       me.email,
-      `[SLA-DEX] Mã xác nhận ký hợp đồng ${c.contractCode}: ${code}`,
+      `[SMART-SLA] Mã xác nhận ký hợp đồng ${c.contractCode}: ${code}`,
       [
         `Xin chào ${me.fullName},`,
         ``,
@@ -270,7 +270,7 @@ export class SigningService {
         `Mã định danh điều khoản (slaHash): ${slaHash}`,
         ``,
         `Nếu bạn không yêu cầu mã này, hãy bỏ qua email.`,
-        `SLA-DEX`,
+        `SMART-SLA`,
       ].join('\n'),
     );
     this.logger.log(`${c.contractCode}: gửi OTP ký cho ${party}`);

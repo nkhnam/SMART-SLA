@@ -734,7 +734,7 @@
   -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
   animation: glass-pulse 3.2s ease-in-out infinite;
 }
-.logo-led-mark { filter: brightness(0) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.22)); }
+.logo-led-mark { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.20)); }
 
 /* Dự phòng cho trình duyệt không hỗ trợ backdrop-filter hoặc người dùng giảm độ trong suốt */
 @supports not (backdrop-filter: blur(1px)) {

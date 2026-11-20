@@ -98,7 +98,7 @@ export class TerminationAlertService {
     const message =
       `Hợp đồng ${c.contractCode} (${c.serviceName}) có Uptime ${summary}. ` +
       `Theo điều khoản chấm dứt (nếu có trong hợp đồng), Bên mua có quyền đơn phương chấm dứt ngay và được hoàn phần phí chưa sử dụng. ` +
-      `Số liệu do SLA-DEX đo tự động, có thể kiểm chứng trên trang hợp đồng.`;
+      `Số liệu do SMART-SLA đo tự động, có thể kiểm chứng trên trang hợp đồng.`;
     const orgIds = [c.clientId, c.provider?.organizationId].filter(Boolean) as string[];
     await this.prisma.notification.createMany({
       data: orgIds.map((organizationId) => ({ organizationId, contractId: c.id, type: 'TERMINATION_ELIGIBLE', title, message })),
@@ -109,7 +109,7 @@ export class TerminationAlertService {
     if (this.notifier.canSendDirectEmail) {
       const users = await this.prisma.user.findMany({ where: { organizationId: { in: orgIds }, isActive: true, role: 'ADMIN' }, select: { email: true } });
       for (const u of users) {
-        this.notifier.sendDirectEmail(u.email, `[SLA-DEX] ${title}`, message).catch((e) => this.logger.warn(`Gửi email cảnh báo lỗi: ${e?.message}`));
+        this.notifier.sendDirectEmail(u.email, `[SMART-SLA] ${title}`, message).catch((e) => this.logger.warn(`Gửi email cảnh báo lỗi: ${e?.message}`));
       }
     }
     return alert;

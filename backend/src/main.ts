@@ -11,7 +11,7 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   // CORS: chỉ cho phép các domain frontend trong CORS_ORIGINS (cách nhau bởi dấu phẩy)
-  // VD: CORS_ORIGINS=https://shadow-byte.vercel.app,http://localhost:3000
+  // VD: CORS_ORIGINS=https://smart-sla.vercel.app,http://localhost:3000
   const allowed = (process.env.CORS_ORIGINS ?? '')
     .split(',')
     .map((o) => o.trim().replace(/\/$/, ''))

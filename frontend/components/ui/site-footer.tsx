@@ -1,7 +1,6 @@
 import Link from "next/link"
-import Image from "next/image"
 import { Activity, FileSignature, ShieldCheck } from "lucide-react"
-import { AiscMark } from "@/components/ui/brand-logo"
+import { BrandMark } from "@/components/ui/brand-logo"
 
 const footerNav = [
   { href: "/dashboard", label: "Dashboard quản trị" },
@@ -20,7 +19,7 @@ export default function SiteFooter() {
         <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">
-              <AiscMark height={40} />
+              <BrandMark height={40} />
               <div>
                 <p className="font-[family-name:var(--font-display)] text-lg font-extrabold leading-none text-white">SMART-SLA<span className="ml-1 text-cyan-400">•</span></p>
                 <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Trust protocol</p>
@@ -29,7 +28,6 @@ export default function SiteFooter() {
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-300">
               Hạ tầng quản trị SLA giúp hai doanh nghiệp thống nhất KPI, theo dõi bằng chứng và ký kết minh bạch.
             </p>
-            <Image src="/brand/aisc26-white.png" alt="AISC'26" width={1200} height={485} className="mt-5 h-auto w-36 opacity-90" />
           </div>
 
           <div>
@@ -62,7 +60,7 @@ export default function SiteFooter() {
           </div>
         </div>
         <div className="mt-10 flex flex-wrap justify-between gap-2 border-t border-slate-700/60 pt-5 text-xs text-slate-400">
-          <span>© 2026 SMART-SLA · AISC&apos;26</span>
+          <span>© 2026 SMART-SLA</span>
           <span>Polygon Amoy testnet · Bản demo, thanh toán giả lập</span>
         </div>
       </div>

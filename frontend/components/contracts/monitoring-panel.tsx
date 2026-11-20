@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { Globe, Lock, Plus, Trash2, Webhook } from "lucide-react"
-import { api } from "@/lib/api"
+import { API_BASE_URL, api } from "@/lib/api"
 import type { Contract } from "@/lib/types"
 import { Badge, Btn, ErrorNote, Panel, fmtDateTime, inputCls } from "@/components/sla/ui"
 import { WebhookIntro, WebhookSetupSteps } from "@/components/contracts/webhook-guide"
@@ -133,7 +133,7 @@ export default function MonitoringPanel({ contract, party, onChanged }: { contra
         {/* HTTP Health Check */}
         <div className="rounded-xl border border-slate-700/80 p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-white"><Globe className="h-4 w-4 text-blue-300" />HTTP Health Check</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">URL health check của dịch vụ nhà cung cấp, hai bên thống nhất. SMART-SLA tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SMART-SLA gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng https://shadow-byte-ctwf.onrender.com/api/demo-provider/health.</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">URL health check của dịch vụ nhà cung cấp, hai bên thống nhất. SMART-SLA tự gọi URL này để đo uptime và thời gian phản hồi. URL hợp lệ: địa chỉ công khai của dịch vụ, bắt đầu bằng https://, mở bằng trình duyệt ra trang hoặc dữ liệu bình thường (không lỗi 404/500). SMART-SLA gọi thử ngay khi bạn lưu. Không dán địa chỉ webhook vào đây. Khi demo, dùng {API_BASE_URL}/api/demo-provider/health.</p>
           {pending ? (
             <>
               <div className="mt-3 flex gap-2">
