@@ -23,7 +23,7 @@ for (const lateStatus of [200, 500]) {
       if (path.endsWith("/organizations")) return route.fulfill({ json: organizations });
       if (path.endsWith("/agreements")) {
         if (organization === "org-a") { pendingAgreements = route; return; }
-        return route.fulfill({ json: { data: agreements, total: 2 } });
+        return route.fulfill({ json: { data: agreements, page: 1, pageSize: 50, total: 2 } });
       }
       if (path.includes("/monitoring/")) {
         monitoringRequests.push(`${organization}:${path}`);
@@ -45,7 +45,7 @@ for (const lateStatus of [200, 500]) {
     await expect(page.getByText("Loading live monitoring data…")).toBeVisible();
     const staleAgreements = page.waitForResponse((response) => response.url().includes("/agreements?") && response.request().headers()["x-organization-id"] === "org-a");
     const staleSources = page.waitForResponse((response) => response.url().includes("agreement-a/monitoring/sources"));
-    await pendingAgreements!.fulfill({ status: lateStatus, json: lateStatus === 200 ? { data: [], total: 0 } : { error: { message: "Stale agreements error" } } });
+    await pendingAgreements!.fulfill({ status: lateStatus, json: lateStatus === 200 ? { data: [], page: 1, pageSize: 50, total: 0 } : { error: { message: "Stale agreements error" } } });
     await pendingSources!.fulfill({ status: lateStatus, json: lateStatus === 200 ? [{ id: "stale", name: "Stale source", trustCategory: "OPERATOR_COLLECTED", type: "HTTP_PROBE", intervalSeconds: 300 }] : { error: { message: "Stale monitoring error" } } });
     await Promise.all([staleAgreements, staleSources]);
     await expect(page.getByText("Loading live monitoring data…")).toBeVisible();
