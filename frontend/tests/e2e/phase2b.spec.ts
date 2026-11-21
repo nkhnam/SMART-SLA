@@ -296,7 +296,7 @@ test("expired signing authorization is rejected after successful invitation acce
   await providerPage.reload();
   await expect(providerPage.getByRole("heading", { name: "Frozen version 1" })).toBeVisible();
   await providerPage.getByText("Review the complete frozen SLA terms").click();
-  await expect(providerPage.getByText("Expired only in the local EVM test clock")).toBeVisible();
+  await expect(providerPage.getByText("Expired only in the local EVM test clock", { exact: true })).toBeVisible();
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 1, method: "evm_increaseTime", params: [8 * 24 * 60 * 60] } });
   await page.request.post("http://127.0.0.1:8545", { data: { jsonrpc: "2.0", id: 2, method: "evm_mine", params: [] } });
   await page.getByRole("button", { name: "Sign with connected wallet" }).click();
