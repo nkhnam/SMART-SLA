@@ -149,22 +149,24 @@ Stop and independently verify the AgreementRegistry receipt/runtime/domain. Only
 
 Retain the submitted hash immediately when printed. Scripts wait for a successful receipt at one confirmation and matching contract address; evidence deployment additionally checks owner/publisher. Timeout/nonzero exit after submission is uncertainty. If the RPC fails before a hash is printed, recover from sender/nonce and chain history. Scripts are not a deployment journal; blind retries can deploy additional immutable registries.
 
-## Deployment record placeholders
+## Deployment record (2026-11-21)
 
-Leave these unfilled until independent real Fuji verification. No raw signed transaction or secret belongs in a public record.
+Both contracts were deployed on Avalanche Fuji (`43113`) on `2026-11-21` and independently verified via two RPCs (`api.avax-test.network` and `avalanche-fuji-c-chain-rpc.publicnode.com`) plus keyless `POST_DEPLOYMENT_IDENTITY` preflight at block `61415157` (`READ_ONLY_CHECKS_PASS_SEPARATE_APPROVAL_REQUIRED`, `blockers: []`). No raw signed transaction or secret is recorded.
 
 | Field | AgreementRegistry | EvidenceRegistry |
 | --- | --- | --- |
-| Reviewed commit / lockfile / artifact hashes | `<REVIEWED_SHA_AND_HASHES>` | `<REVIEWED_SHA_AND_HASHES>` |
+| Reviewed commit / lockfile / artifact hashes | Commit `4ae112356c739bb22322bfa6f6b3cf6b5eef2920`; `contracts/package-lock.json` SHA-256 `1C865E0D205702D6C6AD3C4382A807DEBE5E3B9B614D48CF0D45C9A4D5EEF57C`; buildInfo `solc-0_8_38-b3ae16f45b4f505ae4548c2cb08918cd446bc0a3`; initcodeHash `0x6f096971cea454cdf4adfd8cc4cf446c1e582e36539b747a70a0a9ddbf064b5c` | Commit `4ae112356c739bb22322bfa6f6b3cf6b5eef2920`; `contracts/package-lock.json` SHA-256 `1C865E0D205702D6C6AD3C4382A807DEBE5E3B9B614D48CF0D45C9A4D5EEF57C`; buildInfo `solc-0_8_38-fbfe36ccb6dde5e0a0c4529a783460159b39f69d`; initcodeHash `0x0420f59c310afce620f4e7fcfeb803d9da9fcfcc518c6ba9b9e26447a668e7ce` |
 | Chain | `43113` | `43113` |
-| Deployer / owner | `<DEPLOYER>`; no agreement owner | `<PERMANENT_OWNER>` |
-| Constructor arguments | none | `<EVIDENCE_PUBLISHER>` |
-| Transaction hash / nonce | `<ACTUAL_TX_HASH>` / `<NONCE>` | `<ACTUAL_TX_HASH>` / `<NONCE>` |
-| Receipt status / block / block hash | `<SUCCESS>` / `<BLOCK>` / `<BLOCK_HASH>` | `<SUCCESS>` / `<BLOCK>` / `<BLOCK_HASH>` |
-| Actual address | `<AGREEMENT_REGISTRY_ADDRESS>` | `<EVIDENCE_REGISTRY_ADDRESS>` |
-| Gas used / effective gas price / fee | `<GAS>` / `<WEI>` / `<GAS_TIMES_PRICE>` | `<GAS>` / `<WEI>` / `<GAS_TIMES_PRICE>` |
-| Independent RPC / explorer record | `<VERIFICATION_RECORD>` | `<VERIFICATION_RECORD>` |
-| Source verification / runtime hash | `<SOURCE_RECORD_AND_HASH>` | `<SOURCE_RECORD_AND_HASH>` |
+| Deployer / owner | `0x7d22b94e893c88Fc48e1B5AaC38a491a171Af0D2` (`owner()`) | `0x7d22b94e893c88Fc48e1B5AaC38a491a171Af0D2` (`owner()`) |
+| Constructor arguments | `0xb1f095aD1C01f1901B3aFea07C2d7b486f8b820D` (`publisher()`) | `0x0bFE801204390b0216Dc2A29FA11417B22d571D1` (`publisher()`) |
+| Transaction hash / nonce | [`0xbe64c75b005f9ef10d9bc855964b84c93e5d5e29351d851f9dbf7d96e9af756b`](https://testnet.snowtrace.io/tx/0xbe64c75b005f9ef10d9bc855964b84c93e5d5e29351d851f9dbf7d96e9af756b) / `0` | [`0x2069c1407c218bcdecc3f071a106affd1df76b79f7508b78811b9b6d83e72c09`](https://testnet.snowtrace.io/tx/0x2069c1407c218bcdecc3f071a106affd1df76b79f7508b78811b9b6d83e72c09) / `1` |
+| Receipt status / block / block hash | `success` / `61414814` (`1795246133`) / `0xa9f02c76d374050ad16038cf871f68dc653a4a392157ed30304badaa4c47c831` | `success` / `61415103` (`1795246579`) / `0x38095d69a1bfd0e0f65ec84a5a83a5df2d17b64773b2652b7b9448bcd4e7bc4c` |
+| Actual address | [`0x9F5923a2005c41c84cBa1cDE1f1eBa5BE5bDC04`](https://testnet.snowtrace.io/address/0x9F5923a2005c41c84cBa1cDE1f1eBa5BE5bDC04) | [`0xB712c0632E4B7AbB1E63a44aBB4d7B95f580b7cA`](https://testnet.snowtrace.io/address/0xB712c0632E4B7AbB1E63a44aBB4d7B95f580b7cA) |
+| Gas used / effective gas price / fee | `954465` / `320` wei / `305428800` wei (`0.0000000003054288` AVAX) | `479474` / `320` wei / `153431680` wei (`0.00000000015343168` AVAX) |
+| Independent RPC / explorer record | Primary (`api.avax-test.network`) & PublicNode (`avalanche-fuji-c-chain-rpc.publicnode.com`) block hash & code match; `preflight:fuji` `POST_DEPLOYMENT_IDENTITY` pass (`chainId: 43113`, EIP-712 `name="SLA-DEX Agreement Registry"`, `version="1"`, `verifyingContract=0x9F5923a2005c41c84cBa1cDE1f1eBa5BE5bDC04`); [Snowtrace](https://testnet.snowtrace.io/address/0x9F5923a2005c41c84cBa1cDE1f1eBa5BE5bDC04) | Primary (`api.avax-test.network`) & PublicNode (`avalanche-fuji-c-chain-rpc.publicnode.com`) block hash & code match; `preflight:fuji` `POST_DEPLOYMENT_IDENTITY` pass; [Snowtrace](https://testnet.snowtrace.io/address/0xB712c0632E4B7AbB1E63a44aBB4d7B95f580b7cA) |
+| Source verification / runtime hash | Explorer source verification not yet submitted; on-chain runtime hash `0xeb0e045accccc092dc7896b4bfdd6f00180a0cd23c37b3035cb37278fc5c1114` (`3890` bytes) matches `solc 0.8.38` Cancun/optimizer-200 artifact excluding 7 immutable slots | Explorer source verification not yet submitted; on-chain runtime hash `0x36253468fcb5ab420a60c005db8c8303904fe81915b22898405559b9674a000d` (`1752` bytes) matches compiled runtime template exactly |
+
+Remaining post-deployment gates before live Fuji operation: fund online relayer accounts (`0xb1f095aD1C01f1901B3aFea07C2d7b486f8b820D` and `0x0bFE801204390b0216Dc2A29FA11417B22d571D1`, currently `0 AVAX`), optionally verify Solidity sources on Snowtrace, and complete step 3–6 runtime activation.
 
 ## Post-deployment verification
 
