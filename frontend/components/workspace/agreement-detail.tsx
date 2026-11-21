@@ -74,20 +74,20 @@ function LiveAgreementDetailForOrganization({ id, organizationId, organizationNa
     }
   }
 
-  if (loading) return <p role="status" className="rounded-xl border border-border bg-white p-6 text-sm text-muted">Loading draft…</p>;
-  if (error || !agreement) return <section role="alert" className="rounded-xl border border-red-200 bg-white p-5"><p className="text-sm text-danger">{error ?? "Agreement not found."}</p><Link href="/workspace/agreements" className="mt-3 inline-block text-sm font-semibold text-brand">Back to live agreements</Link></section>;
+  if (loading) return <p role="status" className="surface-card rounded-xl border p-6 text-sm text-muted">Loading draft…</p>;
+  if (error || !agreement) return <section role="alert" className="surface-card rounded-xl border border-zinc-400 p-5"><p className="text-sm text-danger">{error ?? "Agreement not found."}</p><Link href="/workspace/agreements" className="mt-3 inline-block text-sm font-semibold text-brand">Back to live agreements</Link></section>;
 
   const readOnly = role === "MEMBER";
   return <>
     <PageTitle title={agreement.name} subtitle={`${agreement.reference} · ${agreement.ownerOrganizationId === organizationId ? `Owned by ${organizationName}` : "Shared with your organization"}`} action={<Link href="/workspace/agreements" className="text-sm font-semibold text-brand">All agreements</Link>} />
     <div className="mb-5 flex items-center gap-2"><Status tone="blue">LIVE DATA</Status><Status tone={agreement.status === "ANCHOR_CONFIRMED" ? "green" : agreement.status === "ANCHOR_FAILED" || agreement.status === "REJECTED" || agreement.status === "CANCELLED" ? "red" : "amber"}>{agreement.status.replaceAll("_", " ")}</Status><span className="text-xs text-muted">Terms and workflow state come from the live API.</span></div>
     {saveNotice && <p role="status" className="mb-4 text-sm text-success">{saveNotice}</p>}
-    {readOnly && <p className="mb-4 rounded-lg border border-border bg-white p-3 text-sm text-muted">Your organization role is read-only for approval and agreement changes.</p>}
+    {readOnly && <p className="surface-card mb-4 rounded-lg border p-3 text-sm text-muted">Your organization role is read-only for approval and agreement changes.</p>}
     {agreement.ownerOrganizationId === organizationId && agreement.status === "DRAFT" && <AgreementEditor key={`${agreement.id}-${agreement.version}`} agreement={agreement} readOnly={readOnly} submitLabel="Save draft" onSave={save} />}
     {agreement.ownerOrganizationId === organizationId && editingAmendment && <AgreementEditor key={`${agreement.id}-${agreement.version}-amendment`} agreement={agreement} readOnly={readOnly} submitLabel="Create new version" onSave={save} />}
-    {agreement.ownerOrganizationId === organizationId && role !== "MEMBER" && !editingAmendment && ["AWAITING_COUNTERPARTY", "AWAITING_SIGNATURES", "ANCHOR_FAILED", "ANCHOR_CONFIRMED", "REJECTED"].includes(agreement.status) && <div className="mb-4 flex flex-wrap gap-2"><button type="button" onClick={() => setEditingAmendment(true)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold">Amend terms</button>{["AWAITING_COUNTERPARTY", "AWAITING_SIGNATURES", "ANCHOR_FAILED"].includes(agreement.status) && <button type="button" onClick={() => void cancelCurrentAgreement()} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-danger">Cancel agreement</button>}</div>}
+    {agreement.ownerOrganizationId === organizationId && role !== "MEMBER" && !editingAmendment && ["AWAITING_COUNTERPARTY", "AWAITING_SIGNATURES", "ANCHOR_FAILED", "ANCHOR_CONFIRMED", "REJECTED"].includes(agreement.status) && <div className="mb-4 flex flex-wrap gap-2"><button type="button" onClick={() => setEditingAmendment(true)} className="rounded-lg border border-border bg-white/80 px-3 py-2 text-sm font-semibold">Amend terms</button>{["AWAITING_COUNTERPARTY", "AWAITING_SIGNATURES", "ANCHOR_FAILED"].includes(agreement.status) && <button type="button" onClick={() => void cancelCurrentAgreement()} className="rounded-lg border border-zinc-400 bg-white/80 px-3 py-2 text-sm font-semibold text-danger hover:border-zinc-900">Cancel agreement</button>}</div>}
     {agreement.ownerOrganizationId === organizationId && editingAmendment && <button type="button" onClick={() => setEditingAmendment(false)} className="mt-2 text-sm font-semibold text-muted">Discard amendment edits</button>}
-    {agreement.status !== "DRAFT" && <section aria-label="Agreement terms" className="mt-6 rounded-xl border border-border bg-white p-5 sm:p-6">
+    {agreement.status !== "DRAFT" && <section aria-label="Agreement terms" className="surface-card mt-6 rounded-xl border p-5 sm:p-6">
       <h2 className="text-base font-semibold">Agreement terms</h2>
       <p className="mt-1 text-xs text-muted">Version {agreement.version}</p>
       <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
@@ -100,7 +100,7 @@ function LiveAgreementDetailForOrganization({ id, organizationId, organizationNa
       </dl>
     </section>}
     <AgreementLifecyclePanel key={`${agreement.id}-${agreement.version}`} agreement={agreement} organizationId={organizationId} userId={userId} canApprove={role !== "MEMBER"} onRefreshAgreement={refreshAgreement} />
-    <section className="mt-7 rounded-xl border border-border bg-white p-5 sm:p-6">
+    <section className="surface-card mt-7 rounded-xl border p-5 sm:p-6">
       <h2 className="text-base font-semibold">Version history</h2>
       {historyError && <p role="alert" className="mt-3 text-sm text-danger">{historyError}</p>}
       <ol className="mt-4 divide-y divide-border">

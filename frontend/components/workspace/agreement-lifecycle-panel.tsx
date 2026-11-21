@@ -188,7 +188,7 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
     setNotice(`Registry record verified${result.transactionHash ? ` · ${result.transactionHash}` : ""}.`);
   }
 
-  const sectionClass = "mt-6 rounded-xl border border-border bg-white p-5 sm:p-6";
+  const sectionClass = "surface-card mt-6 rounded-xl border p-5 sm:p-6";
   const submittedParties = new Set(signing?.snapshot?.signatures.map((signature) => signature.party) ?? []);
   const chainId = signing?.snapshot?.typedData.domain.chainId;
 
@@ -209,9 +209,9 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
       <button type="button" disabled={pending} onClick={() => void run(inviteCounterparty)} className="mt-3 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{pending ? "Sending…" : "Send invitation"}</button>
     </div>}
 
-    {agreement.status === "AWAITING_COUNTERPARTY" && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-warning">Invitation sent. The counterparty must accept before either organization can access the agreement terms or select signing wallets.</p>}
-    {agreement.status === "REJECTED" && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-danger">The counterparty rejected this version. Amend the terms to begin a new approval round.</p>}
-    {agreement.status === "CANCELLED" && <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-muted">This agreement was cancelled before registration.</p>}
+    {agreement.status === "AWAITING_COUNTERPARTY" && <p className="mt-4 rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-sm text-warning">Invitation sent. The counterparty must accept before either organization can access the agreement terms or select signing wallets.</p>}
+    {agreement.status === "REJECTED" && <p className="mt-4 rounded-lg border border-zinc-300 bg-zinc-100 p-3 text-sm text-danger">The counterparty rejected this version. Amend the terms to begin a new approval round.</p>}
+    {agreement.status === "CANCELLED" && <p className="mt-4 rounded-lg bg-zinc-100/80 p-3 text-sm text-muted">This agreement was cancelled before registration.</p>}
 
     {agreement.status === "AWAITING_SIGNATURES" && <div className="mt-5 space-y-4 border-t border-border pt-4">
       <div><h3 className="text-sm font-semibold">Authorize the organization signer</h3><p className="mt-1 text-sm text-muted">Wallet proof links one EOA to the current organization. The wallet signs typed data locally; private keys never reach this app.</p></div>
@@ -233,7 +233,7 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
       </div>}
     </div>}
 
-    {signing?.snapshot && <div className="mt-5 rounded-lg border border-border bg-slate-50 p-4">
+    {signing?.snapshot && <div className="mt-5 rounded-lg border border-border bg-white/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Frozen version {signing.version}</h3><Status tone={signing.signatureStatus === "COMPLETE" ? "green" : "amber"}>{signing.signatureStatus}</Status></div>
       <p className="mt-2 break-all font-mono text-xs text-muted">Agreement hash: {signing.snapshot.hash}</p>
       <p className="mt-1 break-all font-mono text-xs text-muted">Agreement key: {signing.snapshot.agreementKey}</p>
@@ -262,7 +262,7 @@ export function AgreementLifecyclePanel({ agreement, organizationId, userId, can
       {agreement.status === "ANCHOR_FAILED" && canApprove && <button type="button" disabled={pending} onClick={() => void run(retryAnchor)} className="mt-3 rounded-lg border border-border px-3 py-2 text-sm font-semibold disabled:opacity-60">Retry registration</button>}
     </div>}
 
-    {error && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-danger">{error}</p>}
-    {notice && <p role="status" className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-success">{notice}</p>}
+    {error && <p role="alert" className="mt-4 rounded-lg border border-zinc-400 bg-zinc-100 p-3 text-sm text-danger">{error}</p>}
+    {notice && <p role="status" className="mt-4 rounded-lg border border-zinc-200 bg-zinc-100 p-3 text-sm text-success">{notice}</p>}
   </section>;
 }

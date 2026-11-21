@@ -97,7 +97,7 @@ test("Phase 2C live monitoring empty state stays separate from Demo Mode at all 
     await expect(page.getByRole("link", { name: "Demo Mode" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `Live monitoring overflows at ${width}px`).toBe(true);
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "SLA-DEX Live workspace" })).toBeFocused();
+    await expect(page.getByRole("link", { name: "SMART-SLA Live workspace" })).toBeFocused();
   }
 
   await page.getByRole("link", { name: "Demo Mode" }).click();

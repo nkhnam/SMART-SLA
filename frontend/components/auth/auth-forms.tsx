@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { BrandMark } from "@/components/ui/brand-logo";
 import { ApiError, login, register, type OrganizationType } from "@/lib/live-api";
 
 export function LoginForm() {
@@ -91,13 +92,13 @@ export function RegistrationForm() {
 }
 
 export function AuthCard({ mode }: { mode: "login" | "register" }) {
-  const title = mode === "login" ? "Sign in to SLA-DEX" : "Create your live workspace";
+  const title = mode === "login" ? "Sign in to SMART-SLA" : "Create your live workspace";
   const subtitle = mode === "login"
     ? "Access draft agreements for your organization."
     : "Registration creates your user, organization, and OWNER membership.";
   return <main className="mx-auto flex min-h-screen max-w-6xl items-center px-5 py-12 sm:px-8">
-    <section className="mx-auto w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-sm sm:p-8">
-      <Link href="/" className="text-sm font-bold tracking-wide">SLA-DEX</Link>
+    <section className="surface-card mx-auto w-full max-w-lg rounded-2xl border p-6 sm:p-8">
+      <Link href="/" className="inline-flex items-center gap-3 text-sm font-bold tracking-wide"><BrandMark height={36} /><span>SMART-SLA</span></Link>
       <p className="mt-7 text-xs font-semibold uppercase tracking-wide text-brand">Live workspace</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">{title}</h1>
       <p className="mt-2 text-sm text-muted">{subtitle}</p>

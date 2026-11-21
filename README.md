@@ -1,4 +1,4 @@
-# SLA-DEX
+# SMART-SLA
 
 SLA-DEX pairs the Phase 1 fixture-backed demo with an opt-in live workspace. Phase 2A persists authenticated, organization-scoped agreement drafts in PostgreSQL. Phase 2B adds organization invitations, bilateral EIP-712 signing of immutable agreement versions, and a relayed Avalanche registry workflow. Phase 2C adds version-bound HTTP probes, signed provider webhooks, deterministic KPI evaluations, breach candidates, portable Merkle evidence packages, and a separately authorized EvidenceRegistry publisher. Disputes, arbitration, escrow, and settlement remain out of scope.
 

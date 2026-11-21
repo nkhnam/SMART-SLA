@@ -17,7 +17,7 @@ export function CreateLiveAgreement() {
   }
 
   if (selectedOrganization?.role === "MEMBER") {
-    return <p role="alert" className="rounded-xl border border-border bg-white p-5 text-sm text-muted">Your organization role can read drafts but cannot create them.</p>;
+    return <p role="alert" className="surface-card rounded-xl border p-5 text-sm text-muted">Your organization role can read drafts but cannot create them.</p>;
   }
   return <>
     <p className="mb-5 text-sm text-muted">The selected organization owns this draft. The counterparty name is informational only.</p>

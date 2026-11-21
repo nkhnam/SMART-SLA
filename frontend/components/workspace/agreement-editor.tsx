@@ -41,8 +41,8 @@ export function AgreementEditor({ agreement, readOnly = false, submitLabel, onSa
     }
   }
 
-  const inputClass = "mt-2 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm disabled:bg-slate-50";
-  return <form onSubmit={submit} className="space-y-5 rounded-xl border border-border bg-white p-5 sm:p-6">
+  const inputClass = "mt-2 w-full rounded-lg border border-border bg-white/80 px-3 py-2.5 text-sm disabled:bg-zinc-100";
+  return <form onSubmit={submit} className="surface-card space-y-5 rounded-xl border p-5 sm:p-6">
     {agreement && <p className="text-xs text-muted">{agreement.reference} · Draft · Version {agreement.version}</p>}
     <label className="block text-sm font-medium">Agreement name
       <input required name="name" maxLength={160} defaultValue={agreement?.name ?? ""} disabled={readOnly || pending} className={inputClass} />
@@ -71,7 +71,7 @@ export function AgreementEditor({ agreement, readOnly = false, submitLabel, onSa
     <label className="block text-sm font-medium">Notes <span className="font-normal text-muted">Optional</span>
       <textarea name="notes" maxLength={2000} rows={3} defaultValue={agreement?.terms.notes ?? ""} disabled={readOnly || pending} className={inputClass} />
     </label>
-    {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-danger">
+    {error && <div role="alert" className="rounded-lg border border-zinc-300 bg-zinc-100 p-3 text-sm text-danger">
       <p>{error.message}</p>
       {error.status === 409 && <button type="button" onClick={() => window.location.reload()} className="mt-2 font-semibold underline">Reload the latest version</button>}
     </div>}
