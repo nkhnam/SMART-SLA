@@ -119,7 +119,7 @@ async function api<T>(actor: Actor, path: string, method = "GET", data?: unknown
   return response.json() as Promise<T>;
 }
 
-async function changeRole(actor: Actor, role: "OWNER" | "ADMIN" | "MEMBER") {
+async function updateTestFixture(sql: string, values: unknown[]) {
   const database = new URL(process.env.DATABASE_URL!);
   expect(["localhost", "127.0.0.1", "[::1]"]).toContain(database.hostname);
   expect(database.pathname).toMatch(/_test$/);
@@ -127,9 +127,20 @@ async function changeRole(actor: Actor, role: "OWNER" | "ADMIN" | "MEMBER") {
   const connection = new Client({ connectionString: database.toString() });
   try {
     await connection.connect();
-    const result = await connection.query('UPDATE "Membership" SET "role" = $1::"MembershipRole" WHERE "userId" = $2::uuid AND "organizationId" = $3::uuid', [role, actor.userId, actor.organizationId]);
+    const result = await connection.query(sql, values);
     expect(result.rowCount).toBe(1);
   } finally { await connection.end(); }
+}
+
+async function changeRole(actor: Actor, role: "OWNER" | "ADMIN" | "MEMBER") {
+  await updateTestFixture('UPDATE "Membership" SET "role" = $1::"MembershipRole" WHERE "userId" = $2::uuid AND "organizationId" = $3::uuid', [role, actor.userId, actor.organizationId]);
+}
+
+async function seedCompletedWebhookSlot(actor: Actor, source: Source) {
+  const observedAt = new Date(Date.now() - 60_000).toISOString();
+  // Two missed slots keep coverage insufficient; the third slot is already closed.
+  await updateTestFixture('UPDATE "MonitoringSource" SET "createdAt" = $1::timestamptz - (2 * "intervalSeconds") * INTERVAL \'1 second\' WHERE "id" = $2::uuid AND "organizationId" = $3::uuid', [observedAt, source.id, actor.organizationId]);
+  return observedAt;
 }
 
 type Identities = { customer: Omit<Actor, "page">; provider: Omit<Actor, "page">; outsider: Omit<Actor, "page">; providerState: Awaited<ReturnType<BrowserContext["storageState"]>>; outsiderState: Awaited<ReturnType<BrowserContext["storageState"]>>; signers: string[] };
@@ -222,11 +233,11 @@ async function sourceAction(actor: Actor, agreementId: string, source: Source, a
   return response.json() as Promise<Source>;
 }
 
-async function webhook(actor: Actor, source: Source, secret: string, expected = 201) {
+async function webhook(actor: Actor, source: Source, secret: string, expected = 201, observedAt = new Date().toISOString()) {
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = randomUUID();
   const eventId = randomUUID();
-  const body = JSON.stringify({ observedAt: new Date().toISOString(), reachable: true, httpStatus: 200, latencyMs: 100, agentIdentity: "synthetic-gate3c-browser", providerMetadata: { synthetic: true, independentMeasurement: false } });
+  const body = JSON.stringify({ observedAt, reachable: true, httpStatus: 200, latencyMs: 100, agentIdentity: "synthetic-gate3c-browser", providerMetadata: { synthetic: true, independentMeasurement: false } });
   const signature = `v1=${createHmac("sha256", secret).update(`${timestamp}.${nonce}.${eventId}.`).update(body).digest("hex")}`;
   const response = await actor.page.request.post(`${apiBase}/monitoring/webhooks/${source.id}`, { headers: { "content-type": "application/json", "x-monitoring-timestamp": timestamp, "x-monitoring-nonce": nonce, "x-monitoring-event-id": eventId, "x-monitoring-signature": signature }, data: body });
   expect(response.status()).toBe(expected);
@@ -255,7 +266,8 @@ monitoringTest("Gate 3C owner manages a persistent webhook, evaluates unknown co
   await expect(rotationNotice).toBeVisible();
   expect((await rotationNotice.innerText()).includes(rotated.webhookSecret!)).toBe(true);
   await webhook(customer, source, source.webhookSecret!, 403);
-  const ingested = await webhook(customer, source, rotated.webhookSecret!) as { observationId: string };
+  const observedAt = await seedCompletedWebhookSlot(customer, source);
+  const ingested = await webhook(customer, source, rotated.webhookSecret!, 201, observedAt) as { observationId: string };
   await openMonitoring(customer, primary);
   const rows = customer.page.getByRole("row").filter({ hasText: source.name });
   await expect(rows).toHaveCount(1);
@@ -269,7 +281,7 @@ monitoringTest("Gate 3C owner manages a persistent webhook, evaluates unknown co
   await customer.page.getByRole("button", { name: "Evaluate signed window" }).click();
   const evaluation = await evaluated;
   expect(evaluation.status()).toBe(201);
-  expect(await evaluation.json()).toMatchObject({ data: [{ state: "INSUFFICIENT_DATA", uptimePercent: null }] });
+  expect(await evaluation.json()).toMatchObject({ data: [{ state: "INSUFFICIENT_DATA", uptimePercent: null, expectedSamples: 3, healthyObservations: 1, unknownObservations: 2 }] });
   await expect(customer.page.getByText(/Uptime unknown/)).toBeVisible();
   await expect(customer.page.getByText("No breach candidates recorded.")).toBeVisible();
   await customer.page.getByRole("button", { name: "Build evidence", exact: true }).click();
@@ -302,7 +314,12 @@ monitoringTest("Gate 3C authenticated source notices and agreement switching fit
     await customer.page.setViewportSize({ width, height: 900 });
     await openMonitoring(customer, primary);
     const source = await addWebhook(customer, primary, `SYNTHETIC responsive source ${width}`);
-    expect(await customer.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `Authenticated monitoring overflows at ${width}px`).toBe(true);
+    const overflow = await customer.page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      elements: [...document.querySelectorAll("body *")].filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth).slice(0, 12).map((element) => ({ tag: element.tagName, classes: element.className, right: element.getBoundingClientRect().right }))
+    }));
+    expect(overflow.scrollWidth <= overflow.width, `Authenticated monitoring overflows at ${width}px: ${JSON.stringify(overflow)}`).toBe(true);
     await customer.page.screenshot({ path: testInfo.outputPath(`monitoring-${width}.png`), fullPage: true, mask: [customer.page.getByRole("status")] });
     await customer.page.getByLabel("Confirmed agreement").selectOption(secondary);
     await expect(customer.page.getByText("No sources yet.", { exact: true })).toBeVisible();

@@ -53,9 +53,9 @@ function WorkspaceFrame({ children }: { children: React.ReactNode }) {
             <Link href="/overview" className="text-muted hover:text-brand">Demo Mode</Link>
           </nav>
         </div>
-        {workspace.status === "ready" && workspace.session && <div className="flex flex-wrap items-center gap-3">
-          {workspace.organizations.length > 0 && <label className="flex items-center gap-2 text-xs text-muted">Organization
-            <select aria-label="Live organization" value={workspace.selectedOrganization?.id ?? ""} onChange={(event) => workspace.selectOrganization(event.target.value)} className="rounded-lg border border-border bg-white/80 px-2.5 py-2 text-xs font-medium text-ink">
+        {workspace.status === "ready" && workspace.session && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
+          {workspace.organizations.length > 0 && <label className="grid min-w-0 max-w-full gap-2 text-xs text-muted sm:flex sm:items-center">Organization
+            <select aria-label="Live organization" value={workspace.selectedOrganization?.id ?? ""} onChange={(event) => workspace.selectOrganization(event.target.value)} className="min-w-0 max-w-full rounded-lg border border-border bg-white/80 px-2.5 py-2 text-xs font-medium text-ink">
               {workspace.organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name} · {organization.role}</option>)}
             </select>
           </label>}
